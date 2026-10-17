@@ -466,29 +466,70 @@ begin
   where target_user_id = v_b and action = 'ban' and actor_id = v_founder;
   perform pg_temp.record('founder status change writes an audit row', n = 1, 'rows=' || n);
 
-  update public.moderation_actions set reason = 'tamper' where target_user_id = v_b;
-  get diagnostics n = row_count;
-  perform pg_temp.record('founder cannot update the audit log', n = 0, 'rows=' || n);
+  -- authenticated has no UPDATE or DELETE grant, so 42501 is the expected failure.
+  -- If a grant exists later, prevent_mutation ('moderation_actions is insert-only') is also a pass.
+  -- A statement that succeeds is a failure, including an update that changes zero rows.
+  begin
+    update public.moderation_actions set reason = 'tamper' where target_user_id = v_b;
+    perform pg_temp.record('founder cannot update the audit log', false, 'update succeeded');
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('founder cannot update the audit log', true, sqlerrm);
+    when others then
+      if sqlerrm = 'moderation_actions is insert-only' then
+        perform pg_temp.record('founder cannot update the audit log', true, sqlerrm);
+      else
+        perform pg_temp.record('founder cannot update the audit log', false, sqlstate || ' ' || sqlerrm);
+      end if;
+  end;
 
-  delete from public.moderation_actions where target_user_id = v_b;
-  get diagnostics n = row_count;
-  perform pg_temp.record('founder cannot delete the audit log', n = 0, 'rows=' || n);
+  begin
+    delete from public.moderation_actions where target_user_id = v_b;
+    perform pg_temp.record('founder cannot delete the audit log', false, 'delete succeeded');
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('founder cannot delete the audit log', true, sqlerrm);
+    when others then
+      if sqlerrm = 'moderation_actions is insert-only' then
+        perform pg_temp.record('founder cannot delete the audit log', true, sqlerrm);
+      else
+        perform pg_temp.record('founder cannot delete the audit log', false, sqlstate || ' ' || sqlerrm);
+      end if;
+  end;
 end $$;
 
 do $$
 begin
+  -- SET LOCAL ROLE in earlier blocks lasts for this transaction. Return to the login role,
+  -- which owns the table and bypasses grants, so only prevent_mutation can reject the write.
+  execute format('set local role %I', session_user);
   update public.moderation_actions set reason = 'tamper';
   perform pg_temp.record('table owner cannot update the audit log', false, 'update succeeded');
-exception when others then
-  perform pg_temp.record('table owner cannot update the audit log', true, sqlerrm);
+exception
+  when insufficient_privilege then
+    perform pg_temp.record('table owner cannot update the audit log', false, sqlstate || ' ' || sqlerrm);
+  when others then
+    if sqlerrm = 'moderation_actions is insert-only' then
+      perform pg_temp.record('table owner cannot update the audit log', true, sqlerrm);
+    else
+      perform pg_temp.record('table owner cannot update the audit log', false, sqlstate || ' ' || sqlerrm);
+    end if;
 end $$;
 
 do $$
 begin
+  execute format('set local role %I', session_user);
   delete from public.moderation_actions;
   perform pg_temp.record('table owner cannot delete the audit log', false, 'delete succeeded');
-exception when others then
-  perform pg_temp.record('table owner cannot delete the audit log', true, sqlerrm);
+exception
+  when insufficient_privilege then
+    perform pg_temp.record('table owner cannot delete the audit log', false, sqlstate || ' ' || sqlerrm);
+  when others then
+    if sqlerrm = 'moderation_actions is insert-only' then
+      perform pg_temp.record('table owner cannot delete the audit log', true, sqlerrm);
+    else
+      perform pg_temp.record('table owner cannot delete the audit log', false, sqlstate || ' ' || sqlerrm);
+    end if;
 end $$;
 
 do $$
