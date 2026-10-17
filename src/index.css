@@ -79,3 +79,11 @@ h6,
     transform: translateX(100%);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+    transform: none;
+    background-image: none;
+  }
+}
