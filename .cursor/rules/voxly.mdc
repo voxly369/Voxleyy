@@ -1,0 +1,26 @@
+---
+description: Standing rules for Voxly. docs/SPEC.md wins over images and every other source.
+alwaysApply: true
+---
+
+# Voxly standing rules
+
+docs/SPEC.md is the source of truth. It wins over the design images in docs/reference/ and over every other document, comment, chat, or prompt. The images show general look and feel only. Where they disagree with docs/SPEC.md, follow the specification.
+
+The stack is React 18, Vite, TypeScript, Tailwind CSS 3.4 (pinned), and Supabase (Postgres, Auth, Storage, Realtime). The product is a PWA first. A Capacitor wrap comes later.
+
+Enable row-level security on every table.
+
+Never use or expose the Supabase service-role key. Never put secrets in any variable whose name starts with VITE_.
+
+Users can never change their own role, status, verified flag, or badges. Reader is the default role. Writer is granted automatically on first publish. There is no moderator role and no admin role. The Founder account is only voxly369@gmail.com, and only when that email is confirmed. Only that Founder moderates or administers.
+
+Use Inter for interface text. Use Fraunces for reading and writing text, screen titles, and the wordmark. The accent is coral #FF5A3C. The verified badge is purple #8B5CF6. Dark mode is the default.
+
+Every image has a fallback and never shows a broken icon.
+
+Loading, Error, and Empty states are mutually exclusive.
+
+The product is in-app only. Do not add sharing to other platforms or downloads.
+
+Do only what the current numbered prompt says. Features not in the current prompt stay scheduled for later. Report any command you skipped. Never delete, move, or overwrite anything in docs/.
