@@ -21,6 +21,15 @@ Loading, Error, and Empty are mutually exclusive. Render exactly one of:
 - an empty state with one call-to-action button
 - the content
 
+## State components
+
+Use the components in `src/components/states`. Do not invent a second version.
+
+- `Skeleton` is the loading state. `variant="block"` is a large placeholder, `variant="text-lines"` is a short stack of lines, and `variant="circle"` is an avatar-sized circle. The shimmer stops when the visitor prefers reduced motion. Route changes use `PageSkeleton` inside `Suspense`.
+- `ErrorState` is the error state. Pass a title, a plain-language message, and `onRetry`. Never pass a raw error, a stack, or a status code.
+- `EmptyState` is the empty state. Pass an icon, a title, one sentence, and an optional action. Use it only when there is nothing to show, not while a request is still running.
+- `ImageWithFallback` is the image rule. Give it a fixed box so the layout does not jump, lazy-load the file, and let it show a token-coloured letter or icon when the file is missing or fails. Never leave a broken-image icon on screen.
+
 ## Data and security
 
 Every table has row-level security. The client uses the anon key only. Never use or expose the service-role key, and never put a secret in a `VITE_` variable.

@@ -1,31 +1,36 @@
-export type ThemeMode = 'dark' | 'light'
+export type ThemeChoice = 'system' | 'light' | 'dark'
 
 const storageKey = 'voxly-theme'
 
-export function getTheme(): ThemeMode {
+function systemPrefersDark(): boolean {
+  try {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+  } catch {
+    return true
+  }
+}
+
+export function readThemeChoice(): ThemeChoice {
   try {
     const stored = localStorage.getItem(storageKey)
-    if (stored === 'dark' || stored === 'light') return stored
+    if (stored === 'system' || stored === 'light' || stored === 'dark') return stored
   } catch {
     return 'dark'
   }
   return 'dark'
 }
 
-export function setTheme(theme: ThemeMode): void {
-  try {
-    const isDark = theme === 'dark'
-    document.documentElement.classList.toggle('dark', isDark)
-    document.documentElement.style.colorScheme = isDark ? 'dark' : 'light'
-    localStorage.setItem(storageKey, theme)
-  } catch {
-    document.documentElement.classList.add('dark')
-    document.documentElement.style.colorScheme = 'dark'
-  }
+export function applyThemeChoice(choice: ThemeChoice): void {
+  const dark = choice === 'dark' || (choice === 'system' && systemPrefersDark())
+  document.documentElement.classList.toggle('dark', dark)
+  document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
 }
 
-export function toggleTheme(): ThemeMode {
-  const next: ThemeMode = getTheme() === 'dark' ? 'light' : 'dark'
-  setTheme(next)
-  return next
+export function persistThemeChoice(choice: ThemeChoice): void {
+  applyThemeChoice(choice)
+  try {
+    localStorage.setItem(storageKey, choice)
+  } catch {
+    // Storage can be blocked. The choice still applies for this visit.
+  }
 }
