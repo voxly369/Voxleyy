@@ -1,5 +1,5 @@
 -- Voxly RLS smoke test.
--- Paste this AFTER 0001 through 0005, as one script, in the Supabase SQL editor.
+-- Paste this AFTER 20261017000001 through 20261017000005, as one script, in the Supabase SQL editor.
 -- The script opens a transaction and ends with rollback. It keeps no rows.
 -- It was not executed here: Docker and the Supabase CLI are not installed.
 -- A second auth.users row with voxly369@gmail.com is attempted below. Email is unique,
