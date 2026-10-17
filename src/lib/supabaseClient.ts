@@ -1,11 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
+import type { Database } from './database.types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-// TODO: When the Supabase CLI and Docker are available, generate types with
-// `supabase gen types typescript --local > src/types/database.ts`
-// and change this client to createClient<Database>(...). Do not hand-write a Database type.
 // Never use the service-role key here, and never put a secret in a VITE_ variable.
 
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -14,4 +12,4 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
