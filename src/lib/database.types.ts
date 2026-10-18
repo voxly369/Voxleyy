@@ -703,6 +703,7 @@ export type Database = {
     }
     Functions: {
       can_view_creation: { Args: { c: string }; Returns: boolean }
+      chosen_username_ok: { Args: { candidate: string }; Returns: boolean }
       counts_as_published: {
         Args: {
           p_removed: boolean
@@ -725,6 +726,7 @@ export type Database = {
       is_founder: { Args: never; Returns: boolean }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
+      username_available: { Args: { candidate: string }; Returns: boolean }
     }
     Enums: {
       account_status: "active" | "suspended" | "banned"

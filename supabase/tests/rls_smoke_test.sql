@@ -39,7 +39,12 @@ end $$;
 
 grant execute on function pg_temp.record(text, boolean, text) to authenticated;
 
-create or replace function pg_temp.create_test_user(p_id uuid, p_email text, p_confirmed timestamptz)
+create or replace function pg_temp.create_test_user(
+  p_id uuid,
+  p_email text,
+  p_confirmed timestamptz,
+  p_meta jsonb default '{}'::jsonb
+)
 returns void
 language plpgsql
 set search_path = public, auth
@@ -54,7 +59,7 @@ declare
     'encrypted_password', quote_literal(''),
     'email_confirmed_at', quote_nullable(p_confirmed) || '::timestamptz',
     'raw_app_meta_data', quote_literal('{"provider":"email","providers":["email"]}') || '::jsonb',
-    'raw_user_meta_data', quote_literal('{}') || '::jsonb',
+    'raw_user_meta_data', quote_literal(coalesce(p_meta, '{}'::jsonb)::text) || '::jsonb',
     'created_at', 'now()',
     'updated_at', 'now()',
     'confirmation_token', quote_literal(p_id::text),
@@ -555,6 +560,209 @@ begin
     when others then
       perform pg_temp.record('banned user cannot insert a creation', false, sqlstate || ' ' || sqlerrm);
   end;
+end $$;
+
+-- Signup username. Chosen values are used only when valid and free. Hostile metadata
+-- must not set role, status, verified, or counters. Restore authenticated afterwards
+-- so the catalog checks below keep the role the previous block left in place.
+do $$
+declare
+  v_valid uuid := gen_random_uuid();
+  v_upper uuid := gen_random_uuid();
+  v_reserved uuid := gen_random_uuid();
+  v_short uuid := gen_random_uuid();
+  v_invalid uuid := gen_random_uuid();
+  v_owner uuid := gen_random_uuid();
+  v_taken uuid := gen_random_uuid();
+  v_hostile uuid := gen_random_uuid();
+  v_valid_name text := 'zz' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 16);
+  v_upper_name text := 'zz' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 16);
+  v_taken_name text := 'zz' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 16);
+  v_hostile_name text := 'zz' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 16);
+  v_free_name text := 'zz' || substr(replace(gen_random_uuid()::text, '-', ''), 1, 16);
+  v_username text;
+  v_role public.user_role;
+  v_status public.account_status;
+  v_verified boolean;
+  v_display text;
+  v_followers integer;
+  v_following integer;
+  v_creations integer;
+  v_reason text;
+  v_avail boolean;
+  v_err text;
+  n integer;
+begin
+  execute format('set local role %I', session_user);
+
+  perform pg_temp.create_test_user(
+    v_valid, 'chosen.valid@voxly.test', now(),
+    jsonb_build_object('username', v_valid_name, 'display_name', 'Valid')
+  );
+  select username::text into v_username from public.profiles where id = v_valid;
+  perform pg_temp.record(
+    'chosen valid username is used',
+    v_username = v_valid_name,
+    coalesce(v_username, 'missing')
+  );
+
+  perform pg_temp.create_test_user(
+    v_upper, 'chosen.upper@voxly.test', now(),
+    jsonb_build_object('username', upper(v_upper_name), 'display_name', 'Upper')
+  );
+  select username::text into v_username from public.profiles where id = v_upper;
+  perform pg_temp.record(
+    'uppercase chosen username is lowercased and used',
+    v_username = v_upper_name,
+    coalesce(v_username, 'missing')
+  );
+
+  perform pg_temp.create_test_user(
+    v_reserved, 'chosen.reserved@voxly.test', now(),
+    jsonb_build_object('username', 'admin')
+  );
+  select username::text into v_username from public.profiles where id = v_reserved;
+  perform pg_temp.record(
+    'reserved username falls back',
+    v_username is not null
+      and v_username <> 'admin'
+      and v_username ~ '^chosenreserved[0-9a-f]{5}$',
+    coalesce(v_username, 'missing')
+  );
+
+  perform pg_temp.create_test_user(
+    v_short, 'chosen.short@voxly.test', now(),
+    jsonb_build_object('username', 'ab')
+  );
+  select username::text into v_username from public.profiles where id = v_short;
+  perform pg_temp.record(
+    'too short falls back',
+    v_username is not null
+      and v_username <> 'ab'
+      and v_username ~ '^chosenshort[0-9a-f]{5}$',
+    coalesce(v_username, 'missing')
+  );
+
+  perform pg_temp.create_test_user(
+    v_invalid, 'chosen.bad@voxly.test', now(),
+    jsonb_build_object('username', 'bad name')
+  );
+  select username::text into v_username from public.profiles where id = v_invalid;
+  perform pg_temp.record(
+    'invalid characters fall back',
+    v_username is not null
+      and v_username !~ '[^a-z0-9_]'
+      and v_username ~ '^chosenbad[0-9a-f]{5}$',
+    coalesce(v_username, 'missing')
+  );
+
+  perform pg_temp.create_test_user(
+    v_owner, 'chosen.owner@voxly.test', now(),
+    jsonb_build_object('username', v_taken_name)
+  );
+  perform pg_temp.create_test_user(
+    v_taken, 'chosen.taken2@voxly.test', now(),
+    jsonb_build_object('username', v_taken_name)
+  );
+  select username::text into v_username from public.profiles where id = v_owner;
+  if v_username is distinct from v_taken_name then
+    perform pg_temp.record('an already-taken username falls back', false, 'owner did not claim ' || coalesce(v_username, 'missing'));
+  else
+    select username::text into v_username from public.profiles where id = v_taken;
+    perform pg_temp.record(
+      'an already-taken username falls back',
+      v_username is not null
+        and v_username <> v_taken_name
+        and v_username ~ '^chosentaken2[0-9a-f]{5}$',
+      coalesce(v_username, 'missing')
+    );
+  end if;
+
+  perform pg_temp.create_test_user(
+    v_hostile, 'chosen.hostile@voxly.test', now(),
+    jsonb_build_object(
+      'username', v_hostile_name,
+      'display_name', 'Hostile',
+      'role', 'founder',
+      'status', 'banned',
+      'verified', true,
+      'follower_count', 99,
+      'following_count', 99,
+      'creation_count', 99,
+      'status_reason', 'injected'
+    )
+  );
+  select username::text, display_name, role, status, verified,
+         follower_count, following_count, creation_count, status_reason
+    into v_username, v_display, v_role, v_status, v_verified,
+         v_followers, v_following, v_creations, v_reason
+  from public.profiles where id = v_hostile;
+  perform pg_temp.record(
+    'metadata role status and verified do not change the profile',
+    v_username = v_hostile_name
+      and v_display = 'Hostile'
+      and v_role = 'reader'
+      and v_status = 'active'
+      and v_verified = false
+      and v_followers = 0
+      and v_following = 0
+      and v_creations = 0
+      and v_reason is null,
+    coalesce(v_username, 'missing')
+      || ' display=' || coalesce(v_display, 'null')
+      || ' role=' || coalesce(v_role::text, 'null')
+      || ' status=' || coalesce(v_status::text, 'null')
+      || ' verified=' || coalesce(v_verified::text, 'null')
+      || ' followers=' || coalesce(v_followers::text, 'null')
+      || ' reason=' || coalesce(v_reason, 'null')
+  );
+
+  select public.username_available(v_free_name) into v_avail;
+  perform pg_temp.record(
+    'username_available true for a free valid name',
+    v_avail is true,
+    coalesce(v_avail::text, 'null')
+  );
+  select public.username_available(v_taken_name) into v_avail;
+  perform pg_temp.record(
+    'username_available false for a taken name',
+    v_avail is false,
+    coalesce(v_avail::text, 'null')
+  );
+  select public.username_available('founder') into v_avail;
+  perform pg_temp.record(
+    'username_available false for a reserved name',
+    v_avail is false,
+    coalesce(v_avail::text, 'null')
+  );
+  select public.username_available('ab') into v_avail;
+  perform pg_temp.record(
+    'username_available false for an invalid name',
+    v_avail is false,
+    coalesce(v_avail::text, 'null')
+  );
+
+  begin
+    execute 'set local role anon';
+    select public.username_available(v_free_name) into v_avail;
+    execute format('set local role %I', session_user);
+    perform pg_temp.record(
+      'anon can execute username_available',
+      v_avail is true,
+      coalesce(v_avail::text, 'null')
+    );
+  exception when others then
+    v_err := sqlstate || ' ' || sqlerrm;
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon can execute username_available', false, v_err);
+  end;
+
+  select count(*) into n
+  from information_schema.role_table_grants
+  where grantee = 'anon' and table_schema = 'public';
+  perform pg_temp.record('anon still has no grants on any public table', n = 0, 'grants=' || n);
+
+  execute 'set local role authenticated';
 end $$;
 
 do $$
