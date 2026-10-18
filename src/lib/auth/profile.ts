@@ -4,8 +4,8 @@ import { supabase } from '../supabaseClient.ts'
 export type AccountStatus = Database['public']['Enums']['account_status']
 export type UserRole = Database['public']['Enums']['user_role']
 
-// Authenticated users may read every profiles column. status_reason is omitted
-// on purpose: the account screen must not show it.
+// Authenticated users may read every profiles column except status_reason.
+// The account screen must not show that private moderation note.
 export const OWN_PROFILE_COLUMNS =
   'id, username, display_name, bio, avatar_url, banner_url, website, country, city, city_visible, timezone, language, role, status, suspended_until, verified, who_can_message, follower_count, following_count, creation_count, created_at, updated_at' as const
 

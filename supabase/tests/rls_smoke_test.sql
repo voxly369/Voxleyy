@@ -992,6 +992,107 @@ begin
   execute 'set local role authenticated';
 end $$;
 
+-- Profile hardening: username is not updatable, and status_reason is not selectable.
+do $$
+declare
+  v_a uuid;
+  v_founder uuid;
+  v_target uuid := gen_random_uuid();
+  v_username text;
+  v_display text;
+  v_bio text;
+  v_reason text;
+  v_row record;
+  n integer;
+begin
+  select reader_a, founder into v_a, v_founder from rls_ids;
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform set_config('search_path', 'pg_temp, public, auth', true);
+
+  select username::text into v_username from public.profiles where id = v_a;
+
+  begin
+    update public.profiles set username = 'founder' where id = v_a;
+    perform pg_temp.record('authenticated cannot update username', false, 'update succeeded');
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('authenticated cannot update username', true, sqlerrm);
+    when others then
+      perform pg_temp.record('authenticated cannot update username', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  perform pg_temp.record(
+    'username is unchanged after a denied update',
+    (select username::text from public.profiles where id = v_a) = v_username,
+    coalesce((select username::text from public.profiles where id = v_a), 'missing')
+  );
+
+  execute 'set local role authenticated';
+  update public.profiles
+    set display_name = 'Hardened name', bio = 'Still editable'
+    where id = v_a;
+  select display_name, bio into v_display, v_bio from public.profiles where id = v_a;
+  perform pg_temp.record(
+    'authenticated can still update display_name and bio',
+    v_display = 'Hardened name' and v_bio = 'Still editable',
+    coalesce(v_display, 'null') || ' / ' || coalesce(v_bio, 'null')
+  );
+
+  begin
+    select status_reason into v_reason from public.profiles where id = v_a;
+    perform pg_temp.record('authenticated cannot select status_reason', false, 'select succeeded');
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('authenticated cannot select status_reason', true, sqlerrm);
+    when others then
+      perform pg_temp.record('authenticated cannot select status_reason', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  select
+    id, username, display_name, bio, avatar_url, banner_url, website, country, city, city_visible,
+    timezone, language, role, status, suspended_until, verified, who_can_message,
+    follower_count, following_count, creation_count, created_at, updated_at
+    into v_row
+  from public.profiles
+  where id = v_a;
+  perform pg_temp.record(
+    'authenticated can read own profile columns',
+    v_row.id = v_a and v_row.username is not null and v_row.display_name = 'Hardened name',
+    coalesce(v_row.username::text, 'missing')
+  );
+
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_target, 'harden.target@voxly.test', now());
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform public.founder_set_user_status(v_target, 'suspended', 'hardening reason', now() + interval '1 day');
+
+  execute format('set local role %I', session_user);
+  select status_reason into v_reason from public.profiles where id = v_target;
+  select count(*) into n
+  from public.moderation_actions
+  where target_user_id = v_target and action = 'suspend' and actor_id = v_founder and reason = 'hardening reason';
+  perform pg_temp.record(
+    'founder_set_user_status still stores status_reason and an audit row',
+    v_reason = 'hardening reason' and n = 1,
+    coalesce(v_reason, 'null') || ' audit=' || n
+  );
+
+  execute 'set local role authenticated';
+end $$;
+
 do $$
 declare
   n integer;
