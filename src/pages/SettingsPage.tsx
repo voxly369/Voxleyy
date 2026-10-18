@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { EmptyState } from '../components/states/EmptyState.tsx'
@@ -79,6 +80,15 @@ export default function SettingsPage() {
             </button>
           </div>
         ) : null}
+      </section>
+      <section className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Profile</h2>
+        <Link
+          to="/settings/profile"
+          className={`mt-4 inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+        >
+          Profile
+        </Link>
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 id="theme-label" className="text-xs font-semibold uppercase tracking-wide text-muted">

@@ -6,7 +6,7 @@ import { SubmitButton } from '../../components/auth/SubmitButton.tsx'
 import { TextField } from '../../components/auth/TextField.tsx'
 import { useAuth } from '../../lib/auth/auth-context.ts'
 import { SIGNUP_FAILED } from '../../lib/auth/messages.ts'
-import { passwordStrengthHint } from '../../lib/auth/passwords.ts'
+import { PasswordChecklist } from '../../components/auth/PasswordChecklist.tsx'
 import { fieldErrors, signUpSchema } from '../../lib/auth/schemas.ts'
 import { useUsernameAvailability } from '../../lib/auth/useUsernameAvailability.ts'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts'
@@ -115,8 +115,8 @@ export default function SignUpPage() {
         value={password}
         onChange={setPassword}
         error={errors.password}
-        hint={passwordStrengthHint(password)}
       />
+      <PasswordChecklist password={password} />
       <PasswordField
         id="signup-confirm"
         name="confirmPassword"

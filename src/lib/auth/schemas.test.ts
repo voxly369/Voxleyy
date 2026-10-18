@@ -5,8 +5,8 @@ import { emailSchema, passwordSchema, signUpSchema, usernameSchema } from './sch
 const validSignUp = {
   email: 'reader@example.com',
   username: 'reader_name',
-  password: 'correct horse battery',
-  confirmPassword: 'correct horse battery',
+  password: 'Correct horse battery 1',
+  confirmPassword: 'Correct horse battery 1',
   acceptedTerms: true,
 }
 
@@ -16,11 +16,14 @@ describe('auth schemas', () => {
     expect(emailSchema.safeParse('not-an-email').success).toBe(false)
   })
 
-  it('requires 10 characters and rejects a common password', () => {
+  it('requires length, both cases, a digit, and rejects a common password', () => {
     expect(passwordSchema.safeParse('short').success).toBe(false)
-    expect(passwordSchema.safeParse('password123').success).toBe(false)
-    expect(passwordSchema.safeParse('1234567890').success).toBe(false)
-    expect(passwordSchema.safeParse('correct horse battery').success).toBe(true)
+    expect(passwordSchema.safeParse('abcdefghij').success).toBe(false)
+    expect(passwordSchema.safeParse('Abcdefghij').success).toBe(false)
+    expect(passwordSchema.safeParse('abcdefghi1').success).toBe(false)
+    expect(passwordSchema.safeParse('ABCDEFGHI1').success).toBe(false)
+    expect(passwordSchema.safeParse('Password123').success).toBe(false)
+    expect(passwordSchema.safeParse('Correct horse battery 1').success).toBe(true)
   })
 
   it('keeps a list of 20 common passwords', () => {
