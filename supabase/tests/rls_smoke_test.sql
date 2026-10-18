@@ -1320,6 +1320,12 @@ begin
   );
   execute 'set local role authenticated';
   perform public.founder_set_user_status(v_a, 'banned', 'delete block test', null);
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated')::text,
+    true
+  );
   execute format('set local role %I', session_user);
   insert into public.creations (author_id, type, title, audience, status)
   values (v_a, 'poem', 'Banned delete', 'public', 'draft')
@@ -1409,6 +1415,233 @@ begin
   perform set_config('request.jwt.claim.sub', v_a::text, true);
   execute 'set local role authenticated';
 end $sec$;
+
+-- Content limits: CHECK constraints, tag cap, and creation rate limit.
+do $limits$
+declare
+  v_a uuid;
+  v_book uuid;
+  v_ch uuid;
+  v_creation uuid;
+  v_rate uuid;
+  v_text text;
+  v_json jsonb;
+  v_i integer;
+  v_msg text;
+  n integer;
+begin
+  select reader_a into v_a from rls_ids;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform set_config('search_path', 'pg_temp, public, auth', true);
+
+  v_text := repeat('a', 500000);
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_a, 'poem', 'At text limit', 'private', 'draft', v_text)
+  returning id into v_creation;
+  perform pg_temp.record(
+    'creation body_text accepts at most 500000 octets',
+    (select octet_length(body_text) from public.creations where id = v_creation) = 500000,
+    'octets=' || coalesce((select octet_length(body_text)::text from public.creations where id = v_creation), 'null')
+  );
+
+  v_text := repeat('a', 500001);
+  begin
+    insert into public.creations (author_id, type, title, audience, status, body_text)
+    values (v_a, 'poem', 'Over text limit', 'private', 'draft', v_text);
+    perform pg_temp.record('creation body_text rejects over 500000 octets', false, 'insert succeeded');
+  exception
+    when check_violation then
+      perform pg_temp.record('creation body_text rejects over 500000 octets', true, sqlerrm);
+    when others then
+      perform pg_temp.record('creation body_text rejects over 500000 octets', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  v_i := 999000;
+  loop
+    v_json := to_jsonb(repeat('j', v_i));
+    exit when octet_length(v_json::text) > 1000000;
+    v_i := v_i + 1;
+  end loop;
+  v_i := v_i - 1;
+  v_json := to_jsonb(repeat('j', v_i));
+  insert into public.creations (author_id, type, title, audience, status, body_json)
+  values (v_a, 'poem', 'At json limit', 'private', 'draft', v_json)
+  returning id into v_creation;
+  perform pg_temp.record(
+    'creation body_json accepts at most 1000000 octets',
+    octet_length((select body_json::text from public.creations where id = v_creation)) <= 1000000,
+    'octets=' || octet_length((select body_json::text from public.creations where id = v_creation))::text
+  );
+
+  v_json := to_jsonb(repeat('k', v_i + 1));
+  begin
+    insert into public.creations (author_id, type, title, audience, status, body_json)
+    values (v_a, 'poem', 'Over json limit', 'private', 'draft', v_json);
+    perform pg_temp.record('creation body_json rejects over 1000000 octets', false, 'insert succeeded');
+  exception
+    when check_violation then
+      perform pg_temp.record('creation body_json rejects over 1000000 octets', true, sqlerrm);
+    when others then
+      perform pg_temp.record('creation body_json rejects over 1000000 octets', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  insert into public.creations (author_id, type, title, audience, status, genre, mood, language)
+  values (v_a, 'poem', 'Meta at limit', 'private', 'draft', repeat('g', 60), repeat('m', 60), '12345678')
+  returning id into v_creation;
+  perform pg_temp.record(
+    'creation genre mood and language accept at-limit values',
+    (select char_length(genre) from public.creations where id = v_creation) = 60
+      and (select char_length(mood) from public.creations where id = v_creation) = 60
+      and (select char_length(language) from public.creations where id = v_creation) = 8,
+    'ok'
+  );
+
+  begin
+    insert into public.creations (author_id, type, title, audience, status, genre)
+    values (v_a, 'poem', 'Genre over', 'private', 'draft', repeat('g', 61));
+    perform pg_temp.record('creation genre rejects over 60 characters', false, 'insert succeeded');
+  exception
+    when check_violation then
+      perform pg_temp.record('creation genre rejects over 60 characters', true, sqlerrm);
+    when others then
+      perform pg_temp.record('creation genre rejects over 60 characters', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  begin
+    insert into public.creations (author_id, type, title, audience, status, language)
+    values (v_a, 'poem', 'Lang over', 'private', 'draft', '123456789');
+    perform pg_temp.record('creation language rejects over 8 characters', false, 'insert succeeded');
+  exception
+    when check_violation then
+      perform pg_temp.record('creation language rejects over 8 characters', true, sqlerrm);
+    when others then
+      perform pg_temp.record('creation language rejects over 8 characters', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  insert into public.creations (author_id, type, title, audience, status)
+  values (v_a, 'book', 'Chapter limits book', 'private', 'draft')
+  returning id into v_book;
+
+  v_text := repeat('c', 500000);
+  insert into public.chapters (book_id, position, title, body_text, status)
+  values (v_book, 1, 'At chapter text', v_text, 'draft')
+  returning id into v_ch;
+  perform pg_temp.record(
+    'chapter body_text accepts at most 500000 octets',
+    (select octet_length(body_text) from public.chapters where id = v_ch) = 500000,
+    'octets=500000'
+  );
+
+  v_text := repeat('c', 500001);
+  begin
+    insert into public.chapters (book_id, position, title, body_text, status)
+    values (v_book, 2, 'Over chapter text', v_text, 'draft');
+    perform pg_temp.record('chapter body_text rejects over 500000 octets', false, 'insert succeeded');
+  exception
+    when check_violation then
+      perform pg_temp.record('chapter body_text rejects over 500000 octets', true, sqlerrm);
+    when others then
+      perform pg_temp.record('chapter body_text rejects over 500000 octets', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  v_i := 999000;
+  loop
+    v_json := to_jsonb(repeat('h', v_i));
+    exit when octet_length(v_json::text) > 1000000;
+    v_i := v_i + 1;
+  end loop;
+  v_i := v_i - 1;
+  insert into public.chapters (book_id, position, title, body_json, status)
+  values (v_book, 3, 'At chapter json', to_jsonb(repeat('h', v_i)), 'draft')
+  returning id into v_ch;
+  perform pg_temp.record(
+    'chapter body_json accepts at most 1000000 octets',
+    octet_length((select body_json::text from public.chapters where id = v_ch)) <= 1000000,
+    'ok'
+  );
+
+  begin
+    insert into public.chapters (book_id, position, title, body_json, status)
+    values (v_book, 4, 'Over chapter json', to_jsonb(repeat('h', v_i + 1)), 'draft');
+    perform pg_temp.record('chapter body_json rejects over 1000000 octets', false, 'insert succeeded');
+  exception
+    when check_violation then
+      perform pg_temp.record('chapter body_json rejects over 1000000 octets', true, sqlerrm);
+    when others then
+      perform pg_temp.record('chapter body_json rejects over 1000000 octets', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  insert into public.creations (author_id, type, title, audience, status)
+  values (v_a, 'poem', 'Tag cap', 'private', 'draft')
+  returning id into v_creation;
+
+  for n in 1..15 loop
+    insert into public.creation_tags (creation_id, tag) values (v_creation, 'tag' || n::text);
+  end loop;
+  perform pg_temp.record(
+    'creation accepts 15 tags',
+    (select count(*) from public.creation_tags where creation_id = v_creation) = 15,
+    'count=15'
+  );
+
+  begin
+    insert into public.creation_tags (creation_id, tag) values (v_creation, 'tag16');
+    perform pg_temp.record('creation rejects a 16th tag', false, 'insert succeeded');
+  exception
+    when others then
+      v_msg := sqlerrm;
+      perform pg_temp.record(
+        'creation rejects a 16th tag',
+        v_msg like '%15 tags%',
+        v_msg
+      );
+  end;
+
+  v_rate := gen_random_uuid();
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_rate, 'limits.rate@voxly.test', now());
+  perform set_config('request.jwt.claim.sub', v_rate::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_rate::text, 'role', 'authenticated', 'email', 'limits.rate@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+
+  for n in 1..60 loop
+    insert into public.creations (author_id, type, title, audience, status)
+    values (v_rate, 'poem', 'Rate ' || n::text, 'private', 'draft');
+  end loop;
+  perform pg_temp.record(
+    'creation rate limit accepts the 60th creation in an hour',
+    (select count(*) from public.creations where author_id = v_rate and created_at > now() - interval '1 hour') = 60,
+    'count=60'
+  );
+
+  begin
+    insert into public.creations (author_id, type, title, audience, status)
+    values (v_rate, 'poem', 'Rate 61', 'private', 'draft');
+    perform pg_temp.record('creation rate limit rejects the 61st creation in an hour', false, 'insert succeeded');
+  exception
+    when others then
+      v_msg := sqlerrm;
+      perform pg_temp.record(
+        'creation rate limit rejects the 61st creation in an hour',
+        v_msg like '%too fast%',
+        v_msg
+      );
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  execute 'set local role authenticated';
+end $limits$;
 
 do $$
 declare

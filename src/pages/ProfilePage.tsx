@@ -7,6 +7,9 @@ import { EmptyState } from '../components/states/EmptyState.tsx'
 import { ErrorState } from '../components/states/ErrorState.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
 import { useAuth } from '../lib/auth/auth-context.ts'
+import { WorkCard } from '../components/creations/WorkCard.tsx'
+import { listWorksForAuthor } from '../lib/creations/api.ts'
+import type { WorkSummary } from '../lib/creations/types.ts'
 import { getProfileByUsername, isFollowing } from '../lib/profiles/api.ts'
 import type { PublicProfile } from '../lib/profiles/types.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
@@ -18,6 +21,7 @@ type View = {
   profile: PublicProfile
   following: boolean
   followerCount: number
+  works: WorkSummary[]
 }
 
 export default function ProfilePage() {
@@ -55,12 +59,20 @@ export default function ProfilePage() {
         setProblem({ key, missing: false, message: follow.error.message })
         return
       }
+      const works = await listWorksForAuthor(result.data.id)
+      if (!active) return
+      if (!works.ok) {
+        setView(null)
+        setProblem({ key, missing: false, message: works.error.message })
+        return
+      }
       setProblem(null)
       setView({
         key,
         profile: result.data,
         following: follow.data,
         followerCount: result.data.followerCount,
+        works: works.data,
       })
     })()
     return () => {
@@ -133,7 +145,17 @@ export default function ProfilePage() {
         <div className="pt-5">
           {tab === 'works' ? (
             <div role="tabpanel" id="panel-works" aria-labelledby="tab-works">
-              <EmptyState title="No works yet" message="Works appear here once writing is added." />
+              {current.works.length === 0 ? (
+                <EmptyState title="No works yet" message="Works appear here once writing is added." />
+              ) : (
+                <ul className="flex flex-col gap-3">
+                  {current.works.map((work) => (
+                    <li key={work.id}>
+                      <WorkCard work={work} />
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           ) : (
             <div role="tabpanel" id="panel-about" aria-labelledby="tab-about" className="flex flex-col gap-3 text-base text-ink">

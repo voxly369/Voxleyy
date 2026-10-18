@@ -10,6 +10,7 @@ import { RequireAuth, RequireFounder, RequireGuest } from './guards.tsx'
 const HomePage = lazy(() => import('../pages/HomePage.tsx'))
 const DiscoverPage = lazy(() => import('../pages/DiscoverPage.tsx'))
 const CreatePage = lazy(() => import('../pages/CreatePage.tsx'))
+const CreationPage = lazy(() => import('../pages/CreationPage.tsx'))
 const MessagesPage = lazy(() => import('../pages/MessagesPage.tsx'))
 const SettingsPage = lazy(() => import('../pages/SettingsPage.tsx'))
 const EditProfilePage = lazy(() => import('../pages/EditProfilePage.tsx'))
@@ -71,6 +72,7 @@ const router = createBrowserRouter(
                 { path: '/', element: <HomePage /> },
                 { path: '/discover', element: <DiscoverPage /> },
                 { path: '/create', element: <CreatePage /> },
+                { path: '/c/:id', element: <CreationPage /> },
                 { path: '/messages', element: <MessagesPage /> },
                 { path: '/settings', element: <SettingsPage /> },
                 { path: '/settings/profile', element: <EditProfilePage /> },
