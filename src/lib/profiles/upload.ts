@@ -1,3 +1,5 @@
+// Public bucket URLs render in the app; listing is limited to the signed-in user's folder.
+// Covers for private creations will move to a private bucket with signed URLs in a later step.
 import { supabase } from '../supabaseClient.ts'
 import type { ProfileResult } from './types.ts'
 import { updateOwnProfile } from './api.ts'

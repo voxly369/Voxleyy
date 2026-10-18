@@ -11,11 +11,10 @@ import type {
   ProfileUpdate,
   PublicProfile,
 } from './types.ts'
+import { PROFILES_PUBLIC_SUMMARY_COLUMNS } from './profileColumns.ts'
 import { parseWebsite } from './website.ts'
 
-// Explicit columns only. status_reason is never selected.
-const PUBLIC_PROFILE_COLUMNS =
-  'id, username, display_name, bio, avatar_url, banner_url, website, country, city, city_visible, language, role, verified, follower_count, following_count, creation_count, created_at'
+const PUBLIC_PROFILE_COLUMNS = PROFILES_PUBLIC_SUMMARY_COLUMNS
 
 const LIST_PROFILE_COLUMNS = 'id, username, display_name, avatar_url, verified'
 
@@ -95,7 +94,7 @@ export async function getProfileByUsername(username: string): Promise<ProfileRes
   }
 
   const { data, error } = await supabase
-    .from('profiles')
+    .from('profiles_public')
     .select(PUBLIC_PROFILE_COLUMNS)
     .eq('username', normalized)
     .maybeSingle()
@@ -162,11 +161,13 @@ export async function updateOwnProfile(fields: ProfileUpdate): Promise<ProfileRe
   if (!payload.ok) return payload
   if (Object.keys(payload.data).length === 0) return fail('invalid', 'There is nothing to save.')
 
+  const { error: updateError } = await supabase.from('profiles').update(payload.data).eq('id', userId)
+  if (updateError) return fail('unavailable', 'We could not save your profile. Try again.')
+
   const { data, error } = await supabase
-    .from('profiles')
-    .update(payload.data)
-    .eq('id', userId)
+    .from('profiles_public')
     .select(PUBLIC_PROFILE_COLUMNS)
+    .eq('id', userId)
     .maybeSingle()
 
   if (error || !data) return fail('unavailable', 'We could not save your profile. Try again.')

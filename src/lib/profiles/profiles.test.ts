@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { PROFILES_PUBLIC_COLUMNS, PROFILES_PUBLIC_SUMMARY_COLUMNS } from './profileColumns.ts'
 import { followCursorFilter, isFollowCursor, nextFollowCursor } from './cursor.ts'
 import { validateImageFile } from './imageFile.ts'
 import { bioSchema, displayNameSchema } from './schemas.ts'
@@ -8,6 +9,14 @@ const cursor = {
   createdAt: '2026-10-18T22:37:04.123456+00:00',
   id: '11111111-1111-4111-8111-111111111111',
 }
+
+describe('profiles_public columns', () => {
+  it('lists city for view reads and keeps summary columns in sync', () => {
+    expect(PROFILES_PUBLIC_COLUMNS).toContain('city')
+    expect(PROFILES_PUBLIC_COLUMNS).toContain('city_visible')
+    expect(PROFILES_PUBLIC_SUMMARY_COLUMNS.split(', ').every((col) => PROFILES_PUBLIC_COLUMNS.includes(col))).toBe(true)
+  })
+})
 
 describe('website addresses', () => {
   it('accepts http and https and shows the address without the scheme', () => {

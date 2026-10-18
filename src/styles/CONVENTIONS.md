@@ -33,3 +33,5 @@ Use the components in `src/components/states`. Do not invent a second version.
 ## Data and security
 
 Every table has row-level security. The client uses the anon key only. Never use or expose the service-role key, and never put a secret in a `VITE_` variable.
+
+Profile reads that include city go through the `profiles_public` view, not the base `profiles` table. City is masked in the database when `city_visible` is false, except for the signed-in owner and the founder. Any new column that should be private unless the owner opts in must be exposed only through a view with the same pattern, not by filtering in React alone.
