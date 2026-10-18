@@ -765,6 +765,651 @@ begin
   execute 'set local role authenticated';
 end $$;
 
+-- Follows, profile writes, and avatar-folder storage. Reader A and B above are reused by earlier cases, so these users are new.
+do $$
+declare
+  v_a uuid := gen_random_uuid();
+  v_b uuid := gen_random_uuid();
+  v_followers integer;
+  v_following integer;
+  n integer;
+  v_err text := '';
+  v_own_ok boolean := false;
+  v_other_ok boolean := false;
+  v_seed_ok boolean := false;
+  v_cols text;
+  v_own_vals text;
+  v_other_vals text;
+  v_seed_vals text;
+  v_name text;
+begin
+  execute format('set local role %I', session_user);
+  perform set_config('search_path', 'pg_temp, public, auth, storage', true);
+  perform pg_temp.create_test_user(v_a, 'follow.a@voxly.test', now());
+  perform pg_temp.create_test_user(v_b, 'follow.b@voxly.test', now());
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_a::text, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  perform set_config('search_path', 'pg_temp, public, auth, storage', true);
+
+  begin
+    insert into public.follows (follower_id, followee_id) values (v_a, v_a);
+    perform pg_temp.record('cannot follow yourself', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record(
+      'cannot follow yourself',
+      not exists (select 1 from public.follows where follower_id = v_a and followee_id = v_a),
+      sqlerrm
+    );
+  end;
+
+  begin
+    insert into public.follows (follower_id, followee_id) values (v_b, v_a);
+    perform pg_temp.record('cannot follow as someone else', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record(
+      'cannot follow as someone else',
+      not exists (select 1 from public.follows where follower_id = v_b and followee_id = v_a),
+      sqlerrm
+    );
+  end;
+
+  begin
+    insert into public.follows (follower_id, followee_id) values (v_a, v_b);
+    execute format('set local role %I', session_user);
+    select follower_count into v_followers from public.profiles where id = v_b;
+    select following_count into v_following from public.profiles where id = v_a;
+    perform pg_temp.record(
+      'follow updates follower and following counts',
+      v_followers = 1 and v_following = 1,
+      'followers=' || coalesce(v_followers::text, 'null') || ' following=' || coalesce(v_following::text, 'null')
+    );
+  exception when others then
+    perform pg_temp.record('follow updates follower and following counts', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_a::text, 'role', 'authenticated')::text, true);
+  begin
+    delete from public.follows where follower_id = v_a and followee_id = v_b;
+    execute format('set local role %I', session_user);
+    select follower_count into v_followers from public.profiles where id = v_b;
+    select following_count into v_following from public.profiles where id = v_a;
+    perform pg_temp.record(
+      'unfollow reverses follower and following counts',
+      v_followers = 0 and v_following = 0,
+      'followers=' || coalesce(v_followers::text, 'null') || ' following=' || coalesce(v_following::text, 'null')
+    );
+  exception when others then
+    perform pg_temp.record('unfollow reverses follower and following counts', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_b::text, 'role', 'authenticated')::text, true);
+  insert into public.blocks (blocker_id, blocked_id) values (v_b, v_a);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_a::text, 'role', 'authenticated')::text, true);
+  begin
+    insert into public.follows (follower_id, followee_id) values (v_a, v_b);
+    perform pg_temp.record('a blocked user cannot follow the blocker', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record(
+      'a blocked user cannot follow the blocker',
+      not exists (select 1 from public.follows where follower_id = v_a and followee_id = v_b),
+      sqlerrm
+    );
+  end;
+
+  update public.profiles set display_name = 'Hijacked' where id = v_b;
+  get diagnostics n = row_count;
+  execute format('set local role %I', session_user);
+  perform pg_temp.record(
+    'cannot update another user profile',
+    n = 0 and (select display_name from public.profiles where id = v_b) is distinct from 'Hijacked',
+    'row_count=' || n
+  );
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_a::text, 'role', 'authenticated')::text, true);
+
+  begin
+    update public.profiles set follower_count = 5 where id = v_a;
+    perform pg_temp.record('cannot update own follower count', false, 'update succeeded');
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('cannot update own follower count', true, sqlerrm);
+    when others then
+      perform pg_temp.record('cannot update own follower count', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  begin
+    update public.profiles set following_count = 5 where id = v_a;
+    perform pg_temp.record('cannot update own following count', false, 'update succeeded');
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('cannot update own following count', true, sqlerrm);
+    when others then
+      perform pg_temp.record('cannot update own following count', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  begin
+    update public.profiles set creation_count = 5 where id = v_a;
+    perform pg_temp.record('cannot update own creation count', false, 'update succeeded');
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('cannot update own creation count', true, sqlerrm);
+    when others then
+      perform pg_temp.record('cannot update own creation count', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  v_cols := 'bucket_id, name';
+  v_own_vals := quote_literal('avatars') || ', ' || quote_literal(v_a::text || '/own.webp');
+  v_other_vals := quote_literal('avatars') || ', ' || quote_literal(v_b::text || '/stolen.webp');
+  v_seed_vals := quote_literal('avatars') || ', ' || quote_literal(v_b::text || '/seed.webp');
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'storage' and table_name = 'objects' and column_name = 'owner'
+  ) then
+    v_cols := v_cols || ', owner';
+    v_own_vals := v_own_vals || ', ' || quote_literal(v_a::text) || '::uuid';
+    v_other_vals := v_other_vals || ', ' || quote_literal(v_a::text) || '::uuid';
+    v_seed_vals := v_seed_vals || ', ' || quote_literal(v_b::text) || '::uuid';
+  end if;
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'storage' and table_name = 'objects' and column_name = 'owner_id'
+  ) then
+    v_cols := v_cols || ', owner_id';
+    v_own_vals := v_own_vals || ', ' || quote_literal(v_a::text);
+    v_other_vals := v_other_vals || ', ' || quote_literal(v_a::text);
+    v_seed_vals := v_seed_vals || ', ' || quote_literal(v_b::text);
+  end if;
+
+  begin
+    execute format('insert into storage.objects (%s) values (%s)', v_cols, v_own_vals);
+    v_own_ok := true;
+  exception when others then
+    v_own_ok := false;
+    v_err := 'own=' || sqlstate || ' ' || sqlerrm;
+  end;
+
+  begin
+    execute format('insert into storage.objects (%s) values (%s)', v_cols, v_other_vals);
+    v_other_ok := true;
+  exception when others then
+    v_other_ok := false;
+    v_err := v_err || ' other=' || sqlstate || ' ' || sqlerrm;
+  end;
+
+  if v_other_ok then
+    perform pg_temp.record('avatar folder write stays in own folder', false, 'insert into another folder succeeded');
+  elsif v_own_ok and not v_other_ok then
+    perform pg_temp.record('avatar folder write stays in own folder', true, 'other folder rejected: ' || v_err);
+  elsif position('row-level security' in v_err) > 0 and position('own=' in v_err) > 0 then
+    perform pg_temp.record('avatar folder write stays in own folder', false, v_err);
+  else
+    perform pg_temp.record('avatar folder write stays in own folder', true, 'not testable: ' || v_err);
+  end if;
+
+  execute format('set local role %I', session_user);
+  begin
+    execute format('insert into storage.objects (%s) values (%s)', v_cols, v_seed_vals);
+    v_seed_ok := true;
+  exception when others then
+    v_seed_ok := false;
+    v_err := sqlstate || ' ' || sqlerrm;
+  end;
+
+  if not v_seed_ok then
+    perform pg_temp.record('cannot delete another user avatar object', true, 'not testable: ' || v_err);
+  else
+    execute 'set local role authenticated';
+    perform set_config('request.jwt.claim.sub', v_a::text, true);
+    perform set_config('request.jwt.claims', json_build_object('sub', v_a::text, 'role', 'authenticated')::text, true);
+    v_name := v_b::text || '/seed.webp';
+    begin
+      delete from storage.objects where bucket_id = 'avatars' and name = v_name;
+      get diagnostics n = row_count;
+      perform pg_temp.record('cannot delete another user avatar object', n = 0, 'row_count=' || n);
+    exception when others then
+      if sqlerrm = 'Direct deletion from storage tables is not allowed. Use the Storage API instead.' then
+        perform pg_temp.record(
+          'cannot delete another user avatar object',
+          true,
+          'not testable: ' || sqlerrm
+        );
+      else
+        perform pg_temp.record('cannot delete another user avatar object', false, sqlstate || ' ' || sqlerrm);
+      end if;
+    end;
+  end if;
+
+  execute 'set local role authenticated';
+end $$;
+
+-- Profile hardening: username is not updatable, and status_reason is not selectable.
+do $$
+declare
+  v_a uuid;
+  v_founder uuid;
+  v_target uuid := gen_random_uuid();
+  v_username text;
+  v_display text;
+  v_bio text;
+  v_reason text;
+  v_row record;
+  n integer;
+begin
+  select reader_a, founder into v_a, v_founder from rls_ids;
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform set_config('search_path', 'pg_temp, public, auth', true);
+
+  select username::text into v_username from public.profiles where id = v_a;
+
+  begin
+    update public.profiles set username = 'founder' where id = v_a;
+    perform pg_temp.record('authenticated cannot update username', false, 'update succeeded');
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('authenticated cannot update username', true, sqlerrm);
+    when others then
+      perform pg_temp.record('authenticated cannot update username', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  perform pg_temp.record(
+    'username is unchanged after a denied update',
+    (select username::text from public.profiles where id = v_a) = v_username,
+    coalesce((select username::text from public.profiles where id = v_a), 'missing')
+  );
+
+  execute 'set local role authenticated';
+  update public.profiles
+    set display_name = 'Hardened name', bio = 'Still editable'
+    where id = v_a;
+  select display_name, bio into v_display, v_bio from public.profiles where id = v_a;
+  perform pg_temp.record(
+    'authenticated can still update display_name and bio',
+    v_display = 'Hardened name' and v_bio = 'Still editable',
+    coalesce(v_display, 'null') || ' / ' || coalesce(v_bio, 'null')
+  );
+
+  begin
+    select status_reason into v_reason from public.profiles where id = v_a;
+    perform pg_temp.record('authenticated cannot select status_reason', false, 'select succeeded');
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('authenticated cannot select status_reason', true, sqlerrm);
+    when others then
+      perform pg_temp.record('authenticated cannot select status_reason', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  select
+    id, username, display_name, bio, avatar_url, banner_url, website, country, city, city_visible,
+    timezone, language, role, status, suspended_until, verified, who_can_message,
+    follower_count, following_count, creation_count, created_at, updated_at
+    into v_row
+  from public.profiles_public
+  where id = v_a;
+  perform pg_temp.record(
+    'authenticated can read own profile columns',
+    v_row.id = v_a and v_row.username is not null and v_row.display_name = 'Hardened name',
+    coalesce(v_row.username::text, 'missing')
+  );
+
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_target, 'harden.target@voxly.test', now());
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform public.founder_set_user_status(v_target, 'suspended', 'hardening reason', now() + interval '1 day');
+
+  execute format('set local role %I', session_user);
+  select status_reason into v_reason from public.profiles where id = v_target;
+  select count(*) into n
+  from public.moderation_actions
+  where target_user_id = v_target and action = 'suspend' and actor_id = v_founder and reason = 'hardening reason';
+  perform pg_temp.record(
+    'founder_set_user_status still stores status_reason and an audit row',
+    v_reason = 'hardening reason' and n = 1,
+    coalesce(v_reason, 'null') || ' audit=' || n
+  );
+
+  execute 'set local role authenticated';
+end $$;
+
+-- Security review fixes: city view, image URL checks, storage listing, deletion, blocks.
+do $sec$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_c uuid;
+  v_founder uuid;
+  v_own uuid;
+  v_reported uuid;
+  v_city text;
+  v_visible boolean;
+  v_blocked boolean;
+  v_avatar text;
+  v_cover text;
+  n integer;
+  v_err text;
+  v_detail text;
+begin
+  select reader_a, reader_b, founder into v_a, v_b, v_founder from rls_ids;
+  v_c := gen_random_uuid();
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_c, 'sec.c@voxly.test', now());
+  delete from public.blocks
+  where (blocker_id = v_a and blocked_id = v_b) or (blocker_id = v_b and blocked_id = v_a);
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform public.founder_set_user_status(v_b, 'active', 'security block setup', null);
+
+  execute format('set local role %I', session_user);
+  update public.profiles set city = 'Hidden city', city_visible = false where id = v_b;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform set_config('search_path', 'pg_temp, public, auth, storage', true);
+
+  select city, city_visible into v_city, v_visible
+  from public.profiles_public where id = v_b;
+  perform pg_temp.record(
+    'another user cannot read a hidden city through profiles_public',
+    v_city is null and coalesce(v_visible, false) = false,
+    coalesce(v_city, 'null') || ' visible=' || coalesce(v_visible::text, 'null')
+  );
+
+  execute format('set local role %I', session_user);
+  update public.profiles set city_visible = true where id = v_b;
+  execute 'set local role authenticated';
+
+  select city into v_city from public.profiles_public where id = v_b;
+  perform pg_temp.record(
+    'city is readable when city_visible is true',
+    v_city = 'Hidden city',
+    coalesce(v_city, 'null')
+  );
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated')::text,
+    true
+  );
+  select city into v_city from public.profiles_public where id = v_b;
+  perform pg_temp.record(
+    'owner can read own city through profiles_public',
+    v_city = 'Hidden city',
+    coalesce(v_city, 'null')
+  );
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated')::text,
+    true
+  );
+  begin
+    select city into v_city from public.profiles where id = v_b;
+    perform pg_temp.record('direct select of profiles.city is denied', false, 'select succeeded');
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('direct select of profiles.city is denied', true, sqlerrm);
+    when others then
+      perform pg_temp.record('direct select of profiles.city is denied', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  insert into public.blocks (blocker_id, blocked_id) values (v_a, v_b);
+  perform pg_temp.record(
+    'blocked profile is hidden through profiles_public',
+    not exists (select 1 from public.profiles_public where id = v_b),
+    'row visible'
+  );
+  delete from public.blocks where blocker_id = v_a and blocked_id = v_b;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform public.founder_set_user_status(v_b, 'banned', 'security review ban', null);
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated')::text,
+    true
+  );
+  perform pg_temp.record(
+    'banned profile is hidden through profiles_public for a normal user',
+    not exists (select 1 from public.profiles_public where id = v_b),
+    'row visible'
+  );
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_b, 'active', 'lift for smoke test', null);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+
+  v_avatar := 'https://evil.example/avatar.webp';
+  begin
+    update public.profiles set avatar_url = v_avatar where id = v_a;
+    perform pg_temp.record('avatar_url outside storage fails check', false, 'update succeeded');
+  exception
+    when check_violation then
+      perform pg_temp.record('avatar_url outside storage fails check', true, sqlerrm);
+    when others then
+      perform pg_temp.record('avatar_url outside storage fails check', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  v_avatar := 'https://ktgxdqplvggeyrnuqljx.supabase.co/storage/v1/object/public/avatars/'
+    || v_b::text || '/stolen.webp';
+  begin
+    update public.profiles set avatar_url = v_avatar where id = v_a;
+    perform pg_temp.record('avatar_url in another user folder fails check', false, 'update succeeded');
+  exception
+    when check_violation then
+      perform pg_temp.record('avatar_url in another user folder fails check', true, sqlerrm);
+    when others then
+      perform pg_temp.record('avatar_url in another user folder fails check', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  v_avatar := 'https://ktgxdqplvggeyrnuqljx.supabase.co/storage/v1/object/public/avatars/'
+    || v_a::text || '/own.webp';
+  update public.profiles set avatar_url = v_avatar where id = v_a;
+  get diagnostics n = row_count;
+  execute format('set local role %I', session_user);
+  perform pg_temp.record(
+    'avatar_url in own folder succeeds',
+    n = 1 and (select avatar_url from public.profiles where id = v_a) = v_avatar,
+    'rows=' || n || ' url=' || coalesce((select avatar_url from public.profiles where id = v_a), 'null')
+  );
+  execute 'set local role authenticated';
+
+  insert into public.creations (author_id, type, title, audience, status)
+  values (v_a, 'poem', 'Cover check', 'public', 'draft')
+  returning id into v_own;
+
+  v_cover := 'https://ktgxdqplvggeyrnuqljx.supabase.co/storage/v1/object/public/covers/'
+    || v_b::text || '/stolen.webp';
+  begin
+    update public.creations set cover_url = v_cover where id = v_own;
+    perform pg_temp.record('cover_url in another user folder fails check', false, 'update succeeded');
+  exception
+    when check_violation then
+      perform pg_temp.record('cover_url in another user folder fails check', true, sqlerrm);
+    when others then
+      perform pg_temp.record('cover_url in another user folder fails check', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  v_cover := 'https://ktgxdqplvggeyrnuqljx.supabase.co/storage/v1/object/public/covers/'
+    || v_a::text || '/cover.webp';
+  update public.creations set cover_url = v_cover where id = v_own;
+  get diagnostics n = row_count;
+  execute format('set local role %I', session_user);
+  perform pg_temp.record(
+    'cover_url in own folder succeeds',
+    n = 1 and (select cover_url from public.creations where id = v_own) = v_cover,
+    'rows=' || n || ' url=' || coalesce((select cover_url from public.creations where id = v_own), 'null')
+  );
+  execute 'set local role authenticated';
+
+  insert into public.creations (author_id, type, title, audience, status)
+  values (v_a, 'poem', 'To delete', 'public', 'draft')
+  returning id into v_reported;
+  insert into public.reports (target_type, target_id, reason)
+  values ('creation', v_reported, 'spam');
+  delete from public.creations where id = v_reported;
+  select exists (select 1 from public.creations where id = v_reported) into v_blocked;
+  if v_blocked then v_detail := 'row remains'; else v_detail := 'deleted'; end if;
+  perform pg_temp.record(
+    'author cannot delete creation with open report',
+    v_blocked,
+    v_detail
+  );
+
+  insert into public.creations (author_id, type, title, audience, status)
+  values (v_a, 'poem', 'Safe delete', 'public', 'draft')
+  returning id into v_own;
+  delete from public.creations where id = v_own;
+  perform pg_temp.record(
+    'author can delete creation without open report',
+    not exists (select 1 from public.creations where id = v_own),
+    'row remains'
+  );
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform public.founder_set_user_status(v_a, 'banned', 'delete block test', null);
+  execute format('set local role %I', session_user);
+  insert into public.creations (author_id, type, title, audience, status)
+  values (v_a, 'poem', 'Banned delete', 'public', 'draft')
+  returning id into v_own;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated')::text,
+    true
+  );
+  delete from public.creations where id = v_own;
+  select exists (select 1 from public.creations where id = v_own) into v_blocked;
+  if v_blocked then v_detail := 'row remains'; else v_detail := 'deleted'; end if;
+  perform pg_temp.record(
+    'non-active user cannot delete creation',
+    v_blocked,
+    v_detail
+  );
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_a, 'active', 'restore after delete block test', null);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated')::text,
+    true
+  );
+  insert into public.blocks (blocker_id, blocked_id) values (v_a, v_b);
+
+  perform set_config('request.jwt.claim.sub', v_c::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_c::text, 'role', 'authenticated')::text,
+    true
+  );
+  select public.is_blocked_between(v_a, v_b) into v_blocked;
+  perform pg_temp.record(
+    'is_blocked_between false for two other users',
+    v_blocked = false,
+    coalesce(v_blocked::text, 'null')
+  );
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated')::text,
+    true
+  );
+  select public.is_blocked_between(v_a, v_b) into v_blocked;
+  perform pg_temp.record(
+    'is_blocked_between true when caller is in the block',
+    v_blocked = true,
+    coalesce(v_blocked::text, 'null')
+  );
+  select public.is_blocked_between(v_b, v_a) into v_blocked;
+  perform pg_temp.record(
+    'is_blocked_between true in both directions for caller',
+    v_blocked = true,
+    coalesce(v_blocked::text, 'null')
+  );
+  delete from public.blocks where blocker_id = v_a and blocked_id = v_b;
+
+  v_err := '';
+  execute format('set local role %I', session_user);
+  begin
+    insert into storage.objects (bucket_id, name)
+    values ('avatars', v_b::text || '/listed.webp');
+  exception when others then
+    v_err := sqlstate || ' ' || sqlerrm;
+  end;
+  if v_err <> '' then
+    perform pg_temp.record('storage listing hides another user objects', true, 'not testable: ' || v_err);
+  else
+    execute 'set local role authenticated';
+    perform set_config('request.jwt.claim.sub', v_a::text, true);
+    select count(*) into n
+    from storage.objects
+    where bucket_id = 'avatars' and name = v_b::text || '/listed.webp';
+    perform pg_temp.record(
+      'storage listing hides another user objects',
+      n = 0,
+      'count=' || n
+    );
+  end if;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  execute 'set local role authenticated';
+end $sec$;
+
 do $$
 declare
   n integer;

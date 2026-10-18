@@ -5,7 +5,7 @@ import { PasswordField } from '../../components/auth/PasswordField.tsx'
 import { SubmitButton } from '../../components/auth/SubmitButton.tsx'
 import { useAuth } from '../../lib/auth/auth-context.ts'
 import { PASSWORD_SAVE_FAILED } from '../../lib/auth/messages.ts'
-import { passwordStrengthHint } from '../../lib/auth/passwords.ts'
+import { PasswordChecklist } from '../../components/auth/PasswordChecklist.tsx'
 import { fieldErrors, resetPasswordSchema } from '../../lib/auth/schemas.ts'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts'
 
@@ -91,8 +91,8 @@ export default function ResetPasswordPage() {
         value={password}
         onChange={setPassword}
         error={errors.password}
-        hint={passwordStrengthHint(password)}
       />
+      <PasswordChecklist password={password} />
       <PasswordField
         id="reset-confirm"
         name="confirmPassword"

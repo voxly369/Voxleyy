@@ -28,6 +28,7 @@ export function ImageWithFallback({ src, alt, label, icon, className }: ImageWit
           alt={alt}
           loading="lazy"
           decoding="async"
+          referrerPolicy="no-referrer"
           onError={() => setFailedSrc(src)}
           className="absolute inset-0 size-full object-cover"
         />

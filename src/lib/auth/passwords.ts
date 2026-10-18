@@ -1,4 +1,4 @@
-// A short local blocklist. Length is the only other password rule.
+// A short local blocklist, checked in addition to length, case, and a digit.
 export const COMMON_PASSWORDS: readonly string[] = [
   '123456',
   'password',
@@ -28,8 +28,22 @@ export function isCommonPassword(value: string): boolean {
   return common.has(value.toLowerCase())
 }
 
-export function passwordStrengthHint(password: string): string {
-  if (password.length < 10) return 'Use at least 10 characters.'
-  if (password.length < 14) return 'Decent length. A longer password is harder to guess.'
-  return 'Long passwords are harder to guess.'
+export type PasswordCheck = {
+  id: 'length' | 'lower' | 'upper' | 'digit' | 'common'
+  label: string
+  met: boolean
+}
+
+export function passwordChecklist(password: string): PasswordCheck[] {
+  return [
+    { id: 'length', label: 'At least 10 characters', met: password.length >= 10 },
+    { id: 'lower', label: 'One lowercase letter', met: /[a-z]/.test(password) },
+    { id: 'upper', label: 'One uppercase letter', met: /[A-Z]/.test(password) },
+    { id: 'digit', label: 'One digit', met: /[0-9]/.test(password) },
+    {
+      id: 'common',
+      label: 'Not a common password',
+      met: password.length > 0 && !isCommonPassword(password),
+    },
+  ]
 }

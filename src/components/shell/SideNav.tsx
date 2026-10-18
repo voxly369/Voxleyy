@@ -1,7 +1,11 @@
 import { Link, NavLink } from 'react-router-dom'
-import { focusRing, navItems } from './navItems.ts'
+import { useAuth } from '../../lib/auth/auth-context.ts'
+import { focusRing, primaryNavItems } from './navItems.ts'
 
 export function SideNav() {
+  const { profile } = useAuth()
+  const navItems = primaryNavItems(profile?.username ?? '')
+
   return (
     <nav
       aria-label="Primary"
