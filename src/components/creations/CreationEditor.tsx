@@ -2,10 +2,9 @@ import { useRef, useState } from 'react'
 import { focusRing } from '../shell/navItems.ts'
 import { useToast } from '../../lib/shell/useToast.ts'
 import { audienceLabel } from '../../lib/creations/audienceOptions.ts'
-import { bodyOctets, countLines } from '../../lib/creations/bodyDocument.ts'
 import { prepareCoverImage } from '../../lib/creations/coverImage.ts'
 import { removeCreationCover, uploadCreationCover } from '../../lib/creations/coverUpload.ts'
-import { MAX_BODY_JSON_OCTETS, MAX_BODY_TEXT_OCTETS, MAX_CAPTION_CHARS } from '../../lib/creations/limits.ts'
+import { MAX_BODY_JSON_OCTETS, MAX_CAPTION_CHARS } from '../../lib/creations/limits.ts'
 import { MAX_TITLE_CHARS, usesLiterarySurface, type CreationType } from '../../lib/creations/creationTypes.ts'
 import type { useCreationEditor } from '../../lib/creations/useCreationEditor.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
@@ -14,6 +13,7 @@ import { useAuth } from '../../lib/auth/auth-context.ts'
 import { AudienceSelector } from './AudienceSelector.tsx'
 import { CreationPreviewOverlay } from './CreationPreviewOverlay.tsx'
 import { QuoteCardEditor } from './QuoteCardEditor.tsx'
+import { LazyRichTextEditor } from './LazyRichTextEditor.tsx'
 
 type EditorState = ReturnType<typeof useCreationEditor>
 
@@ -35,9 +35,7 @@ export function CreationEditor({ creationType, editor, coverUrl, onCoverUrlChang
   const [savingDraft, setSavingDraft] = useState(false)
   const literary = usesLiterarySurface(creationType)
   const isQuote = creationType === 'quote_card'
-  const bytes = bodyOctets(editor.form.body)
   const jsonBytes = new TextEncoder().encode(JSON.stringify(editor.buildPreviewBodyJson())).length
-  const lines = countLines(editor.form.body)
   const status = editor.statusLabel
   const isLive = editor.creationStatus === 'published'
 
@@ -186,6 +184,16 @@ export function CreationEditor({ creationType, editor, coverUrl, onCoverUrlChang
           onStyleChange={editor.onQuoteStyleChange}
           onBlur={editor.onBlur}
         />
+      ) : editor.usesRichEditor ? (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-ink">Body</span>
+          <LazyRichTextEditor
+            document={editor.richDoc}
+            literaryLineBreaks={editor.literaryLineBreaks}
+            onChange={editor.onRichDocumentChange}
+            onBlur={editor.onBlur}
+          />
+        </div>
       ) : (
         <label className="flex flex-col gap-1">
           <span className="text-sm font-medium text-ink">Body</span>
@@ -197,8 +205,7 @@ export function CreationEditor({ creationType, editor, coverUrl, onCoverUrlChang
             className={`max-w-[65ch] rounded-2xl border border-line bg-surface px-3 py-3 text-lg leading-relaxed text-ink ${literary ? 'font-serif' : ''} ${focusRing}`}
           />
           <span className="text-sm text-muted">
-            {lines} lines · {bytes.toLocaleString()} / {MAX_BODY_TEXT_OCTETS.toLocaleString()} bytes · JSON{' '}
-            {jsonBytes.toLocaleString()} / {MAX_BODY_JSON_OCTETS.toLocaleString()} bytes
+            JSON {jsonBytes.toLocaleString()} / {MAX_BODY_JSON_OCTETS.toLocaleString()} bytes
           </span>
         </label>
       )}

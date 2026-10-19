@@ -40,6 +40,7 @@ export type AutosaveEvent =
   | { type: 'resolve_load_remote' }
   | { type: 'resolve_overwrite' }
   | { type: 'hydrate'; savedAt: string }
+  | { type: 'revert_to_clean' }
 
 export function shouldTriggerSave(event: AutosaveEvent): boolean {
   return event.type === 'debounce_elapsed' || event.type === 'blur' || event.type === 'tab_hidden'
@@ -149,6 +150,13 @@ export function autosaveReducer(model: AutosaveModel, event: AutosaveEvent): Aut
         editVersion: 1,
         savedVersion: 1,
         lastSavedAt: event.savedAt,
+      }
+    case 'revert_to_clean':
+      return {
+        ...model,
+        dirty: false,
+        ui: model.lastSavedAt ? 'saved' : 'idle',
+        queued: false,
       }
     default:
       return model

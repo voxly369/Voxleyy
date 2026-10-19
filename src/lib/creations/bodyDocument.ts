@@ -1,5 +1,19 @@
 import { z } from 'zod'
 import type { Json } from '../database.types.ts'
+import { parseRichDocument, richToPlainText, type RichBodyDocument } from './richDocument.ts'
+
+export type { RichBodyDocument } from './richDocument.ts'
+export {
+  bodyContentFromJson,
+  docToEditorJson,
+  editorJsonToDoc,
+  emptyRichDocument,
+  parseRichDocument,
+  plainToRich,
+  richDocumentFingerprint,
+  richToPlainText,
+  validateRichDocumentSize,
+} from './richDocument.ts'
 
 /** Plain-text editor snapshot stored alongside body_text for future rich-text (spec §3, §5). */
 export type PlainBodyDocument = {
@@ -23,7 +37,7 @@ export type QuoteCardBodyDocument = {
   style: QuoteCardStyle
 }
 
-export type BodyDocument = PlainBodyDocument | QuoteCardBodyDocument
+export type BodyDocument = PlainBodyDocument | QuoteCardBodyDocument | RichBodyDocument
 
 export const DEFAULT_QUOTE_CARD_STYLE: QuoteCardStyle = {
   background: '#1a1a1a',
@@ -58,14 +72,20 @@ const bodyDocumentSchema = z.discriminatedUnion('format', [plainBodySchema, quot
 
 export function parseBodyDocument(value: Json | null | undefined): BodyDocument | null {
   if (value === null || value === undefined) return null
+  const rich = parseRichDocument(value)
+  if (rich) return rich
   const parsed = bodyDocumentSchema.safeParse(value)
-  return parsed.success ? parsed.data : null
+  if (!parsed.success) return null
+  return parsed.data as PlainBodyDocument | QuoteCardBodyDocument
 }
 
-export function bodyTextFromJson(value: Json | null | undefined): string {
+export function bodyTextFromJson(value: Json | null | undefined, fallbackText?: string | null): string {
+  const rich = parseRichDocument(value)
+  if (rich) return richToPlainText(rich)
   const doc = parseBodyDocument(value)
-  if (doc) return doc.text
-  return ''
+  if (doc && doc.format === 'plain') return doc.text
+  if (doc && doc.format === 'quote_card') return doc.text
+  return fallbackText ?? ''
 }
 
 export function quoteStyleFromJson(value: Json | null | undefined): QuoteCardStyle {

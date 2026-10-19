@@ -43,7 +43,7 @@ const WORK_LIST_COLUMNS =
   `id, type, title, caption, status, audience, cover_url, created_at, author_id, ${AUTHOR_EMBED}` as const
 
 const DETAIL_COLUMNS =
-  `id, type, title, caption, body_text, status, audience, cover_url, genre, mood, language, created_at, updated_at, author_id, ${AUTHOR_EMBED}` as const
+  `id, type, title, caption, body_text, body_json, status, audience, cover_url, genre, mood, language, created_at, updated_at, author_id, ${AUTHOR_EMBED}` as const
 
 const EDIT_COLUMNS =
   'id, type, title, caption, body_text, body_json, cover_url, status, audience, updated_at, is_removed, author_id' as const
@@ -181,6 +181,7 @@ export async function createDraft(input: DraftInput): Promise<CreateDraftResult>
     data: {
       ...work,
       bodyText: text((data as Record<string, unknown>).body_text),
+      bodyJson: ((data as Record<string, unknown>).body_json ?? null) as Json | null,
       genre: text((data as Record<string, unknown>).genre),
       mood: text((data as Record<string, unknown>).mood),
       language: text((data as Record<string, unknown>).language) ?? 'en',
@@ -221,6 +222,7 @@ export async function getCreationById(id: string): Promise<CreationResult<Creati
     data: {
       ...work,
       bodyText: text((data as Record<string, unknown>).body_text),
+      bodyJson: ((data as Record<string, unknown>).body_json ?? null) as Json | null,
       genre: text((data as Record<string, unknown>).genre),
       mood: text((data as Record<string, unknown>).mood),
       language: text((data as Record<string, unknown>).language) ?? 'en',

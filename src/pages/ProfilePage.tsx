@@ -201,7 +201,6 @@ export default function ProfilePage() {
                 <ProfilePostsGrid
                   works={current.works}
                   viewerId={me?.id ?? null}
-                  profileUserId={profile.id}
                   onLoadMore={() => void loadMore()}
                   loadingMore={loadingMore}
                   hasMore={Boolean(current.nextCursor)}
