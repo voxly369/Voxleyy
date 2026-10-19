@@ -18,6 +18,7 @@ import type { CommentNode } from '../../lib/engagement/commentTree.ts'
 import { parseMentions } from '../../lib/engagement/mentions.ts'
 import { supabase } from '../../lib/supabaseClient.ts'
 import { MentionText } from './MentionText.tsx'
+import { useMediaQuery, DESKTOP_NAV_QUERY } from '../../lib/shell/useMediaQuery.ts'
 
 type CommentsSheetProps = {
   open: boolean
@@ -26,6 +27,7 @@ type CommentsSheetProps = {
 }
 
 export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps) {
+  const dockRight = useMediaQuery(DESKTOP_NAV_QUERY)
   const titleId = useId()
   const { profile, user, isFounder } = useAuth()
   const [comments, setComments] = useState<CommentNode[]>([])
@@ -120,10 +122,18 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
         open={open}
         onClose={onClose}
         labelledBy={titleId}
-        containerClassName="fixed inset-0 flex justify-end p-0"
+        containerClassName={
+          dockRight
+            ? 'fixed inset-0 flex justify-end p-0'
+            : 'fixed inset-0 flex items-end justify-center p-0 sm:p-4'
+        }
         backdropClassName="absolute inset-0 bg-black/50"
         backdropLabel="Close comments"
-        className="relative z-10 flex h-full w-full max-w-lg flex-col border-l border-line bg-surface shadow-xl sm:max-w-md"
+        className={
+          dockRight
+            ? 'relative z-10 flex h-full w-[26rem] max-w-full flex-col border-l border-line bg-surface shadow-xl'
+            : 'relative z-10 flex max-h-[90dvh] w-full flex-col rounded-t-2xl border border-line bg-surface shadow-xl sm:max-w-lg sm:rounded-2xl'
+        }
       >
         <header className="flex items-center justify-between border-b border-line px-4 py-3">
           <h2 id={titleId} className="font-serif text-xl text-ink">

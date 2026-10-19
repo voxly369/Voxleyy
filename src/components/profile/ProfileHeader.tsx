@@ -27,7 +27,7 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
           src={profile.bannerUrl ?? undefined}
           alt=""
           label={name}
-          className="!h-40 !w-full !rounded-none !size-auto sm:!h-56"
+          className="!h-40 !max-h-56 !w-full !rounded-none !size-auto sm:!h-56"
         />
         <div className="absolute bottom-0 left-5 translate-y-1/2">
           <ImageWithFallback
@@ -38,7 +38,8 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
           />
         </div>
       </div>
-      <div className="mt-14 flex flex-col gap-3 px-5">
+      <div className="mt-14 flex flex-col gap-3 px-5 lg:mt-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+        <div className="flex min-w-0 flex-col gap-3 lg:flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-4xl text-ink">{name}</h1>
           {profile.verified ? <VerifiedBadge /> : null}
@@ -58,11 +59,6 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
         ) : null}
         {profile.cityVisible && profile.city ? <p className="text-sm text-muted">{profile.city}</p> : null}
         <SafeWebsite value={profile.website} />
-        <div className="flex flex-wrap gap-3" aria-live="polite">
-          <CountLink to={`/u/${profile.username}/followers`} count={followerCount} label="followers" />
-          <CountLink to={`/u/${profile.username}/following`} count={profile.followingCount} label="following" />
-          <CountLink count={profile.creationCount} label="works" />
-        </div>
         {isOwn ? (
           <div className="flex flex-wrap gap-2">
             <Link
@@ -79,13 +75,33 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
             </Link>
           </div>
         ) : (
-          <FollowButton
-            userId={profile.id}
-            username={profile.username}
-            following={following}
-            onChange={onFollowingChange}
-          />
+          <div className="lg:hidden">
+            <FollowButton
+              userId={profile.id}
+              username={profile.username}
+              following={following}
+              onChange={onFollowingChange}
+            />
+          </div>
         )}
+        </div>
+        <div className="flex shrink-0 flex-col gap-3 lg:items-end lg:text-right">
+        <div className="flex flex-wrap gap-3 lg:justify-end" aria-live="polite">
+          <CountLink to={`/u/${profile.username}/followers`} count={followerCount} label="followers" />
+          <CountLink to={`/u/${profile.username}/following`} count={profile.followingCount} label="following" />
+          <CountLink count={profile.creationCount} label="works" />
+        </div>
+        {!isOwn ? (
+          <div className="hidden lg:block">
+            <FollowButton
+              userId={profile.id}
+              username={profile.username}
+              following={following}
+              onChange={onFollowingChange}
+            />
+          </div>
+        ) : null}
+        </div>
       </div>
     </header>
   )

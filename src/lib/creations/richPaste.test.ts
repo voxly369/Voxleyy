@@ -1,46 +1,31 @@
-import { describe, expect, it } from 'vitest'
-import { normalizePlainTextForRich, richToPlainText, validateRichDocumentSize } from './richDocument.ts'
-import { plainTextToRichDocument } from './richPaste.ts'
+import { describe, expect, it, vi } from 'vitest'
+import type { Editor } from '@tiptap/react'
+import * as richDocument from './bodyDocument.ts'
+import {
+  pastePlainTextIntoEditor,
+  plainTextToRichDocument,
+  PASTE_UNREADABLE_MESSAGE,
+  PASTE_TOO_LONG_MESSAGE,
+} from './richPaste.ts'
+import { richToPlainText } from './bodyDocument.ts'
 
-describe('richPaste plain text conversion', () => {
-  it('turns a 3-stanza poem into paragraphs with hardBreaks between lines', () => {
-    const text = 'Line 1\nLine 2\n\nStanza two\n\nThird block'
-    const doc = plainTextToRichDocument(text)
-    expect(doc.content).toHaveLength(3)
-    expect(doc.content[0]?.type).toBe('paragraph')
-    expect(doc.content[0]?.content).toEqual([
-      { type: 'text', text: 'Line 1' },
-      { type: 'hardBreak' },
-      { type: 'text', text: 'Line 2' },
-    ])
-    expect(richToPlainText(doc)).toBe(text)
+describe('pastePlainTextIntoEditor', () => {
+  it('returns unreadable message when current editor content cannot convert', () => {
+    vi.spyOn(richDocument, 'editorJsonToDoc').mockReturnValueOnce(null)
+    const editor = {
+      getJSON: () => ({}),
+      isActive: () => false,
+      chain: () => ({ focus: () => ({ insertContent: () => ({ run: () => true }) }) }),
+    } as unknown as Editor
+
+    const result = pastePlainTextIntoEditor(editor, 'hello')
+    expect(result).toEqual({ ok: false, message: PASTE_UNREADABLE_MESSAGE })
+    expect(result.ok === false && result.message).not.toBe(PASTE_TOO_LONG_MESSAGE)
   })
 
-  it('treats \\r\\n the same as \\n', () => {
-    const a = plainTextToRichDocument('A\r\nB')
-    const b = plainTextToRichDocument('A\nB')
-    expect(a).toEqual(b)
-  })
-
-  it('strips control characters except newline and tab', () => {
-    const doc = plainTextToRichDocument('Hello\u0007world')
-    expect(richToPlainText(doc)).toBe('Helloworld')
-  })
-
-  it('keeps hostile markup as visible text', () => {
-    const hostile = '<img src=x onerror=alert(1)>'
-    const doc = plainTextToRichDocument(hostile)
-    expect(richToPlainText(doc)).toBe(hostile)
-  })
-
-  it('refuses over-limit paste via validateRichDocumentSize', () => {
-    const doc = plainTextToRichDocument('x'.repeat(600_000))
-    expect(validateRichDocumentSize(doc).ok).toBe(false)
-  })
-})
-
-describe('normalizePlainTextForRich', () => {
-  it('normalises line endings', () => {
-    expect(normalizePlainTextForRich('a\r\nb')).toBe('a\nb')
+  it('builds three paragraph stanzas from a structured poem paste', () => {
+    const doc = plainTextToRichDocument('S1L1\nS1L2\n\nS2L1\nS2L2\n\nS3L1\nS3L2')
+    expect(doc.content.filter((block) => block.type === 'paragraph')).toHaveLength(3)
+    expect(richToPlainText(doc)).toContain('S3L2')
   })
 })

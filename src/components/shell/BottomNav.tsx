@@ -12,6 +12,7 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Primary"
+      data-testid="bottom-nav"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface lg:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >

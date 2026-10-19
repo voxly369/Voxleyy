@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
@@ -6,7 +7,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 export default function LibraryPage() {
   useDocumentTitle('Library')
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-8">
+    <PageContainer variant="wide" className="flex flex-col gap-6 py-8">
       <PageHeader title="Library" />
       <nav className="flex flex-col gap-3">
         <Link
@@ -22,6 +23,6 @@ export default function LibraryPage() {
           Drafts
         </Link>
       </nav>
-    </div>
+    </PageContainer>
   )
 }

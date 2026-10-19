@@ -8,6 +8,7 @@ import { EmptyState } from '../components/states/EmptyState.tsx'
 import { ErrorState } from '../components/states/ErrorState.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
+import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { useAuth } from '../lib/auth/auth-context.ts'
 import { listUserPublished } from '../lib/creations/api.ts'
 import { worksForPostsGrid } from '../lib/creations/profilePostsMapper.ts'
@@ -133,12 +134,12 @@ export default function ProfilePage() {
 
   if (!current && !activeProblem) {
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-8" aria-busy="true" aria-live="polite">
+      <PageContainer variant="wide" className="flex flex-col gap-6 py-8" aria-busy="true" aria-live="polite">
         <span className="sr-only">Loading</span>
         <Skeleton />
         <Skeleton variant="circle" />
         <Skeleton variant="text-lines" lines={4} />
-      </div>
+      </PageContainer>
     )
   }
 
@@ -159,7 +160,7 @@ export default function ProfilePage() {
   const visibleTabs = tabs.filter((t) => !t.ownOnly || isOwn)
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-8">
+    <PageContainer variant="wide" className="flex flex-col gap-6 pb-8">
       <ProfileHeader
         profile={profile}
         isOwn={isOwn}
@@ -174,7 +175,11 @@ export default function ProfilePage() {
         }}
       />
       <div className="px-5">
-        <div role="tablist" aria-label="Profile" className="flex gap-2 border-b border-line">
+        <div
+          role="tablist"
+          aria-label="Profile"
+          className="-mx-4 flex gap-2 overflow-x-auto border-b border-line px-4 pb-px md:mx-0 md:px-0"
+        >
           {visibleTabs.map((item, index) => (
             <button
               key={item.id}
@@ -186,7 +191,7 @@ export default function ProfilePage() {
               tabIndex={tab === item.id ? 0 : -1}
               onKeyDown={(event) => onTabKeyDown(event, index)}
               onClick={() => setTab(item.id)}
-              className={`min-h-11 px-3 text-base ${tab === item.id ? 'border-b-2 border-coral font-semibold text-ink' : 'font-medium text-muted'} ${focusRing}`}
+              className={`min-h-11 shrink-0 px-4 text-base ${tab === item.id ? 'border-b-2 border-coral font-semibold text-ink' : 'font-medium text-muted'} ${focusRing}`}
             >
               {item.label}
             </button>
@@ -223,6 +228,6 @@ export default function ProfilePage() {
           ) : null}
         </div>
       </div>
-    </div>
+    </PageContainer>
   )
 }

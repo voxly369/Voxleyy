@@ -7,6 +7,7 @@ import * as api from './api.ts'
 import { emptyRichDocument } from './bodyDocument.ts'
 import type { CreateDraftResult, CreationDetail, EditableCreation } from './types.ts'
 import { SIGN_IN_AGAIN_SAVE_MESSAGE } from './saveErrors.ts'
+import { MAX_AUTO_RETRIES } from './autosave.ts'
 
 const navigate = vi.fn()
 
@@ -229,7 +230,7 @@ describe('useCreationEditor rich autosave', () => {
     expect(api.saveCreationFields).toHaveBeenLastCalledWith(expect.objectContaining({ forceOverwrite: true }))
   })
 
-  it('retries transient failures with backoff', async () => {
+  it('automatically retries transient failures after backoff without manual retrySave', async () => {
     vi.mocked(api.getEditableCreation).mockResolvedValue({ ok: true, data: loadedEditable })
     vi.mocked(api.saveCreationFields)
       .mockResolvedValueOnce({
@@ -254,6 +255,7 @@ describe('useCreationEditor rich autosave', () => {
     })
 
     expect(result.current.autosave.ui).toBe('error')
+    expect(api.saveCreationFields).toHaveBeenCalledTimes(1)
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(500)
@@ -261,15 +263,133 @@ describe('useCreationEditor rich autosave', () => {
       await Promise.resolve()
     })
 
-    if (vi.mocked(api.saveCreationFields).mock.calls.length < 2) {
+    expect(api.saveCreationFields).toHaveBeenCalledTimes(2)
+    expect(result.current.autosave.ui).toBe('saved')
+    expect(result.current.form.body).toBe('Retry me')
+  })
+
+  it('stops automatic retry after MAX_AUTO_RETRIES and keeps edits for manual retry', async () => {
+    vi.mocked(api.getEditableCreation).mockResolvedValue({ ok: true, data: loadedEditable })
+    vi.mocked(api.saveCreationFields).mockResolvedValue({
+      ok: false,
+      error: { code: 'unavailable', message: 'network', providerCode: 'ECONNRESET', providerStatus: 503 },
+    })
+
+    const { result } = renderHook(() => useCreationEditor({ creationId: 'draft-1', creationType: 'poem' }), { wrapper })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      result.current.onRichDocumentChange(
+        { ...emptyRichDocument(), content: [{ type: 'paragraph' as const, content: [{ type: 'text' as const, text: 'Keep edits' }] }] },
+        'Keep edits',
+      )
+      result.current.onBlur()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    for (let attempt = 0; attempt < MAX_AUTO_RETRIES; attempt += 1) {
       await act(async () => {
-        result.current.retrySave()
+        await vi.advanceTimersByTimeAsync(8000)
         await Promise.resolve()
         await Promise.resolve()
       })
     }
 
+    expect(vi.mocked(api.saveCreationFields).mock.calls.length).toBeGreaterThanOrEqual(MAX_AUTO_RETRIES)
+    expect(result.current.autosave.ui).toBe('error')
+    expect(result.current.form.body).toBe('Keep edits')
+  })
+
+  it('queues a follow-up save when edits arrive during an in-flight save', async () => {
+    vi.mocked(api.getEditableCreation).mockResolvedValue({ ok: true, data: loadedEditable })
+    let resolveFirst: (value: { ok: true; updatedAt: string }) => void = () => {}
+    const firstSave = new Promise<{ ok: true; updatedAt: string }>((resolve) => {
+      resolveFirst = resolve
+    })
+    vi.mocked(api.saveCreationFields)
+      .mockImplementationOnce(() => firstSave)
+      .mockResolvedValueOnce({ ok: false, conflict: true, remoteUpdatedAt: '2026-10-19T00:04:00Z' })
+
+    const { result } = renderHook(() => useCreationEditor({ creationId: 'draft-1', creationType: 'poem' }), { wrapper })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      result.current.onRichDocumentChange(
+        { ...emptyRichDocument(), content: [{ type: 'paragraph' as const, content: [{ type: 'text' as const, text: 'a' }] }] },
+        'a',
+      )
+      result.current.onBlur()
+      await Promise.resolve()
+    })
+
+    expect(api.saveCreationFields).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      result.current.onRichDocumentChange(
+        { ...emptyRichDocument(), content: [{ type: 'paragraph' as const, content: [{ type: 'text' as const, text: 'ab' }] }] },
+        'ab',
+      )
+      await Promise.resolve()
+    })
+
+    expect(result.current.autosave.dirty).toBe(true)
+
+    await act(async () => {
+      resolveFirst({ ok: true, updatedAt: '2026-10-19T00:02:00Z' })
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
     expect(api.saveCreationFields).toHaveBeenCalledTimes(2)
+    expect(api.saveCreationFields).toHaveBeenLastCalledWith(expect.objectContaining({ bodyText: 'ab' }))
+    expect(result.current.autosave.ui).toBe('conflict')
+    expect(result.current.autosave.dirty).toBe(true)
+  })
+
+  it('does not start a second concurrent save when blur fires during an in-flight save', async () => {
+    vi.mocked(api.getEditableCreation).mockResolvedValue({ ok: true, data: loadedEditable })
+    let resolveSave: (value: { ok: true; updatedAt: string }) => void = () => {}
+    const pending = new Promise<{ ok: true; updatedAt: string }>((resolve) => {
+      resolveSave = resolve
+    })
+    vi.mocked(api.saveCreationFields).mockImplementationOnce(() => pending)
+
+    const { result } = renderHook(() => useCreationEditor({ creationId: 'draft-1', creationType: 'poem' }), { wrapper })
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      result.current.onRichDocumentChange(
+        { ...emptyRichDocument(), content: [{ type: 'paragraph' as const, content: [{ type: 'text' as const, text: 'Once' }] }] },
+        'Once',
+      )
+      result.current.onBlur()
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      result.current.onBlur()
+      await Promise.resolve()
+    })
+
+    expect(api.saveCreationFields).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolveSave({ ok: true, updatedAt: '2026-10-19T00:02:00Z' })
+      await Promise.resolve()
+    })
   })
 
   it('does not auto-retry permanent 23514 failures', async () => {

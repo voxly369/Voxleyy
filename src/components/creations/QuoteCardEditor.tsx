@@ -20,9 +20,10 @@ export function QuoteCardEditor({ line, style, handle, onLineChange, onStyleChan
   const warning = quoteContrastWarning(style)
 
   return (
-    <div className="flex flex-col gap-6">
-      <QuoteCardView text={line} style={style} handle={handle} />
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
+      <QuoteCardView text={line} style={style} handle={handle} className="lg:sticky lg:top-6" />
 
+      <div className="flex flex-col gap-6">
       <label className="flex flex-col gap-1">
         <span className="text-sm font-medium text-ink">Quote line</span>
         <textarea
@@ -108,6 +109,7 @@ export function QuoteCardEditor({ line, style, handle, onLineChange, onStyleChan
           ))}
         </div>
       </fieldset>
+      </div>
     </div>
   )
 }

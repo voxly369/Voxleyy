@@ -8,6 +8,10 @@ vi.mock('../lib/feed/listFeed.ts', () => ({
   listFeed: vi.fn(),
 }))
 
+vi.mock('../components/shell/RightRail.tsx', () => ({
+  RightRail: () => null,
+}))
+
 import { listFeed } from '../lib/feed/listFeed.ts'
 
 describe('HomePage offline', () => {
