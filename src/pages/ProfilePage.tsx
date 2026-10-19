@@ -184,7 +184,7 @@ export default function ProfilePage() {
                   <ul className="flex flex-col gap-3">
                     {current.works.map((work) => (
                       <li key={work.id}>
-                        <WorkCard work={work} variant="published" />
+                        <WorkCard work={work} variant="published" showAudience={isOwn} />
                       </li>
                     ))}
                   </ul>

@@ -9,7 +9,9 @@ import {
 } from './errors.ts'
 import { bodyJsonFromText, bodyTextFromJson } from './bodyDocument.ts'
 import { draftsCursorFilter, DRAFTS_PAGE_SIZE, isDraftsCursor, nextDraftsCursor } from './draftsCursor.ts'
+import { classifyPublishZeroRowUpdate } from './publishFailure.ts'
 import { fieldsForPublish, fieldsForSaveCreation } from './publishPayload.ts'
+import { shouldLimitProfileWorksToPublic } from './publishedWorksFilter.ts'
 import {
   isPublishedCursor,
   nextPublishedCursor,
@@ -45,8 +47,11 @@ const DETAIL_COLUMNS =
 const EDIT_COLUMNS =
   'id, type, title, body_text, body_json, cover_url, status, audience, updated_at, is_removed, author_id' as const
 
-function fail(code: CreationFailure['error']['code'], message: string): CreationFailure {
-  return { ok: false, error: { code, message } }
+function fail(code: CreationFailure['error']['code'], message: string, providerCode?: string): CreationFailure {
+  return {
+    ok: false,
+    error: { code, message, ...(providerCode ? { providerCode } : {}) },
+  }
 }
 
 function text(value: unknown): string | null {
@@ -387,20 +392,46 @@ export async function publishCreation(input: {
   }
 
   const { data, error } = await query.select('updated_at, audience, status').maybeSingle()
-  if (error) return fail('unavailable', messageForPublishError(error))
+  if (error) return fail('unavailable', messageForPublishError(error), error.code)
   if (!data) {
-    const remote = await supabase.from('creations').select('updated_at').eq('id', input.id).maybeSingle()
-    return {
-      ok: false,
-      conflict: true,
-      remoteUpdatedAt: remote.data?.updated_at ?? input.expectedUpdatedAt ?? '',
-    }
+    const remote = await supabase
+      .from('creations')
+      .select('id, author_id, updated_at, is_removed')
+      .eq('id', input.id)
+      .maybeSingle()
+    const account = await supabase
+      .from('profiles_public')
+      .select('status, suspended_until')
+      .eq('id', userId)
+      .maybeSingle()
+    const accountSnapshot =
+      account.data?.status === 'active' ||
+      account.data?.status === 'suspended' ||
+      account.data?.status === 'banned'
+        ? {
+            status: account.data.status,
+            suspendedUntil: account.data.suspended_until,
+          }
+        : null
+    return classifyPublishZeroRowUpdate({
+      viewerUserId: userId,
+      row: remote.data
+        ? {
+            id: remote.data.id,
+            authorId: remote.data.author_id,
+            updatedAt: remote.data.updated_at,
+            isRemoved: remote.data.is_removed,
+          }
+        : null,
+      expectedUpdatedAt: input.expectedUpdatedAt,
+      account: accountSnapshot,
+    })
   }
 
   return { ok: true, updatedAt: data.updated_at, audience: data.audience, status: data.status }
 }
 
-const PUBLISHED_LIST_COLUMNS = 'id, type, title, cover_url, published_at' as const
+const PUBLISHED_LIST_COLUMNS = 'id, type, title, cover_url, published_at, audience' as const
 
 export async function listUserPublished(
   userId: string,
@@ -408,6 +439,7 @@ export async function listUserPublished(
 ): Promise<CreationResult<PublishedWorksPage>> {
   if (cursor && !isPublishedCursor(cursor)) return fail('invalid', 'We could not load the next page.')
 
+  const viewerId = await currentUserId()
   let query = supabase
     .from('creations')
     .select(PUBLISHED_LIST_COLUMNS)
@@ -419,6 +451,10 @@ export async function listUserPublished(
     .order('id', { ascending: false })
     .limit(PUBLISHED_PAGE_SIZE + 1)
 
+  if (shouldLimitProfileWorksToPublic(userId, viewerId)) {
+    query = query.eq('audience', 'public')
+  }
+
   const filter = publishedCursorFilter(cursor)
   if (filter) query = query.or(filter)
 
@@ -429,7 +465,8 @@ export async function listUserPublished(
     const publishedAt = text(row.published_at)
     const id = text(row.id)
     const type = row.type
-    if (!publishedAt || !id || typeof type !== 'string') return []
+    const audience = row.audience
+    if (!publishedAt || !id || typeof type !== 'string' || typeof audience !== 'string') return []
     return [
       {
         publishedAt,
@@ -440,6 +477,7 @@ export async function listUserPublished(
           title: text(row.title),
           coverUrl: text(row.cover_url),
           publishedAt,
+          audience: audience as PublishedWorksPage['works'][number]['audience'],
         },
       },
     ]

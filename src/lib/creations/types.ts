@@ -35,7 +35,11 @@ export type CreationDetail = WorkSummary & {
 
 export type CreationFailure = {
   ok: false
-  error: { code: 'invalid' | 'forbidden' | 'not_found' | 'unavailable'; message: string }
+  error: {
+    code: 'invalid' | 'forbidden' | 'not_found' | 'unavailable'
+    message: string
+    providerCode?: string
+  }
 }
 
 export type CreationResult<T> = { ok: true; data: T } | CreationFailure
@@ -96,6 +100,7 @@ export type PublishedWorkSummary = {
   title: string | null
   coverUrl: string | null
   publishedAt: string
+  audience: Audience
 }
 
 export type PublishedWorksPage = {
