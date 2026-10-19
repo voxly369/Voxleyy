@@ -2,6 +2,7 @@ import type { Json } from '../database.types.ts'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
+  applyAutosaveEvent,
   autosaveReducer,
   autosaveStatusLabel,
   initialAutosaveModel,
@@ -184,14 +185,22 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     }
   }, [])
 
-  const scheduleAutoRetry = useCallback(() => {
-    clearRetryTimer()
-    const model = autosaveRef.current
-    if (!shouldAutoRetry(model)) return
-    retryTimerRef.current = window.setTimeout(() => {
-      dispatchAutosave({ type: 'retry' })
-    }, retryDelayMs(model.retryCount))
-  }, [clearRetryTimer])
+  const scheduleAutoRetryAfter = useCallback(
+    (modelAfterError: ReturnType<typeof applyAutosaveEvent>) => {
+      clearRetryTimer()
+      if (!shouldAutoRetry(modelAfterError)) return
+      retryTimerRef.current = window.setTimeout(() => {
+        dispatchAutosave({ type: 'retry' })
+      }, retryDelayMs(modelAfterError.retryCount))
+    },
+    [clearRetryTimer],
+  )
+
+  const onTransientSaveFailure = useCallback(() => {
+    const modelAfterError = applyAutosaveEvent(autosaveRef.current, { type: 'save_network_error' })
+    dispatchAutosave({ type: 'save_network_error' })
+    scheduleAutoRetryAfter(modelAfterError)
+  }, [scheduleAutoRetryAfter])
 
   const performSave = useCallback(async (forceOverwrite: boolean) => {
     if (savingRef.current) return
@@ -233,8 +242,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
             setSaveMessage(failureMessage(created))
             dispatchAutosave({ type: 'save_permanent_error' })
           } else {
-            dispatchAutosave({ type: 'save_network_error' })
-            scheduleAutoRetry()
+            onTransientSaveFailure()
           }
           return
         }
@@ -275,8 +283,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
           setSaveMessage(failureMessage(result))
           dispatchAutosave({ type: 'save_permanent_error' })
         } else {
-          dispatchAutosave({ type: 'save_network_error' })
-          scheduleAutoRetry()
+          onTransientSaveFailure()
         }
         return
       }
@@ -289,7 +296,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     } finally {
       savingRef.current = false
     }
-  }, [creationType, navigate, scheduleAutoRetry])
+  }, [creationType, navigate, onTransientSaveFailure])
 
   useEffect(() => {
     if (!autosave.saveInFlight || savingRef.current) return

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
@@ -54,7 +55,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-8">
+    <PageContainer variant="wide" className="flex flex-col gap-6 py-8">
       <PageHeader title="Settings" />
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Account</h2>
@@ -142,6 +143,6 @@ export default function SettingsPage() {
       >
         {signingOut ? 'Please wait…' : 'Log out'}
       </button>
-    </div>
+    </PageContainer>
   )
 }

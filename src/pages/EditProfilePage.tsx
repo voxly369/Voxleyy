@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { useBlocker } from 'react-router-dom'
 import { ProfileImageField } from '../components/profile/ProfileImageField.tsx'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
@@ -115,7 +116,7 @@ function EditProfileForm({
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-8">
+    <PageContainer variant="wide" className="flex flex-col gap-6 py-8">
       <PageHeader title="Edit profile" />
       <form onSubmit={(event) => void onSubmit(event)} className="flex flex-col gap-5" noValidate>
         <ProfileImageField
@@ -299,7 +300,7 @@ function EditProfileForm({
           </div>
         </div>
       ) : null}
-    </div>
+    </PageContainer>
   )
 }
 

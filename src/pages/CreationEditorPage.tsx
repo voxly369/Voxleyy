@@ -3,6 +3,7 @@ import { useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { CreationEditor } from '../components/creations/CreationEditor.tsx'
 import { PublishSheet } from '../components/creations/PublishSheet.tsx'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
+import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { ConfirmDialog } from '../components/states/ConfirmDialog.tsx'
 import { ErrorState } from '../components/states/ErrorState.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
@@ -36,10 +37,10 @@ export default function CreationEditorPage() {
 
   if (editor.loading) {
     return (
-      <div className="mx-auto max-w-3xl px-5 py-8">
+      <PageContainer variant="editor" className="py-8">
         <Skeleton />
         <Skeleton variant="text-lines" lines={8} />
-      </div>
+      </PageContainer>
     )
   }
 
@@ -98,7 +99,7 @@ export default function CreationEditorPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-5 py-8">
+    <PageContainer variant="editor" className="py-8">
       <PageHeader title={heading} />
       <CreationEditor
         creationType={parsedType ?? 'written_post'}
@@ -136,6 +137,6 @@ export default function CreationEditorPage() {
         onConfirm={() => blocker.proceed?.()}
         onCancel={() => blocker.reset?.()}
       />
-    </div>
+    </PageContainer>
   )
 }

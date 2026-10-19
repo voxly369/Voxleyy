@@ -56,7 +56,8 @@ export function PublishSheet({
       onClose={onClose}
       closeOnEscape={!busy}
       labelledBy={titleId}
-      className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-lg"
+      containerClassName="fixed inset-0 flex items-end justify-center p-4 lg:items-center"
+      className="flex max-h-[90dvh] w-full max-w-[32rem] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-lg"
       backdropLabel="Close sheet"
     >
       <div className="overflow-y-auto p-5">

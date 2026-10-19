@@ -11,6 +11,8 @@ import { listFeed } from '../lib/feed/listFeed.ts'
 import type { FeedKind, FeedPost } from '../lib/feed/types.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 import { feedOfflineMessage, isBrowserOnline } from '../lib/feed/offline.ts'
+import { FeedWithRailLayout } from '../components/shell/FeedWithRailLayout.tsx'
+import { PageContainer } from '../components/shell/PageContainer.tsx'
 
 function tabToKind(tab: FeedTab): FeedKind {
   return tab === 'following' ? 'following' : 'home'
@@ -87,7 +89,7 @@ export default function HomePage() {
 
   if (offline) {
     return (
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 py-8">
+      <PageContainer variant="feed" className="flex flex-col gap-4 py-8">
         <FeedSwitcher active={tab} onChange={onTabChange} />
         <div role="status" className="rounded-2xl border border-line bg-surface p-5 text-sm text-muted">
           {feedOfflineMessage()}
@@ -103,12 +105,13 @@ export default function HomePage() {
         >
           Retry
         </button>
-      </div>
+      </PageContainer>
     )
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 py-6">
+    <FeedWithRailLayout>
+      <div className="flex flex-col gap-4">
       <FeedSwitcher active={tab} onChange={onTabChange} />
       {loading ? (
         <div className="flex flex-col gap-4">
@@ -158,6 +161,7 @@ export default function HomePage() {
       {commentsPost ? (
         <CommentsSheet key={commentsPost.id} open creationId={commentsPost.id} onClose={() => setCommentsPost(null)} />
       ) : null}
-    </div>
+      </div>
+    </FeedWithRailLayout>
   )
 }

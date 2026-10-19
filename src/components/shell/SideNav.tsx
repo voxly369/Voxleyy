@@ -12,6 +12,7 @@ export function SideNav() {
   return (
     <nav
       aria-label="Primary"
+      data-testid="side-nav"
       className="fixed inset-y-0 left-0 z-40 hidden w-64 flex-col border-r border-line bg-surface px-4 py-6 lg:flex"
     >
       <Link to="/" className={`rounded-xl px-2 font-serif text-3xl text-ink ${focusRing}`}>

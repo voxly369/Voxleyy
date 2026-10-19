@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { FollowButton } from '../components/profile/FollowButton.tsx'
 import { MissingProfile } from '../components/profile/MissingProfile.tsx'
@@ -107,7 +108,7 @@ export default function FollowListPage() {
   if (!current) return <PageSkeleton />
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-8">
+    <PageContainer variant="wide" className="flex flex-col gap-6 py-8">
       <PageHeader title={title} />
       <p className="text-sm text-muted">@{current.username}</p>
       {current.entries.length === 0 ? (
@@ -173,6 +174,6 @@ export default function FollowListPage() {
           {loadingMore ? 'Loading…' : moreError ? 'Retry' : 'Load more'}
         </button>
       ) : null}
-    </div>
+    </PageContainer>
   )
 }

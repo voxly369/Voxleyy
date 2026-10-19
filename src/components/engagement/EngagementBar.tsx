@@ -11,6 +11,7 @@ type EngagementBarProps = {
   liked: boolean
   saved: boolean
   onCommentClick: () => void
+  className?: string
   onCountsChange?: (patch: {
     likeCount?: number
     commentCount?: number
@@ -29,6 +30,7 @@ export function EngagementBar({
   saved,
   onCommentClick,
   onCountsChange,
+  className = '',
 }: EngagementBarProps) {
   const [busy, setBusy] = useReducer((_s: 'like' | 'save' | null, v: 'like' | 'save' | null) => v, null)
   const [likePulse, setLikePulse] = useState(false)
@@ -75,7 +77,7 @@ export function EngagementBar({
   }
 
   return (
-    <div className="flex items-center gap-2 border-t border-line pt-3">
+    <div className={`flex items-center gap-2 border-t border-line pt-3 ${className}`.trim()}>
       <button
         type="button"
         aria-label={liked ? 'Unlike' : 'Like'}

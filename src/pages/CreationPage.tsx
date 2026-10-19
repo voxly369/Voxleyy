@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { VerifiedBadge } from '../components/profile/VerifiedBadge.tsx'
 import { PublishSheet } from '../components/creations/PublishSheet.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
+import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { ConfirmDialog } from '../components/states/ConfirmDialog.tsx'
 import { ErrorState } from '../components/states/ErrorState.tsx'
 import { ImageWithFallback } from '../components/states/ImageWithFallback.tsx'
@@ -184,8 +185,30 @@ export default function CreationPage() {
     })
   }
 
+  const engagement =
+    work.status === 'published' ? (
+      <EngagementBar
+        creationId={work.id}
+        likeCount={likeCount}
+        commentCount={commentCount}
+        saveCount={saveCount}
+        liked={liked}
+        saved={saved}
+        onCommentClick={() => setCommentsOpen(true)}
+        onCountsChange={(patch) => {
+          if (patch.likeCount !== undefined) setLikeCount(patch.likeCount)
+          if (patch.commentCount !== undefined) setCommentCount(patch.commentCount)
+          if (patch.saveCount !== undefined) setSaveCount(patch.saveCount)
+          if (patch.liked !== undefined) setLiked(patch.liked)
+          if (patch.saved !== undefined) setSaved(patch.saved)
+        }}
+        className="xl:flex-col xl:border-t-0 xl:pt-0"
+      />
+    ) : null
+
   return (
-    <article className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-8">
+    <PageContainer variant="reading" className="py-8">
+    <article className="flex flex-col gap-6 xl:grid xl:grid-cols-[minmax(0,65ch)_auto] xl:items-start xl:gap-8">
       {publishedNotice ? (
         <p className="rounded-2xl border border-line bg-raised px-4 py-2 text-sm font-medium text-ink" aria-live="polite">
           {publishedNotice}
@@ -204,6 +227,7 @@ export default function CreationPage() {
           className="aspect-[3/2] w-full max-w-xl rounded-lg"
         />
       ) : null}
+      <div className="flex min-w-0 flex-col gap-6 xl:col-start-1">
       <header className="flex flex-col gap-3">
         <h1 className="font-serif text-3xl text-ink">{title}</h1>
         {work.isOwn ? (
@@ -224,6 +248,7 @@ export default function CreationPage() {
           <span>{work.author.displayName || work.author.username}</span>
           {work.author.verified ? <VerifiedBadge /> : null}
         </Link>
+        {engagement ? <div className="xl:hidden">{engagement}</div> : null}
       </header>
       {work.type === 'quote_card' ? (
         work.bodyText ? (
@@ -240,24 +265,6 @@ export default function CreationPage() {
       ) : (
         <p className="text-muted">No text yet.</p>
       )}
-      {work.status === 'published' ? (
-        <EngagementBar
-          creationId={work.id}
-          likeCount={likeCount}
-          commentCount={commentCount}
-          saveCount={saveCount}
-          liked={liked}
-          saved={saved}
-          onCommentClick={() => setCommentsOpen(true)}
-          onCountsChange={(patch) => {
-            if (patch.likeCount !== undefined) setLikeCount(patch.likeCount)
-            if (patch.commentCount !== undefined) setCommentCount(patch.commentCount)
-            if (patch.saveCount !== undefined) setSaveCount(patch.saveCount)
-            if (patch.liked !== undefined) setLiked(patch.liked)
-            if (patch.saved !== undefined) setSaved(patch.saved)
-          }}
-        />
-      ) : null}
       {work.isOwn ? (
         <div className="flex flex-col gap-2 border-t border-line pt-4">
           {actionError ? <p className="text-sm text-coral">{actionError}</p> : null}
@@ -309,6 +316,10 @@ export default function CreationPage() {
           </p>
         </div>
       ) : null}
+      </div>
+      {engagement ? (
+        <aside className="hidden xl:col-start-2 xl:block xl:sticky xl:top-6">{engagement}</aside>
+      ) : null}
       <PublishSheet
         open={publishOpen}
         onClose={() => {
@@ -340,5 +351,6 @@ export default function CreationPage() {
         onCancel={() => setConfirmDelete(false)}
       />
     </article>
+    </PageContainer>
   )
 }

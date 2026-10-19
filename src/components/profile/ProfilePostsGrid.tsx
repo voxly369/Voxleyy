@@ -70,7 +70,7 @@ export function ProfilePostsGrid({
 
   return (
     <div className="flex flex-col gap-4">
-      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3">
+      <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
         {works.map((work) => (
           <li key={work.id}>
             <ProfilePostTile

@@ -55,3 +55,20 @@ Home and Following feeds must read published posts from the `feed_creations` and
 Home currently shows newest public work from everyone; the suggestions mix and ranked For You arrive with the ranking prompt.
 
 Never show raw database or PostgREST error text to users. Map provider failures to short, plain messages in the data layer (`saveErrors`, `engagement/errors`, creation write helpers).
+
+## Layout and breakpoints
+
+Layout depends only on viewport width (Tailwind breakpoints and a small SSR-safe `useMediaQuery` hook). Never read `navigator.userAgent`, `navigator.platform`, or similar device sniffing.
+
+Use `PageContainer` variants from `src/components/shell/PageContainer.tsx`:
+
+- **feed** — centred single column, max width 37.5rem (600px); Home, Following, Saved, Messages.
+- **wide** — max width 68.75rem (1100px); settings, library, discover, profile shell, grids.
+- **reading** — max width 65ch; published creation reading view.
+- **editor** — wide shell with a two-column split from `lg` (writing column + ~22rem settings panel).
+
+From **lg** (1024px) the left `SideNav` is sticky (16rem). Below **lg**, primary navigation is the fixed bottom bar with safe-area padding and `dvh`-friendly spacing. From **xl** (1280px), Home and Following may show a **right rail** (~20rem) beside the feed.
+
+The right rail lists public discovery data only: suggested writers to follow and the signed-in user's own recent drafts. It must never show private or unlisted work belonging to other people.
+
+Comments use the shared Modal stack; from **lg** they open as a right-docked panel (~26rem), below **lg** as a bottom sheet. Hover-only affordances must live inside `@media (hover: hover)` and have keyboard/focus equivalents.

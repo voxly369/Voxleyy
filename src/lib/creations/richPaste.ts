@@ -10,6 +10,8 @@ import {
 
 export const PASTE_TOO_LONG_MESSAGE = 'That text is too long. Shorten it and try again.'
 
+export const PASTE_UNREADABLE_MESSAGE = 'We could not paste into this text. Undo and try again.'
+
 export function plainTextToRichDocument(text: string): RichBodyDocument {
   return plainToRich(normalizePlainTextForRich(text))
 }
@@ -45,7 +47,7 @@ export function pastePlainTextIntoEditor(editor: Editor, rawText: string): { ok:
   const pasted = plainTextToRichDocument(rawText)
   const currentJson = editor.getJSON()
   const currentDoc = editorJsonToDoc(currentJson)
-  if (!currentDoc) return { ok: false, message: PASTE_TOO_LONG_MESSAGE }
+  if (!currentDoc) return { ok: false, message: PASTE_UNREADABLE_MESSAGE }
 
   const inHeading = editor.isActive('heading')
   const merged = mergeDocuments(currentDoc, pasted, inHeading)

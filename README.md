@@ -18,3 +18,4 @@ Render needs the same two names set in the service dashboard. `.env.local` stays
 - **Cover Studio** is not built yet.
 - **Manuscript import** is not built yet.
 - **Links inside body text** are not supported yet (rich text allows bold, italic, headings, and line breaks only).
+- **Home right rail**: shows writers to follow and your recent drafts only; trending tags and search arrive with Discover. Tablets below 1024px use the bottom navigation bar (no sidebar).

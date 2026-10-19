@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { Link } from 'react-router-dom'
 import { PostCard } from '../components/feed/PostCard.tsx'
 import { CommentsSheet } from '../components/engagement/CommentsSheet.tsx'
@@ -40,7 +41,7 @@ export default function SavedPage() {
   }, [attempt])
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 px-5 py-8">
+    <PageContainer variant="feed" className="flex flex-col gap-4 py-8">
       <PageHeader title="Saved" />
       <Link to="/library" className="text-sm text-coral">
         Back to Library
@@ -68,6 +69,6 @@ export default function SavedPage() {
       {commentsPost ? (
         <CommentsSheet open creationId={commentsPost.id} onClose={() => setCommentsPost(null)} />
       ) : null}
-    </div>
+    </PageContainer>
   )
 }

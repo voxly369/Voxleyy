@@ -20,7 +20,7 @@ export function AppShell() {
             <main
               id="main"
               tabIndex={-1}
-              className={`min-h-screen bg-bg text-ink pb-[calc(var(--nav-h)+1rem+env(safe-area-inset-bottom))] lg:pb-8 lg:pl-64 ${focusRing}`}
+              className={`min-h-dvh overflow-x-hidden bg-bg text-ink pb-[calc(var(--nav-h)+1rem+env(safe-area-inset-bottom))] lg:pb-8 lg:pl-64 ${focusRing}`}
             >
               <Outlet />
             </main>

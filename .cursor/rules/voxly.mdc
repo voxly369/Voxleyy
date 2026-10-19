@@ -27,6 +27,8 @@ Do only what the current numbered prompt says. Features not in the current promp
 
 Every screen must work and be checked at 375, 768, 1024 and 1440 px, mobile-first, with the desktop sidebar layout from 1024 px up and reading text limited to about 65 characters per line.
 
+Layout depends only on viewport width (CSS breakpoints, matchMedia). Never use navigator.userAgent, navigator.platform, or other device sniffing. Content uses the shared PageContainer variants.
+
 Every dialog or sheet uses the shared Modal / useModal stack (focus trap, inert background, scroll lock, Escape, focus restore).
 
 Never nest an interactive element inside a link or button.

@@ -199,3 +199,8 @@ export function shouldRunQueuedSave(model: AutosaveModel): boolean {
 export function shouldAutoRetry(model: AutosaveModel): boolean {
   return model.ui === 'error' && model.retryCount > 0 && model.retryCount < MAX_AUTO_RETRIES
 }
+
+/** Predict reducer output without mutating React state (for scheduling retries synchronously). */
+export function applyAutosaveEvent(model: AutosaveModel, event: AutosaveEvent): AutosaveModel {
+  return autosaveReducer(model, event)
+}
