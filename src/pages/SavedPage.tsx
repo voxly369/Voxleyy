@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { PostCard } from '../components/feed/PostCard.tsx'
 import { CommentsSheet } from '../components/engagement/CommentsSheet.tsx'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
+import { focusRing } from '../components/shell/navItems.ts'
 import { EmptyState } from '../components/states/EmptyState.tsx'
 import { ErrorState } from '../components/states/ErrorState.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
@@ -43,7 +44,7 @@ export default function SavedPage() {
   return (
     <PageContainer variant="feed" className="flex flex-col gap-4 py-8">
       <PageHeader title="Saved" />
-      <Link to="/library" className="text-sm text-coral">
+      <Link to="/library" className={`inline-flex min-h-11 items-center text-sm font-medium text-coral ${focusRing}`}>
         Back to Library
       </Link>
       {loading ? (
@@ -67,7 +68,7 @@ export default function SavedPage() {
         </div>
       )}
       {commentsPost ? (
-        <CommentsSheet open creationId={commentsPost.id} onClose={() => setCommentsPost(null)} />
+        <CommentsSheet open={true} creationId={commentsPost.id} onClose={() => setCommentsPost(null)} />
       ) : null}
     </PageContainer>
   )

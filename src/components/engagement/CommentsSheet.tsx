@@ -119,7 +119,7 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
   return (
     <>
       <Modal
-        open={open}
+        open={open !== false}
         onClose={onClose}
         labelledBy={titleId}
         containerClassName={
@@ -204,7 +204,11 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
           {replyTo ? (
             <p className="mb-2 text-xs text-muted">
               Replying
-              <button type="button" className={`ml-2 text-coral ${focusRing}`} onClick={() => setReplyTo(null)}>
+              <button
+                type="button"
+                className={`ml-2 inline-flex min-h-11 items-center px-2 text-sm text-coral ${focusRing}`}
+                onClick={() => setReplyTo(null)}
+              >
                 Cancel
               </button>
             </p>
@@ -313,15 +317,27 @@ function CommentRow({
       </p>
       {node.body ? <MentionText text={node.body} knownUsernames={knownMentions} /> : null}
       <div className="mt-2 flex flex-wrap gap-2">
-        <button type="button" onClick={onReply} className={`text-xs font-medium text-coral ${focusRing}`}>
+        <button
+          type="button"
+          onClick={onReply}
+          className={`inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs font-medium text-coral ${focusRing}`}
+        >
           Reply
         </button>
         {own ? (
           <>
-            <button type="button" onClick={onEdit} className={`text-xs font-medium text-muted ${focusRing}`}>
+            <button
+              type="button"
+              onClick={onEdit}
+              className={`inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs font-medium text-muted ${focusRing}`}
+            >
               Edit
             </button>
-            <button type="button" onClick={onDelete} className={`text-xs font-medium text-muted ${focusRing}`}>
+            <button
+              type="button"
+              onClick={onDelete}
+              className={`inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-xs font-medium text-muted ${focusRing}`}
+            >
               Delete
             </button>
           </>

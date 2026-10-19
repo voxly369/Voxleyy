@@ -1,3 +1,5 @@
+import plugin from 'tailwindcss/plugin'
+
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: 'class',
@@ -35,5 +37,10 @@ export default {
       animation: { shimmer: 'shimmer 1.4s infinite' },
     },
   },
-  plugins: [],
+  plugins: [
+    plugin(({ addVariant }) => {
+      addVariant('supports-hover', '@media (hover: hover) { &:hover }')
+      addVariant('group-supports-hover', '@media (hover: hover) { .group:hover & }')
+    }),
+  ],
 }

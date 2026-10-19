@@ -52,7 +52,7 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
   return (
     <article className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
       <header className="mb-3 flex items-center gap-3">
-        <Link to={`/u/${post.author.username}`} className={focusRing}>
+        <Link to={`/u/${post.author.username}`} className={`inline-flex min-h-11 min-w-11 items-center justify-center ${focusRing}`}>
           <ImageWithFallback
             src={post.author.avatarUrl ?? undefined}
             alt=""
@@ -61,11 +61,17 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
           />
         </Link>
         <div className="min-w-0 flex-1">
-          <Link to={`/u/${post.author.username}`} className={`flex items-center gap-1 font-medium text-ink ${focusRing}`}>
+          <Link
+            to={`/u/${post.author.username}`}
+            className={`inline-flex min-h-11 max-w-full items-center gap-1 font-medium text-ink ${focusRing}`}
+          >
             <span className="truncate">{post.author.displayName || post.author.username}</span>
             {post.author.verified ? <VerifiedBadge /> : null}
           </Link>
-          <Link to={`/u/${post.author.username}`} className={`text-sm text-muted ${focusRing}`}>
+          <Link
+            to={`/u/${post.author.username}`}
+            className={`inline-flex min-h-11 items-center text-sm text-muted ${focusRing}`}
+          >
             @{post.author.username}
           </Link>
         </div>

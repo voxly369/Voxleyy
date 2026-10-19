@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import type { ReactNode } from 'react'
 import { useModal, type UseModalOptions } from '../../lib/shell/useModal.ts'
 
@@ -32,7 +33,7 @@ export function Modal({
 
   if (!open) return null
 
-  return (
+  return createPortal(
     <div className={containerClassName} style={{ zIndex }} role="presentation">
       {hideBackdrop ? null : (
         <button type="button" tabIndex={-1} className={backdropClassName} aria-label={backdropLabel} onClick={onClose} />
@@ -48,7 +49,8 @@ export function Modal({
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

@@ -11,6 +11,22 @@ Copy `.env.example` to `.env.local` and set both for local development. These ar
 
 Render needs the same two names set in the service dashboard. `.env.local` stays on your machine and is not committed.
 
+## Deploy to Render
+
+1. Connect this repository to Render and apply the root `render.yaml` blueprint (static site service **voxly**).
+2. Set **Build command** to `npm ci && npm run build` and **Publish directory** to `dist` if you configure manually instead of the blueprint.
+3. Environment variables:
+   - `VITE_SUPABASE_URL` — set to `https://ktgxdqplvggeyrnuqljx.supabase.co` (public; already in the blueprint).
+   - `VITE_SUPABASE_ANON_KEY` — enter the project **anon / publishable** key in the Render dashboard only (`sync: false` in the blueprint). Never commit this value.
+4. After the site URL is known, open Supabase **Authentication → URL configuration** and set:
+   - **Site URL** — your Render URL (for example `https://voxly.onrender.com`).
+   - **Redirect URLs** — include these paths on that origin (same host as the static site):
+     - `/auth/callback` (email confirmation and OAuth return)
+     - `/login` (session expiry notice)
+     - `/reset-password` (password reset completion)
+5. Pre-launch: `index.html` includes `<meta name="robots" content="noindex">` and `public/robots.txt` is permissive with a comment only. Remove the noindex meta when you launch for SEO.
+6. **Credential hygiene:** Supabase management tokens, secret keys, and database passwords shared during development must be rotated before public launch.
+
 ## Known limits
 
 - **For You** feed: switcher label only; ranked full-screen feed is not built yet.

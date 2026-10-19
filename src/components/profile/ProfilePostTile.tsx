@@ -126,7 +126,7 @@ export function ProfilePostTile({ work, saved, saveBusy, onToggleSave }: Profile
           aria-label={saved ? 'Remove from Library' : 'Save to Library'}
           disabled={saveBusy}
           onClick={() => onToggleSave(work.id, saved)}
-          className={`absolute right-2 top-2 hidden min-h-11 min-w-11 items-center justify-center rounded-full bg-surface/90 px-2 text-xs font-semibold text-coral group-hover:flex group-focus-within:flex ${focusRing}`}
+          className={`absolute right-2 top-2 hidden min-h-11 min-w-11 items-center justify-center rounded-full bg-surface/90 px-2 text-xs font-semibold text-coral group-supports-hover:flex group-focus-within:flex ${focusRing}`}
         >
           {saved ? 'Saved' : 'Save'}
         </button>

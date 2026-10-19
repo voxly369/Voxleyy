@@ -5,10 +5,10 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0A0A0B" />
+    <meta name="robots" content="noindex" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <title>Voxly</title>
-    <script>
-(function(){try{var t=localStorage.getItem('voxly-theme');var mode=t==='light'||t==='dark'||t==='system'?t:'dark';var systemDark=true;try{systemDark=window.matchMedia('(prefers-color-scheme: dark)').matches;}catch(e){}var dark=mode==='dark'||(mode==='system'&&systemDark);document.documentElement.classList.toggle('dark',dark);document.documentElement.style.colorScheme=dark?'dark':'light';}catch(e){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}})();
-</script>
+    <script src="/theme-init.js"></script>
   </head>
   <body>
     <div id="root"></div>

@@ -290,7 +290,7 @@ export function CreationEditor({ creationType, editor, coverUrl, onCoverUrlChang
             onChange={(e) => editor.onEdit({ caption: e.target.value })}
             onBlur={editor.onBlur}
             rows={3}
-            className={`rounded-2xl border border-line bg-surface px-3 py-2 text-base text-ink ${focusRing}`}
+            className={`min-h-11 rounded-2xl border border-line bg-surface px-3 py-2 text-base text-ink ${focusRing}`}
           />
           <span className="text-sm text-muted">
             {editor.form.caption.length} / {MAX_CAPTION_CHARS}

@@ -159,7 +159,12 @@ export default function HomePage() {
         </>
       )}
       {commentsPost ? (
-        <CommentsSheet key={commentsPost.id} open creationId={commentsPost.id} onClose={() => setCommentsPost(null)} />
+        <CommentsSheet
+          key={commentsPost.id}
+          open={true}
+          creationId={commentsPost.id}
+          onClose={() => setCommentsPost(null)}
+        />
       ) : null}
       </div>
     </FeedWithRailLayout>

@@ -19,7 +19,7 @@ export function WorkCard(props: WorkCardProps) {
     return (
       <Link
         to={`/c/${publishedWork.id}`}
-        className="flex gap-3 rounded-lg border border-line bg-surface p-3 transition hover:border-coral/40"
+        className="flex gap-3 rounded-lg border border-line bg-surface transition supports-hover:border-coral/40"
       >
         <ImageWithFallback
           src={publishedWork.coverUrl ?? undefined}
@@ -44,7 +44,7 @@ export function WorkCard(props: WorkCardProps) {
   return (
     <Link
       to={`/c/${summary.id}`}
-      className="flex gap-3 rounded-lg border border-line bg-surface p-3 transition hover:border-coral/40"
+      className="flex gap-3 rounded-lg border border-line bg-surface p-3 transition supports-hover:border-coral/40"
     >
       <ImageWithFallback
         src={summary.coverUrl ?? undefined}

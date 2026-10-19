@@ -339,7 +339,7 @@ export default function CreationPage() {
         onConfirm={(audience) => void onPublishConfirm(audience)}
       />
       {commentsOpen ? (
-        <CommentsSheet open creationId={work.id} onClose={() => setCommentsOpen(false)} />
+        <CommentsSheet open={true} creationId={work.id} onClose={() => setCommentsOpen(false)} />
       ) : null}
       <ConfirmDialog
         open={confirmDelete}

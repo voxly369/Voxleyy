@@ -109,7 +109,10 @@ export function RightRail() {
               Your drafts
             </h2>
             {draftsUsername ? (
-              <Link to={`/u/${draftsUsername}?tab=drafts`} className={`text-sm font-medium text-coral ${focusRing}`}>
+              <Link
+                to={`/u/${draftsUsername}?tab=drafts`}
+                className={`inline-flex min-h-11 min-w-11 items-center justify-center px-2 text-sm font-medium text-coral ${focusRing}`}
+              >
                 See all
               </Link>
             ) : null}
@@ -135,7 +138,7 @@ export function RightRail() {
                 <li key={draft.id}>
                   <Link
                     to={`/create/${draft.id}`}
-                    className={`block rounded-xl border border-line px-3 py-2 text-sm hover:bg-raised/60 ${focusRing}`}
+                    className={`block rounded-xl border border-line px-3 py-2 text-sm supports-hover:bg-raised/60 ${focusRing}`}
                   >
                     <span className="font-medium text-ink">{draft.title?.trim() || 'Untitled draft'}</span>
                     <span className="mt-1 block text-xs text-muted">{creationTypeLabel(draft.type)}</span>
@@ -154,7 +157,10 @@ function WriterRow({ writer }: { writer: SuggestedWriter }) {
   const [following, setFollowing] = useState(false)
   return (
     <li className="flex items-center gap-3">
-      <Link to={`/u/${writer.username}`} className={`flex min-w-0 flex-1 items-center gap-2 ${focusRing}`}>
+      <Link
+        to={`/u/${writer.username}`}
+        className={`flex min-h-11 min-w-0 flex-1 items-center gap-2 ${focusRing}`}
+      >
         <ImageWithFallback
           src={writer.avatarUrl ?? undefined}
           alt=""

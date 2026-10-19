@@ -49,7 +49,7 @@ export function TagEditor({ tags, onChange, onBlur }: TagEditorProps) {
             <button
               type="button"
               aria-label={`Remove tag ${tag}`}
-              className={`min-h-8 min-w-8 rounded-full text-muted ${focusRing}`}
+              className={`min-h-11 min-w-11 rounded-full text-muted ${focusRing}`}
               onClick={() => onChange(removeTag(tags, tag))}
             >
               ×
@@ -66,7 +66,7 @@ export function TagEditor({ tags, onChange, onBlur }: TagEditorProps) {
             onBlur?.()
           }}
           placeholder={tags.length ? 'Add another' : 'Add tags'}
-          className="min-h-8 min-w-[8rem] flex-1 bg-transparent text-base text-ink outline-none"
+          className="min-h-11 min-w-[8rem] flex-1 bg-transparent text-base text-ink outline-none"
         />
       </div>
       <p className="text-sm text-muted">
