@@ -91,6 +91,12 @@ export default function SettingsPage() {
             Profile
           </Link>
           <Link
+            to="/library"
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Library
+          </Link>
+          <Link
             to="/write/drafts"
             className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
           >

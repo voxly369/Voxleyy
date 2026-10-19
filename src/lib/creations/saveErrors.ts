@@ -44,8 +44,24 @@ export function isTransientSaveError(error: SaveErrorLike | null | undefined): b
   return false
 }
 
+const ALLOWED_USER_MESSAGES = [
+  'too many tags',
+  'too fast',
+  'too long',
+  'you are creating too fast',
+  'you are posting too fast',
+  'a creation can have at most 15 tags',
+  'that text is too long',
+]
+
+function isAllowedTriggerMessage(message: string): boolean {
+  const lower = message.toLowerCase()
+  return ALLOWED_USER_MESSAGES.some((needle) => lower.includes(needle))
+}
+
 export function saveErrorMessage(error: SaveErrorLike | null | undefined, fallback: string): string {
   if (isAuthSessionSaveError(error)) return SIGN_IN_AGAIN_SAVE_MESSAGE
-  if (!error?.message) return fallback
-  return error.message
+  const message = error?.message ?? ''
+  if (message && isAllowedTriggerMessage(message)) return message
+  return fallback
 }

@@ -19,6 +19,9 @@ import {
 import { becameWriterAfterPublish } from '../lib/creations/roleChange.ts'
 import type { CreationDetail } from '../lib/creations/types.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
+import { EngagementBar } from '../components/engagement/EngagementBar.tsx'
+import { CommentsSheet } from '../components/engagement/CommentsSheet.tsx'
+import { supabase } from '../lib/supabaseClient.ts'
 
 type LocationState = {
   published?: boolean
@@ -39,6 +42,12 @@ export default function CreationPage() {
   const [publishOpen, setPublishOpen] = useState(false)
   const [publishBusy, setPublishBusy] = useState(false)
   const [publishError, setPublishError] = useState<string | null>(null)
+  const [likeCount, setLikeCount] = useState(0)
+  const [commentCount, setCommentCount] = useState(0)
+  const [saveCount, setSaveCount] = useState(0)
+  const [liked, setLiked] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [commentsOpen, setCommentsOpen] = useState(false)
   const navFlash = location.state as LocationState | null
   const publishedNotice = navFlash?.published ? 'Published' : null
   const writerNotice = Boolean(navFlash?.writerPromoted)
@@ -62,6 +71,28 @@ export default function CreationPage() {
       }
       setProblem(null)
       setWork(result.data)
+      if (result.data.status === 'published') {
+        const { data: counts } = await supabase
+          .from('creations')
+          .select('like_count, comment_count, save_count')
+          .eq('id', result.data.id)
+          .maybeSingle()
+        if (active && counts) {
+          setLikeCount(counts.like_count ?? 0)
+          setCommentCount(counts.comment_count ?? 0)
+          setSaveCount(counts.save_count ?? 0)
+        }
+        const session = await supabase.auth.getSession()
+        const uid = session.data.session?.user.id
+        if (active && uid) {
+          const [likeRow, saveRow] = await Promise.all([
+            supabase.from('likes').select('creation_id').eq('user_id', uid).eq('creation_id', result.data.id).maybeSingle(),
+            supabase.from('saves').select('creation_id').eq('user_id', uid).eq('creation_id', result.data.id).maybeSingle(),
+          ])
+          setLiked(Boolean(likeRow.data))
+          setSaved(Boolean(saveRow.data))
+        }
+      }
     })()
     return () => {
       active = false
@@ -196,6 +227,24 @@ export default function CreationPage() {
       ) : (
         <p className="text-muted">No text yet.</p>
       )}
+      {work.status === 'published' ? (
+        <EngagementBar
+          creationId={work.id}
+          likeCount={likeCount}
+          commentCount={commentCount}
+          saveCount={saveCount}
+          liked={liked}
+          saved={saved}
+          onCommentClick={() => setCommentsOpen(true)}
+          onCountsChange={(patch) => {
+            if (patch.likeCount !== undefined) setLikeCount(patch.likeCount)
+            if (patch.commentCount !== undefined) setCommentCount(patch.commentCount)
+            if (patch.saveCount !== undefined) setSaveCount(patch.saveCount)
+            if (patch.liked !== undefined) setLiked(patch.liked)
+            if (patch.saved !== undefined) setSaved(patch.saved)
+          }}
+        />
+      ) : null}
       {work.isOwn ? (
         <div className="flex flex-col gap-2 border-t border-line pt-4">
           {actionError ? <p className="text-sm text-coral">{actionError}</p> : null}
@@ -264,6 +313,9 @@ export default function CreationPage() {
         error={publishError}
         onConfirm={(audience) => void onPublishConfirm(audience)}
       />
+      {commentsOpen ? (
+        <CommentsSheet open creationId={work.id} onClose={() => setCommentsOpen(false)} />
+      ) : null}
       <ConfirmDialog
         open={confirmDelete}
         title="Delete this work permanently?"

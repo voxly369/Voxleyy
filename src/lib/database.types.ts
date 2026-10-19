@@ -872,6 +872,30 @@ export type Database = {
         }
         Relationships: []
       }
+      feed_creations: {
+        Row: {
+          audience: Database['public']['Enums']['audience'] | null
+          author_id: string | null
+          body_text: string | null
+          caption: string | null
+          comment_count: number | null
+          cover_url: string | null
+          created_at: string | null
+          genre: string | null
+          id: string | null
+          language: string | null
+          like_count: number | null
+          media_url: string | null
+          mood: string | null
+          published_at: string | null
+          save_count: number | null
+          title: string | null
+          type: Database['public']['Enums']['creation_type'] | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
     }
     Functions: {
       can_view_creation: { Args: { c: string }; Returns: boolean }
