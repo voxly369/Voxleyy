@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { VerifiedBadge } from '../components/profile/VerifiedBadge.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
+import { ConfirmDialog } from '../components/states/ConfirmDialog.tsx'
 import { ErrorState } from '../components/states/ErrorState.tsx'
 import { ImageWithFallback } from '../components/states/ImageWithFallback.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
@@ -17,6 +18,7 @@ export default function CreationPage() {
   const [problem, setProblem] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const title = work?.title?.trim() || work?.caption?.trim() || 'Work'
   useDocumentTitle(title)
@@ -71,12 +73,9 @@ export default function CreationPage() {
     setAttempt((n) => n + 1)
   }
 
-  async function onDelete() {
+  async function onDeleteConfirmed() {
     if (!work) return
-    const ok = window.confirm(
-      'Delete this work permanently? This cannot be undone. To hide it from readers instead, move it back to draft.',
-    )
-    if (!ok) return
+    setConfirmDelete(false)
     setActionError(null)
     setBusy(true)
     const result = await deleteCreation(work.id)
@@ -119,6 +118,12 @@ export default function CreationPage() {
       {work.isOwn ? (
         <div className="flex flex-col gap-2 border-t border-line pt-4">
           {actionError ? <p className="text-sm text-coral">{actionError}</p> : null}
+          <Link
+            to={`/create/${work.id}`}
+            className={`inline-flex min-h-11 items-center justify-center rounded-md bg-coral px-4 text-base font-semibold text-white ${focusRing}`}
+          >
+            Edit
+          </Link>
           {work.status === 'published' ? (
             <button
               type="button"
@@ -132,7 +137,7 @@ export default function CreationPage() {
           <button
             type="button"
             disabled={busy}
-            onClick={() => void onDelete()}
+            onClick={() => setConfirmDelete(true)}
             className={`min-h-11 rounded-md border border-line px-4 text-base font-medium text-muted ${focusRing}`}
           >
             Delete permanently
@@ -142,6 +147,15 @@ export default function CreationPage() {
           </p>
         </div>
       ) : null}
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete this work permanently?"
+        message="This cannot be undone. To hide it from readers instead, move it back to draft."
+        confirmLabel="Delete permanently"
+        cancelLabel="Keep it"
+        onConfirm={() => void onDeleteConfirmed()}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </article>
   )
 }
