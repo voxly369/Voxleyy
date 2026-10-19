@@ -39,6 +39,7 @@ export type CreationFailure = {
     code: 'invalid' | 'forbidden' | 'not_found' | 'unavailable'
     message: string
     providerCode?: string
+    providerStatus?: number
   }
 }
 

@@ -23,4 +23,4 @@ Loading, Error, and Empty states are mutually exclusive.
 
 The product is in-app only. Do not add sharing to other platforms or downloads.
 
-Do only what the current numbered prompt says. Features not in the current prompt stay scheduled for later. Report any command you skipped. Never delete, move, or overwrite anything in docs/.
+Do only what the current numbered prompt says. Features not in the current prompt stay scheduled for later. Report any command you skipped. Never delete, move, or overwrite anything in docs/ except when a numbered prompt explicitly adds or updates docs/SPEC.md.

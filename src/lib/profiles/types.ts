@@ -4,7 +4,12 @@ export type ProfileErrorCode = 'not_found' | 'unavailable' | 'invalid' | 'self_f
 
 export type ProfileFailure = {
   ok: false
-  error: { code: ProfileErrorCode; message: string }
+  error: {
+    code: ProfileErrorCode
+    message: string
+    providerCode?: string
+    providerStatus?: number
+  }
 }
 
 export type ProfileResult<T> = { ok: true; data: T } | ProfileFailure

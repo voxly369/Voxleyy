@@ -53,4 +53,11 @@ describe('listUserPublished query filter', () => {
     await listUserPublished('author-1', null)
     expect(state.eqCalls.some(([column]) => column === 'audience')).toBe(false)
   })
+
+  it('filters audience to public for a logged-out viewer on someone else profile', async () => {
+    state.viewerId = null
+    const { listUserPublished } = await import('./api.ts')
+    await listUserPublished('author-1', null)
+    expect(state.eqCalls).toContainEqual(['audience', 'public'])
+  })
 })

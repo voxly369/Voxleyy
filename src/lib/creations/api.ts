@@ -34,6 +34,7 @@ import type {
   SaveCreationResult,
   WorkSummary,
 } from './types.ts'
+import { providerFields } from '../supabaseFailure.ts'
 import { validateCreationFields } from './validation.ts'
 
 const AUTHOR_EMBED = `author:profiles_public!creations_author_id_fkey(id, username, display_name, avatar_url, verified)`
@@ -47,11 +48,23 @@ const DETAIL_COLUMNS =
 const EDIT_COLUMNS =
   'id, type, title, body_text, body_json, cover_url, status, audience, updated_at, is_removed, author_id' as const
 
-function fail(code: CreationFailure['error']['code'], message: string, providerCode?: string): CreationFailure {
+function fail(
+  code: CreationFailure['error']['code'],
+  message: string,
+  error?: { code?: string; status?: number },
+): CreationFailure {
   return {
     ok: false,
-    error: { code, message, ...(providerCode ? { providerCode } : {}) },
+    error: { code, message, ...providerFields(error ?? (message ? {} : undefined)) },
   }
+}
+
+function failFromProvider(
+  code: CreationFailure['error']['code'],
+  message: string,
+  error: { code?: string; message?: string; status?: number } | null,
+): CreationFailure {
+  return fail(code, message, error ?? undefined)
 }
 
 function text(value: unknown): string | null {
@@ -109,7 +122,7 @@ async function syncTags(creationId: string, tags: string[]): Promise<CreationFai
     .from('creation_tags')
     .select('tag')
     .eq('creation_id', creationId)
-  if (readError) return fail('unavailable', messageForCreationWriteError(readError))
+  if (readError) return failFromProvider('unavailable', messageForCreationWriteError(readError), readError)
 
   const have = new Set((existing ?? []).map((row) => row.tag))
   const want = new Set(normalized)
@@ -118,11 +131,11 @@ async function syncTags(creationId: string, tags: string[]): Promise<CreationFai
 
   if (toRemove.length > 0) {
     const { error } = await supabase.from('creation_tags').delete().eq('creation_id', creationId).in('tag', toRemove)
-    if (error) return fail('unavailable', messageForCreationWriteError(error))
+    if (error) return failFromProvider('unavailable', messageForCreationWriteError(error), error)
   }
   for (const tag of toAdd) {
     const { error } = await supabase.from('creation_tags').insert({ creation_id: creationId, tag })
-    if (error) return fail('unavailable', messageForCreationWriteError(error))
+    if (error) return failFromProvider('unavailable', messageForCreationWriteError(error), error)
   }
   return null
 }
@@ -154,7 +167,7 @@ export async function createDraft(input: DraftInput): Promise<CreateDraftResult>
     .select(DETAIL_COLUMNS)
     .single()
 
-  if (error || !data) return fail('unavailable', messageForCreationWriteError(error))
+  if (error || !data) return failFromProvider('unavailable', messageForCreationWriteError(error), error)
 
   let tagWarning: CreationFailure | null = null
   if (tags && tags.length > 0) {
@@ -187,7 +200,7 @@ export async function listWorksForAuthor(authorId: string): Promise<CreationResu
     .in('status', ['draft', 'published'])
     .order('created_at', { ascending: false })
 
-  if (error) return fail('unavailable', 'We could not load works. Try again.')
+  if (error) return failFromProvider('unavailable', 'We could not load works. Try again.', error)
   const works = (data ?? []).flatMap((row) => {
     const parsed = parseWork(row as Record<string, unknown>)
     return parsed ? [parsed] : []
@@ -198,7 +211,7 @@ export async function listWorksForAuthor(authorId: string): Promise<CreationResu
 export async function getCreationById(id: string): Promise<CreationResult<CreationDetail>> {
   const userId = await currentUserId()
   const { data, error } = await supabase.from('creations').select(DETAIL_COLUMNS).eq('id', id).maybeSingle()
-  if (error) return fail('unavailable', 'We could not load this work. Try again.')
+  if (error) return failFromProvider('unavailable', 'We could not load this work. Try again.', error)
   if (!data) return fail('not_found', 'This work is not available.')
 
   const work = parseWork(data as Record<string, unknown>)
@@ -227,7 +240,7 @@ export async function unpublishCreation(id: string): Promise<CreationResult<true
     .eq('id', id)
     .eq('author_id', userId)
 
-  if (error) return fail('unavailable', messageForCreationWriteError(error))
+  if (error) return failFromProvider('unavailable', messageForCreationWriteError(error), error)
   return { ok: true, data: true }
 }
 
@@ -236,7 +249,7 @@ export async function deleteCreation(id: string): Promise<CreationResult<true>> 
   if (!userId) return fail('forbidden', 'Sign in again to delete this work.')
 
   const { data, error } = await supabase.from('creations').delete().eq('id', id).eq('author_id', userId).select('id')
-  if (error) return fail('unavailable', messageForCreationDeleteError(error))
+  if (error) return failFromProvider('unavailable', messageForCreationDeleteError(error), error)
   if (!data || data.length === 0) return fail('forbidden', messageForCreationDeleteError(null))
   return { ok: true, data: true }
 }
@@ -263,7 +276,7 @@ export async function updateDraft(id: string, input: DraftInput): Promise<Creati
     .update(patch)
     .eq('id', id)
     .eq('author_id', userId)
-  if (updateError) return fail('unavailable', messageForCreationWriteError(updateError))
+  if (updateError) return failFromProvider('unavailable', messageForCreationWriteError(updateError), updateError)
 
   if (tags) {
     const tagError = await syncTags(id, tags)
@@ -275,7 +288,7 @@ export async function updateDraft(id: string, input: DraftInput): Promise<Creati
 
 async function loadTags(creationId: string): Promise<CreationResult<string[]>> {
   const { data, error } = await supabase.from('creation_tags').select('tag').eq('creation_id', creationId)
-  if (error) return fail('unavailable', messageForCreationWriteError(error))
+  if (error) return failFromProvider('unavailable', messageForCreationWriteError(error), error)
   return { ok: true, data: (data ?? []).map((row) => row.tag) }
 }
 
@@ -289,7 +302,7 @@ export async function getEditableCreation(id: string): Promise<CreationResult<Ed
     .eq('id', id)
     .eq('author_id', userId)
     .maybeSingle()
-  if (error) return fail('unavailable', 'We could not load this draft. Try again.')
+  if (error) return failFromProvider('unavailable', 'We could not load this draft. Try again.', error)
   if (!data) return fail('not_found', 'This draft is not available.')
 
   const tags = await loadTags(id)
@@ -345,7 +358,7 @@ export async function saveCreationFields(input: {
   }
 
   const { data, error } = await query.select('updated_at').maybeSingle()
-  if (error) return fail('unavailable', messageForCreationWriteError(error))
+  if (error) return failFromProvider('unavailable', messageForCreationWriteError(error), error)
   if (!data) {
     const remote = await supabase.from('creations').select('updated_at').eq('id', input.id).maybeSingle()
     return {
@@ -365,7 +378,7 @@ export async function saveCreationFields(input: {
 
 export async function fetchProfileRole(userId: string): Promise<CreationResult<UserRole>> {
   const { data, error } = await supabase.from('profiles_public').select('role').eq('id', userId).maybeSingle()
-  if (error) return fail('unavailable', 'We could not load your profile. Try again.')
+  if (error) return failFromProvider('unavailable', 'We could not load your profile. Try again.', error)
   if (!data?.role) return fail('not_found', 'Profile not found.')
   const role = data.role
   if (role !== 'reader' && role !== 'writer' && role !== 'founder') return fail('unavailable', 'We could not load your profile. Try again.')
@@ -392,7 +405,7 @@ export async function publishCreation(input: {
   }
 
   const { data, error } = await query.select('updated_at, audience, status').maybeSingle()
-  if (error) return fail('unavailable', messageForPublishError(error), error.code)
+  if (error) return failFromProvider('unavailable', messageForPublishError(error), error)
   if (!data) {
     const remote = await supabase
       .from('creations')
@@ -459,7 +472,7 @@ export async function listUserPublished(
   if (filter) query = query.or(filter)
 
   const { data, error } = await query
-  if (error) return fail('unavailable', 'We could not load works. Try again.')
+  if (error) return failFromProvider('unavailable', 'We could not load works. Try again.', error)
 
   const mapped = (data ?? []).flatMap((row) => {
     const publishedAt = text(row.published_at)
@@ -506,7 +519,7 @@ export async function listMyDraftsPage(
   if (filter) query = query.or(filter)
 
   const { data, error } = await query
-  if (error) return fail('unavailable', 'We could not load your drafts. Try again.')
+  if (error) return failFromProvider('unavailable', 'We could not load your drafts. Try again.', error)
 
   const mapped = (data ?? []).map((row) => ({
     updatedAt: row.updated_at,

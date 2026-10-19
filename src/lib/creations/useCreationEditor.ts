@@ -31,12 +31,20 @@ type UseCreationEditorArgs = {
 
 function isPermanentSaveFailure(result: CreationFailure): boolean {
   if (result.error.code === 'invalid' || result.error.code === 'forbidden') return true
-  return !isTransientSaveError({ message: result.error.message, code: result.error.providerCode })
+  return !isTransientSaveError({
+    message: result.error.message,
+    code: result.error.providerCode,
+    status: result.error.providerStatus,
+  })
 }
 
 function failureMessage(result: CreationFailure): string {
   return saveErrorMessage(
-    { message: result.error.message, code: result.error.providerCode },
+    {
+      message: result.error.message,
+      code: result.error.providerCode,
+      status: result.error.providerStatus,
+    },
     result.error.message,
   )
 }

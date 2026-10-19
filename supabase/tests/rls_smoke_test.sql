@@ -1817,6 +1817,195 @@ begin
   perform public.founder_set_user_status(v_a, 'active', 'restore banned', null);
 end $publish$;
 
+do $feed_engagement$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_founder uuid;
+  v_public uuid;
+  v_unlisted uuid;
+  v_suspended_post uuid;
+  v_comment_target uuid;
+  v_comment_id uuid;
+  n integer;
+  i integer;
+  v_msg text;
+begin
+  select reader_a, reader_b, founder, public_id into v_a, v_b, v_founder, v_public from rls_ids;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform set_config('search_path', 'pg_temp, public, auth', true);
+
+  select count(*) into n from public.feed_creations where id = v_public;
+  perform pg_temp.record('feed_creations includes active author public post', n = 1, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_b, 'poem', 'Unlisted feed', 'unlisted', 'published', 'No feed')
+  returning id into v_unlisted;
+
+  select count(*) into n from public.feed_creations where id = v_unlisted;
+  perform pg_temp.record('unlisted never in feed_creations', n = 0, 'rows=' || n);
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_b, 'poem', 'Suspend me', 'public', 'published', 'Before suspend')
+  returning id into v_suspended_post;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+  perform public.founder_set_user_status(v_b, 'suspended', 'feed test', now() + interval '1 day');
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+
+  select count(*) into n from public.feed_creations where author_id = v_b;
+  perform pg_temp.record('suspended author hidden from feed_creations', n = 0, 'rows=' || n);
+
+  select count(*) into n from public.creations where id = v_suspended_post;
+  perform pg_temp.record('suspended author work hidden from other users via creations_select', n = 0, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select count(*) into n from public.creations where id = v_suspended_post;
+  perform pg_temp.record('suspended author can still read own published work', n = 1, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  select count(*) into n from public.creations where id = v_suspended_post;
+  perform pg_temp.record('founder can read suspended author published work', n = 1, 'rows=' || n);
+
+  perform public.founder_set_user_status(v_b, 'active', 'feed restore', null);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  insert into public.blocks (blocker_id, blocked_id) values (v_a, v_b);
+  select count(*) into n from public.feed_creations where author_id = v_b;
+  perform pg_temp.record('blocked author hidden from feed_creations', n = 0, 'rows=' || n);
+  delete from public.blocks where blocker_id = v_a and blocked_id = v_b;
+
+  begin
+    execute 'set local role anon';
+    select count(*) into n from public.feed_creations;
+    perform pg_temp.record('anon cannot read feed_creations', false, 'select succeeded rows=' || n);
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('anon cannot read feed_creations', true, sqlerrm);
+    when others then
+      perform pg_temp.record('anon cannot read feed_creations', true, sqlstate || ' ' || sqlerrm);
+  end;
+  execute 'set local role authenticated';
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select id into v_comment_target from public.creations where id = v_public;
+
+  begin
+    insert into public.comments (creation_id, author_id, body) values (v_comment_target, v_a, '   ');
+    perform pg_temp.record('whitespace-only comment rejected', false, 'insert succeeded');
+  exception
+    when others then
+      get stacked diagnostics v_msg = message_text;
+      perform pg_temp.record(
+        'whitespace-only comment rejected',
+        v_msg like '%empty%',
+        v_msg
+      );
+  end;
+
+  insert into public.comments (creation_id, author_id, body)
+  values (v_comment_target, v_a, 'Will lose access')
+  returning id into v_comment_id;
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  update public.creations set audience = 'private' where id = v_comment_target and author_id = v_b;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    update public.comments set body = 'Edited after lockout' where id = v_comment_id and author_id = v_a;
+    get diagnostics n = row_count;
+    perform pg_temp.record('user who cannot view creation cannot edit their comment', n = 0, 'rows=' || n);
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('user who cannot view creation cannot edit their comment', true, sqlerrm);
+    when others then
+      perform pg_temp.record('user who cannot view creation cannot edit their comment', false, sqlstate || ' ' || sqlerrm);
+  end;
+
+  update public.creations set audience = 'public' where id = v_comment_target and author_id = v_b;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_a, 'suspended', 'engagement block', now() + interval '1 day');
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+
+  begin
+    insert into public.likes (user_id, creation_id) values (v_a, v_comment_target);
+    perform pg_temp.record('suspended user cannot like', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('suspended user cannot like', true, sqlerrm);
+  end;
+
+  begin
+    insert into public.saves (user_id, creation_id) values (v_a, v_comment_target);
+    perform pg_temp.record('suspended user cannot save', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('suspended user cannot save', true, sqlerrm);
+  end;
+
+  begin
+    insert into public.comments (creation_id, author_id, body) values (v_comment_target, v_a, 'Suspended comment');
+    perform pg_temp.record('suspended user cannot comment', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('suspended user cannot comment', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_a, 'active', 'engagement restore', null);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  for i in 1..30 loop
+    insert into public.comments (creation_id, author_id, body)
+    values (v_comment_target, v_b, 'Rate comment ' || i::text);
+  end loop;
+
+  select count(*) into n
+  from public.comments
+  where author_id = v_b and created_at > now() - interval '10 minutes';
+  perform pg_temp.record('comment rate limit accepts the 30th in ten minutes', n >= 30, 'count=' || n);
+
+  begin
+    insert into public.comments (creation_id, author_id, body)
+    values (v_comment_target, v_b, 'Rate comment 31');
+    perform pg_temp.record('comment rate limit rejects the 31st in ten minutes', false, 'insert succeeded');
+  exception
+    when others then
+      get stacked diagnostics v_msg = message_text;
+      perform pg_temp.record(
+        'comment rate limit rejects the 31st in ten minutes',
+        v_msg like '%too fast%',
+        v_msg
+      );
+  end;
+end $feed_engagement$;
+
 do $$
 declare
   n integer;

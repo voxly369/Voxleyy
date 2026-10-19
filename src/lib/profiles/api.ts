@@ -1,5 +1,6 @@
 import type { UserRole } from '../auth/profile.ts'
 import { supabase } from '../supabaseClient.ts'
+import { providerFields } from '../supabaseFailure.ts'
 import { FOLLOW_PAGE_SIZE, followCursorFilter, isFollowCursor, nextFollowCursor, type FollowCursor } from './cursor.ts'
 import { bioSchema, displayNameSchema } from './schemas.ts'
 import type {
@@ -20,8 +21,12 @@ const LIST_PROFILE_COLUMNS = 'id, username, display_name, avatar_url, verified'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,30}$/
 
-function fail(code: ProfileFailure['error']['code'], message: string): ProfileFailure {
-  return { ok: false, error: { code, message } }
+function fail(
+  code: ProfileFailure['error']['code'],
+  message: string,
+  error?: { code?: string; status?: number },
+): ProfileFailure {
+  return { ok: false, error: { code, message, ...providerFields(error) } }
 }
 
 function text(value: unknown): string | null {
@@ -99,7 +104,7 @@ export async function getProfileByUsername(username: string): Promise<ProfileRes
     .eq('username', normalized)
     .maybeSingle()
 
-  if (error) return fail('unavailable', 'We could not load this profile. Try again.')
+  if (error) return fail('unavailable', 'We could not load this profile. Try again.', error)
   const profile = parsePublicProfile(data)
   if (!profile) return fail('not_found', 'This profile does not exist.')
   return { ok: true, data: profile }
@@ -170,7 +175,7 @@ export async function updateOwnProfile(fields: ProfileUpdate): Promise<ProfileRe
     .eq('id', userId)
     .maybeSingle()
 
-  if (error || !data) return fail('unavailable', 'We could not save your profile. Try again.')
+  if (error || !data) return fail('unavailable', 'We could not save your profile. Try again.', error ?? undefined)
   const profile = parsePublicProfile(data)
   if (!profile) return fail('unavailable', 'We could not save your profile. Try again.')
   return { ok: true, data: profile }
@@ -185,7 +190,7 @@ export async function followUser(id: string): Promise<ProfileResult<true>> {
   if (!error) return { ok: true, data: true }
   if (error.code === '23505') return { ok: true, data: true }
   if (error.code === '23514') return fail('self_follow', 'You cannot follow yourself.')
-  return fail('forbidden', 'You cannot follow this person.')
+  return fail('forbidden', 'You cannot follow this person.', error)
 }
 
 export async function unfollowUser(id: string): Promise<ProfileResult<true>> {
@@ -193,7 +198,7 @@ export async function unfollowUser(id: string): Promise<ProfileResult<true>> {
   if (!userId) return fail('forbidden', 'Sign in again to unfollow this person.')
 
   const { error } = await supabase.from('follows').delete().eq('follower_id', userId).eq('followee_id', id)
-  if (error) return fail('unavailable', 'We could not unfollow this person. Try again.')
+  if (error) return fail('unavailable', 'We could not unfollow this person. Try again.', error)
   return { ok: true, data: true }
 }
 
@@ -209,14 +214,14 @@ export async function isFollowing(id: string): Promise<ProfileResult<boolean>> {
     .eq('followee_id', id)
     .maybeSingle()
 
-  if (error) return fail('unavailable', 'We could not check this follow. Try again.')
+  if (error) return fail('unavailable', 'We could not check this follow. Try again.', error)
   return { ok: true, data: Boolean(data) }
 }
 
 async function followingSet(ids: string[], userId: string | null): Promise<ProfileResult<Set<string>>> {
   if (!userId || ids.length === 0) return { ok: true, data: new Set() }
   const { data, error } = await supabase.from('follows').select('followee_id').eq('follower_id', userId).in('followee_id', ids)
-  if (error) return fail('unavailable', 'We could not load follows. Try again.')
+  if (error) return fail('unavailable', 'We could not load follows. Try again.', error)
   return { ok: true, data: new Set((data ?? []).map((row) => row.followee_id)) }
 }
 
@@ -241,7 +246,7 @@ async function listFollows(
   if (filter) query = query.or(filter)
 
   const { data, error } = await query
-  if (error) return fail('unavailable', 'We could not load this list. Try again.')
+  if (error) return fail('unavailable', 'We could not load this list. Try again.', error)
 
   const rows = (data ?? []).map((row) => {
     const record = row as Record<string, unknown>

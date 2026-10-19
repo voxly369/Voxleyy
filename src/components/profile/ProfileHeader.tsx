@@ -64,12 +64,20 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
           <CountLink count={profile.creationCount} label="works" />
         </div>
         {isOwn ? (
-          <Link
-            to="/settings/profile"
-            className={`inline-flex min-h-11 items-center self-start rounded-2xl border border-line bg-surface px-4 text-base font-semibold text-ink ${focusRing}`}
-          >
-            Edit profile
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to="/settings/profile"
+              className={`inline-flex min-h-11 items-center rounded-2xl border border-line bg-surface px-4 text-base font-semibold text-ink ${focusRing}`}
+            >
+              Edit profile
+            </Link>
+            <Link
+              to="/library"
+              className={`inline-flex min-h-11 items-center rounded-2xl border border-line bg-surface px-4 text-base font-semibold text-ink ${focusRing}`}
+            >
+              Library
+            </Link>
+          </div>
         ) : (
           <FollowButton
             userId={profile.id}
