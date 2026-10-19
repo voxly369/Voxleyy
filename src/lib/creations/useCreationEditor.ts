@@ -13,7 +13,7 @@ import { bodyJsonFromText, hasEditorContent } from './bodyDocument.ts'
 import { createDraft, getEditableCreation, saveCreationFields } from './api.ts'
 import type { CreationType } from './creationTypes.ts'
 import type { Audience, PublishStatus } from './types.ts'
-import { isTransientSaveError } from './saveErrors.ts'
+import { isTransientSaveError, saveErrorMessage } from './saveErrors.ts'
 import type { CreationFailure } from './types.ts'
 
 const DEBOUNCE_MS = 1500
@@ -31,7 +31,14 @@ type UseCreationEditorArgs = {
 
 function isPermanentSaveFailure(result: CreationFailure): boolean {
   if (result.error.code === 'invalid' || result.error.code === 'forbidden') return true
-  return !isTransientSaveError({ message: result.error.message })
+  return !isTransientSaveError({ message: result.error.message, code: result.error.providerCode })
+}
+
+function failureMessage(result: CreationFailure): string {
+  return saveErrorMessage(
+    { message: result.error.message, code: result.error.providerCode },
+    result.error.message,
+  )
 }
 
 export function useCreationEditor({ creationId, creationType }: UseCreationEditorArgs) {
@@ -149,7 +156,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
         })
         if (!created.ok) {
           if (isPermanentSaveFailure(created)) {
-            setSaveMessage(created.error.message)
+            setSaveMessage(failureMessage(created))
             dispatchAutosave({ type: 'save_permanent_error' })
           } else {
             dispatchAutosave({ type: 'save_network_error' })
@@ -185,7 +192,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
       if (!result.ok) {
         if ('conflict' in result) return
         if (isPermanentSaveFailure(result)) {
-          setSaveMessage(result.error.message)
+          setSaveMessage(failureMessage(result))
           dispatchAutosave({ type: 'save_permanent_error' })
         } else {
           dispatchAutosave({ type: 'save_network_error' })

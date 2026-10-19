@@ -4,10 +4,22 @@ export type SaveErrorLike = {
   status?: number
 }
 
+export const SIGN_IN_AGAIN_SAVE_MESSAGE = 'Sign in again to keep saving.'
+
+const AUTH_SESSION_CODES = new Set(['PGRST301', 'PGRST302', 'PGRST303'])
+
+export function isAuthSessionSaveError(error: SaveErrorLike | null | undefined): boolean {
+  const code = error?.code ?? ''
+  return AUTH_SESSION_CODES.has(code)
+}
+
 export function isTransientSaveError(error: SaveErrorLike | null | undefined): boolean {
   if (!error) return true
   const message = (error.message ?? '').toLowerCase()
   const code = error.code ?? ''
+
+  if (isAuthSessionSaveError(error)) return false
+  if (code.startsWith('PGRST')) return false
 
   if (code === '23514' || code === '23505' || code === '42501' || code === 'P0001') return false
   if (message.includes('too many tags') || message.includes('too fast') || message.includes('too long')) {
@@ -27,10 +39,13 @@ export function isTransientSaveError(error: SaveErrorLike | null | undefined): b
     return true
   }
 
-  return code.startsWith('PGRST') || code === 'ECONNRESET' || message.includes('failed to fetch')
+  if (code === 'ECONNRESET' || message.includes('failed to fetch')) return true
+
+  return false
 }
 
 export function saveErrorMessage(error: SaveErrorLike | null | undefined, fallback: string): string {
+  if (isAuthSessionSaveError(error)) return SIGN_IN_AGAIN_SAVE_MESSAGE
   if (!error?.message) return fallback
   return error.message
 }
