@@ -27,7 +27,7 @@ const headingSchema = z
   .object({
     type: z.literal('heading'),
     level: z.union([z.literal(2), z.literal(3)]),
-    content: z.array(inlineTextSchema).optional(),
+    content: z.array(inlineSchema).optional(),
   })
   .strict()
 
@@ -91,8 +91,23 @@ function inlineToPlain(inlines: RichInline[]): string {
     .join('')
 }
 
+export function normalizePlainTextForRich(text: string): string {
+  const unified = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  let out = ''
+  for (const char of unified) {
+    if (char === '\n' || char === '\t') {
+      out += char
+      continue
+    }
+    const code = char.charCodeAt(0)
+    if (code < 32 || (code >= 127 && code <= 159)) continue
+    out += char
+  }
+  return out
+}
+
 export function plainToRich(text: string): RichBodyDocument {
-  const paragraphs = text.split(/\n\n+/)
+  const paragraphs = normalizePlainTextForRich(text).split(/\n\n+/)
   const content: RichBlock[] = paragraphs.map((para) => {
     const parts = para.split('\n')
     const inlines: RichInline[] = []
@@ -122,7 +137,10 @@ export function docToEditorJson(doc: RichBodyDocument): EditorDoc {
         return {
           type: 'heading',
           attrs: { level: block.level },
-          content: (block.content ?? []).map(editorInlineFromRich),
+          content: (block.content ?? []).map((inline) => {
+            if (inline.type === 'hardBreak') return { type: 'hardBreak' }
+            return editorInlineFromRich(inline)
+          }),
         }
       }
       return {
@@ -158,7 +176,7 @@ export function editorJsonToDoc(value: unknown): RichBodyDocument | null {
     if (node.type === 'heading') {
       const level = (node.attrs as { level?: number } | undefined)?.level
       if (level !== 2 && level !== 3) return null
-      const inlines = parseEditorTextInlines(node.content)
+      const inlines = parseEditorInlines(node.content)
       if (inlines === null) return null
       content.push({ type: 'heading', level, content: inlines.length ? inlines : undefined })
       continue
@@ -181,23 +199,20 @@ function parseEditorInlines(nodes: unknown): RichInline[] | null {
     if ((node as EditorNode).type === 'text' && typeof (node as EditorNode).text === 'string') {
       const marks = parseEditorMarks((node as EditorNode).marks)
       if (marks === null) return null
-      out.push({ type: 'text', text: (node as EditorNode).text as string, ...(marks.length ? { marks } : {}) })
+      const text = (node as EditorNode).text as string
+      const markList = marks.length ? marks : undefined
+      if (text.includes('\n')) {
+        const parts = text.split('\n')
+        parts.forEach((part, index) => {
+          if (part) out.push({ type: 'text', text: part, ...(markList ? { marks: markList } : {}) })
+          if (index < parts.length - 1) out.push({ type: 'hardBreak' })
+        })
+      } else {
+        out.push({ type: 'text', text, ...(markList ? { marks: markList } : {}) })
+      }
       continue
     }
     return null
-  }
-  return out
-}
-
-function parseEditorTextInlines(nodes: unknown): RichInlineText[] | null {
-  if (!Array.isArray(nodes)) return []
-  const out: RichInlineText[] = []
-  for (const node of nodes) {
-    if (!node || typeof node !== 'object' || (node as EditorNode).type !== 'text') return null
-    if (typeof (node as EditorNode).text !== 'string') return null
-    const marks = parseEditorMarks((node as EditorNode).marks)
-    if (marks === null) return null
-    out.push({ type: 'text', text: (node as EditorNode).text as string, ...(marks.length ? { marks } : {}) })
   }
   return out
 }

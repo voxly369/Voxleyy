@@ -10,6 +10,7 @@ type LazyRichTextEditorProps = {
   document: RichBodyDocument
   literaryLineBreaks: boolean
   onChange: (doc: RichBodyDocument, plainText: string) => void
+  onStructureFailure?: () => void
   onBlur: () => void
 }
 

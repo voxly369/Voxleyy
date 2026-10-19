@@ -24,3 +24,15 @@ Loading, Error, and Empty states are mutually exclusive.
 The product is in-app only. Do not add sharing to other platforms or downloads.
 
 Do only what the current numbered prompt says. Features not in the current prompt stay scheduled for later. Report any command you skipped. Never delete, move, or overwrite anything in docs/ except when a numbered prompt explicitly adds or updates docs/SPEC.md.
+
+Every screen must work and be checked at 375, 768, 1024 and 1440 px, mobile-first, with the desktop sidebar layout from 1024 px up and reading text limited to about 65 characters per line.
+
+Every dialog or sheet uses the shared Modal / useModal stack (focus trap, inert background, scroll lock, Escape, focus restore).
+
+Never nest an interactive element inside a link or button.
+
+User content is rendered only as React text nodes, never as HTML strings (no dangerouslySetInnerHTML or innerHTML).
+
+Any feature that stores structured content must have a zod schema, a size limit, and a test that every editor output shape is accepted by that schema.
+
+Final reports must list every requested item as DONE, NOT DONE, or PARTIAL with an honest reason. Do not mark DONE when any part was skipped or only partly implemented.
