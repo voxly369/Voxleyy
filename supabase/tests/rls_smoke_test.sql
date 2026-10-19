@@ -1702,25 +1702,30 @@ begin
   execute 'set local role authenticated';
   perform set_config('search_path', 'pg_temp, public, auth', true);
 
-  insert into public.creations (author_id, type, title, audience, status, body_text)
-  values (v_b, 'journal', 'Invisible draft', 'private', 'draft', 'Draft only')
-  returning id into v_draft;
-
+  select draft_id, private_id into v_draft, v_unlisted from rls_ids;
   perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
   select count(*) into n from public.creations where id = v_draft;
   perform pg_temp.record('draft stays invisible to another user', n = 0, 'rows=' || n);
-
-  insert into public.creations (author_id, type, title, audience, status, body_text)
-  values (v_b, 'poem', 'Private published', 'private', 'published', 'Secret')
-  returning id into v_draft;
-
-  perform set_config('request.jwt.claim.sub', v_a::text, true);
-  select count(*) into n from public.creations where id = v_draft;
+  select count(*) into n from public.creations where id = v_unlisted;
   perform pg_temp.record('published with audience private is invisible to another user', n = 0, 'rows=' || n);
 
+  execute format('set local role %I', session_user);
   insert into public.creations (author_id, type, title, audience, status, body_text)
   values (v_b, 'poem', 'Unlisted link', 'unlisted', 'published', 'Hidden feed')
   returning id into v_unlisted;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
 
   perform set_config('request.jwt.claim.sub', v_a::text, true);
   select count(*) into n from public.creations where id = v_unlisted;
@@ -1735,17 +1740,44 @@ begin
   get diagnostics n = row_count;
   perform pg_temp.record('cannot publish someone else''s creation', n = 0, 'rows=' || n);
 
-  update public.creations set status = 'removed' where id = v_unlisted and author_id = v_b;
-  get diagnostics n = row_count;
-  perform pg_temp.record('cannot set status to removed', n = 0, 'rows=' || n);
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+  begin
+    update public.creations set status = 'removed' where id = v_unlisted and author_id = v_b;
+    get diagnostics n = row_count;
+    perform pg_temp.record('cannot set status to removed', n = 0, 'rows=' || n);
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('cannot set status to removed', true, sqlerrm);
+    when others then
+      perform pg_temp.record('cannot set status to removed', false, sqlstate || ' ' || sqlerrm);
+  end;
 
-  update public.creations set published_at = now() where id = v_unlisted and author_id = v_b;
-  get diagnostics n = row_count;
-  perform pg_temp.record('cannot set published_at', n = 0, 'rows=' || n);
+  begin
+    update public.creations set published_at = now() where id = v_unlisted and author_id = v_b;
+    get diagnostics n = row_count;
+    perform pg_temp.record('cannot set published_at', n = 0, 'rows=' || n);
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('cannot set published_at', true, sqlerrm);
+    when others then
+      perform pg_temp.record('cannot set published_at', false, sqlstate || ' ' || sqlerrm);
+  end;
 
-  update public.creations set is_removed = true where id = v_unlisted and author_id = v_b;
-  get diagnostics n = row_count;
-  perform pg_temp.record('cannot set is_removed', n = 0, 'rows=' || n);
+  begin
+    update public.creations set is_removed = true where id = v_unlisted and author_id = v_b;
+    get diagnostics n = row_count;
+    perform pg_temp.record('cannot set is_removed', n = 0, 'rows=' || n);
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('cannot set is_removed', true, sqlerrm);
+    when others then
+      perform pg_temp.record('cannot set is_removed', false, sqlstate || ' ' || sqlerrm);
+  end;
 
   perform set_config('request.jwt.claim.sub', v_founder::text, true);
   perform set_config(
