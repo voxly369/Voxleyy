@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { focusRing } from '../shell/navItems.ts'
 import { AUDIENCE_OPTIONS } from '../../lib/creations/audienceOptions.ts'
 import { publishContentStats, validatePublishContent } from '../../lib/creations/publishValidation.ts'
+import type { QuoteCardStyle } from '../../lib/creations/bodyDocument.ts'
 import type { Audience } from '../../lib/creations/types.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { creationTypeLabel } from '../../lib/creations/creationTypeLabel.ts'
@@ -11,9 +12,11 @@ type PublishSheetProps = {
   onClose: () => void
   title: string
   body: string
+  caption: string
   tags: string[]
   coverUrl: string | null
   creationType: string
+  quoteStyle?: QuoteCardStyle
   initialAudience: Audience
   mode: 'publish' | 'audience'
   busy: boolean
@@ -26,9 +29,11 @@ export function PublishSheet({
   onClose,
   title,
   body,
+  caption,
   tags,
   coverUrl,
   creationType,
+  quoteStyle,
   initialAudience,
   mode,
   busy,
@@ -60,7 +65,7 @@ export function PublishSheet({
 
   if (!open) return null
 
-  const check = validatePublishContent({ title, body })
+  const check = validatePublishContent({ title, body, caption, creationType, quoteStyle })
   const stats = publishContentStats(body)
   const canSubmit = check.ok && !busy
   const heading = mode === 'publish' ? 'Publish' : 'Update audience'

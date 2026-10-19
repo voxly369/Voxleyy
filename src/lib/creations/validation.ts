@@ -3,6 +3,7 @@ import {
   CREATION_TAG_PATTERN,
   MAX_BODY_JSON_OCTETS,
   MAX_BODY_TEXT_OCTETS,
+  MAX_CAPTION_CHARS,
   MAX_GENRE_MOOD_CHARS,
   MAX_LANGUAGE_CHARS,
   MAX_TAGS_PER_CREATION,
@@ -10,6 +11,7 @@ import {
 
 export type CreationFieldInput = {
   title?: string | null
+  caption?: string | null
   body_text?: string | null
   body_json?: unknown
   genre?: string | null
@@ -32,6 +34,9 @@ function bodyJsonOctets(value: unknown): number {
 export function validateCreationFields(input: CreationFieldInput): ValidationIssue | null {
   if (input.title != null && input.title.length > MAX_TITLE_CHARS) {
     return { code: 'too_long', message: 'Title is too long.' }
+  }
+  if (input.caption != null && input.caption.length > MAX_CAPTION_CHARS) {
+    return { code: 'too_long', message: 'Caption is too long.' }
   }
   if (input.body_text != null && octetLength(input.body_text) > MAX_BODY_TEXT_OCTETS) {
     return { code: 'too_long', message: 'That text is too long. Shorten it and try again.' }

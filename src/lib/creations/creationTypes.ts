@@ -2,10 +2,13 @@ import type { Database } from '../database.types.ts'
 
 export type CreationType = Database['public']['Enums']['creation_type']
 
+export type CreationTypeGroupId = 'video_voice' | 'written' | 'collab'
+
 export type CreationTypeMeta = {
   type: CreationType
   name: string
   description: string
+  group: CreationTypeGroupId
   /** Spec §17 step 2: core feed and creation (Quote Card + Written Post flows). */
   phase1: boolean
   /** Fraunces writing surface in the editor. */
@@ -58,6 +61,26 @@ const literarySet = new Set<CreationType>([
   'quote_card',
 ])
 
+const groupByType: Record<CreationType, CreationTypeGroupId> = {
+  recitation_video: 'video_voice',
+  voice_clip: 'video_voice',
+  podcast: 'video_voice',
+  written_post: 'written',
+  poem: 'written',
+  story: 'written',
+  essay: 'written',
+  article: 'written',
+  lyric: 'written',
+  letter: 'written',
+  script: 'written',
+  journal: 'written',
+  quote_card: 'written',
+  book: 'written',
+  course: 'written',
+  collab: 'collab',
+  event: 'collab',
+}
+
 const labels: Record<CreationType, { name: string; description: string }> = {
   written_post: {
     name: 'Written post',
@@ -91,9 +114,20 @@ export const CREATION_TYPE_CARDS: CreationTypeMeta[] = allTypes.map((type) => ({
   type,
   name: labels[type].name,
   description: labels[type].description,
+  group: groupByType[type],
   phase1: phase1Set.has(type),
   literarySurface: literarySet.has(type),
 }))
+
+export const CREATION_TYPE_GROUPS: { id: CreationTypeGroupId; label: string }[] = [
+  { id: 'video_voice', label: 'Video and voice' },
+  { id: 'written', label: 'Written' },
+  { id: 'collab', label: 'Collab' },
+]
+
+export function creationTypesInGroup(group: CreationTypeGroupId): CreationTypeMeta[] {
+  return CREATION_TYPE_CARDS.filter((card) => card.group === group)
+}
 
 export function parseCreationType(value: string): CreationType | null {
   const normalized = value.trim() as CreationType

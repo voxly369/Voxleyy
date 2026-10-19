@@ -1,5 +1,4 @@
-/** When viewing someone else's profile, only public published works may appear in lists. */
-export function shouldLimitProfileWorksToPublic(profileUserId: string, viewerUserId: string | null): boolean {
-  if (!viewerUserId) return true
-  return viewerUserId !== profileUserId
+/** Posts grid and listUserPublished always show published public work only (spec §6). */
+export function shouldLimitProfileWorksToPublic(_profileUserId: string, _viewerUserId: string | null): boolean {
+  return true
 }
