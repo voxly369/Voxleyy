@@ -41,21 +41,14 @@ describe('listUserPublished query filter', () => {
     vi.resetModules()
   })
 
-  it('filters audience to public when viewing someone else profile', async () => {
+  it('always filters audience to public', async () => {
     const { listUserPublished } = await import('./api.ts')
     await listUserPublished('author-1', null)
     expect(state.eqCalls).toContainEqual(['audience', 'public'])
   })
 
-  it('does not filter audience on own profile', async () => {
+  it('filters audience to public on own profile too', async () => {
     state.viewerId = 'author-1'
-    const { listUserPublished } = await import('./api.ts')
-    await listUserPublished('author-1', null)
-    expect(state.eqCalls.some(([column]) => column === 'audience')).toBe(false)
-  })
-
-  it('filters audience to public for a logged-out viewer on someone else profile', async () => {
-    state.viewerId = null
     const { listUserPublished } = await import('./api.ts')
     await listUserPublished('author-1', null)
     expect(state.eqCalls).toContainEqual(['audience', 'public'])

@@ -129,7 +129,10 @@ describe('createDraft tag failure recovery', () => {
       id: created.data.id,
       expectedUpdatedAt: created.data.updatedAt,
       title: 'Draft',
+      caption: '',
       bodyText: 'Body v2',
+      bodyJson: { version: 1, format: 'plain', text: 'Body v2' },
+      audience: 'private',
       tags: ['one'],
     })
     expect(updated.ok).toBe(true)

@@ -1,3 +1,5 @@
+export const MAX_CAPTION_CHARS = 2200
+export const MAX_QUOTE_LINE_CHARS = 400
 export const MAX_BODY_TEXT_OCTETS = 500_000
 export const MAX_BODY_JSON_OCTETS = 1_000_000
 export const MAX_GENRE_MOOD_CHARS = 60

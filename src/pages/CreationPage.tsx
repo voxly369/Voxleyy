@@ -304,6 +304,7 @@ export default function CreationPage() {
         }}
         title={work.title ?? ''}
         body={work.bodyText ?? ''}
+        caption={work.caption ?? ''}
         tags={[]}
         coverUrl={work.coverUrl}
         creationType={work.type}

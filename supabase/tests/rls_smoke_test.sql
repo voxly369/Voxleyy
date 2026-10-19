@@ -2402,6 +2402,72 @@ begin
   perform public.founder_set_user_status(v_other, 'active', 'restore comment visibility', null);
 end $feed_scale$;
 
+do $public_post_count$
+declare
+  v_user uuid := gen_random_uuid();
+  v_work uuid;
+  v_count integer;
+  v_role public.user_role;
+begin
+  reset role;
+  perform pg_temp.create_test_user(v_user, 'public.count@voxly.test', now());
+
+  perform set_config('request.jwt.claim.sub', v_user::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_user::text, 'role', 'authenticated', 'email', 'public.count@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_user, 'poem', 'Public count', 'public', 'draft', 'Line')
+  returning id into v_work;
+
+  update public.creations set status = 'published', audience = 'public' where id = v_work;
+  select creation_count into v_count from public.profiles where id = v_user;
+  perform pg_temp.record('public publish gives creation_count 1', v_count = 1, 'count=' || v_count);
+
+  update public.creations set audience = 'private' where id = v_work;
+  select creation_count into v_count from public.profiles where id = v_user;
+  perform pg_temp.record('switching public work to private gives creation_count 0', v_count = 0, 'count=' || v_count);
+
+  update public.creations set audience = 'unlisted' where id = v_work;
+  select creation_count into v_count from public.profiles where id = v_user;
+  perform pg_temp.record('unlisted published work gives creation_count 0', v_count = 0, 'count=' || v_count);
+
+  update public.creations set audience = 'public' where id = v_work;
+  select creation_count into v_count from public.profiles where id = v_user;
+  perform pg_temp.record('switching back to public gives creation_count 1', v_count = 1, 'count=' || v_count);
+
+  update public.creations set status = 'draft' where id = v_work;
+  select creation_count into v_count from public.profiles where id = v_user;
+  perform pg_temp.record('unpublish public work gives creation_count 0', v_count = 0, 'count=' || v_count);
+
+  update public.creations set status = 'published', audience = 'public' where id = v_work;
+  delete from public.creations where id = v_work;
+  select creation_count into v_count from public.profiles where id = v_user;
+  perform pg_temp.record('delete public work decrements creation_count', v_count = 0, 'count=' || v_count);
+
+  reset role;
+  v_user := gen_random_uuid();
+  perform pg_temp.create_test_user(v_user, 'private.writer@voxly.test', now());
+  perform set_config('request.jwt.claim.sub', v_user::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_user::text, 'role', 'authenticated', 'email', 'private.writer@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_user, 'journal', 'Private first', 'private', 'published', 'Secret')
+  returning id into v_work;
+
+  select role into v_role from public.profiles where id = v_user;
+  perform pg_temp.record('private publish still promotes reader to writer', v_role = 'writer', coalesce(v_role::text, 'null'));
+end $public_post_count$;
+
 do $$
 declare
   n integer;

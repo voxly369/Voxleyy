@@ -1,21 +1,23 @@
-import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { useEffect, useState, type KeyboardEvent } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { ProfileHeader } from '../components/profile/ProfileHeader.tsx'
+import { ProfileDraftsPanel } from '../components/profile/ProfileDraftsPanel.tsx'
+import { ProfilePostsGrid } from '../components/profile/ProfilePostsGrid.tsx'
 import { MissingProfile } from '../components/profile/MissingProfile.tsx'
-import { WorkCard } from '../components/creations/WorkCard.tsx'
-import { focusRing } from '../components/shell/navItems.ts'
 import { EmptyState } from '../components/states/EmptyState.tsx'
 import { ErrorState } from '../components/states/ErrorState.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
+import { focusRing } from '../components/shell/navItems.ts'
 import { useAuth } from '../lib/auth/auth-context.ts'
 import { listUserPublished } from '../lib/creations/api.ts'
+import { worksForPostsGrid } from '../lib/creations/profilePostsMapper.ts'
 import type { PublishedCursor } from '../lib/creations/publishedCursor.ts'
 import type { PublishedWorkSummary } from '../lib/creations/types.ts'
 import { getProfileByUsername, isFollowing } from '../lib/profiles/api.ts'
 import type { PublicProfile } from '../lib/profiles/types.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 
-type Tab = 'works' | 'about'
+type Tab = 'posts' | 'drafts' | 'about'
 
 type View = {
   key: string
@@ -28,11 +30,13 @@ type View = {
 
 export default function ProfilePage() {
   const { username = '' } = useParams()
+  const [searchParams] = useSearchParams()
   const { profile: me } = useAuth()
   const [attempt, setAttempt] = useState(0)
   const [view, setView] = useState<View | null>(null)
   const [problem, setProblem] = useState<{ key: string; missing: boolean; message: string } | null>(null)
-  const [tab, setTab] = useState<Tab>('works')
+  const initialTab: Tab = searchParams.get('tab') === 'drafts' ? 'drafts' : 'posts'
+  const [tab, setTab] = useState<Tab>(initialTab)
   const [loadingMore, setLoadingMore] = useState(false)
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null)
   const key = username.toLowerCase()
@@ -77,7 +81,7 @@ export default function ProfilePage() {
         profile: result.data,
         following: follow.data,
         followerCount: result.data.followerCount,
-        works: works.data.works,
+        works: worksForPostsGrid(works.data.works),
         nextCursor: works.data.nextCursor,
       })
     })()
@@ -100,10 +104,31 @@ export default function ProfilePage() {
       if (!existing || existing.key !== key) return existing
       return {
         ...existing,
-        works: [...existing.works, ...result.data.works],
+        works: [...existing.works, ...worksForPostsGrid(result.data.works)],
         nextCursor: result.data.nextCursor,
       }
     })
+  }
+
+  const tabs: { id: Tab; label: string; ownOnly?: boolean }[] = [
+    { id: 'posts', label: 'Posts' },
+    { id: 'drafts', label: 'Drafts', ownOnly: true },
+    { id: 'about', label: 'About' },
+  ]
+
+  const isOwnProfile = me?.id === current?.profile.id
+
+  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, _index: number) {
+    const visible = tabs.filter((t) => !t.ownOnly || isOwnProfile)
+    const currentIndex = visible.findIndex((t) => t.id === tab)
+    if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      setTab(visible[(currentIndex + 1) % visible.length].id)
+    }
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      setTab(visible[(currentIndex - 1 + visible.length) % visible.length].id)
+    }
   }
 
   if (!current && !activeProblem) {
@@ -130,7 +155,8 @@ export default function ProfilePage() {
 
   const { profile } = current
   const joined = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(new Date(profile.createdAt))
-  const isOwn = me?.id === profile.id
+  const isOwn = isOwnProfile
+  const visibleTabs = tabs.filter((t) => !t.ownOnly || isOwn)
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 pb-8">
@@ -149,67 +175,53 @@ export default function ProfilePage() {
       />
       <div className="px-5">
         <div role="tablist" aria-label="Profile" className="flex gap-2 border-b border-line">
-          {(
-            [
-              ['works', 'Works'],
-              ['about', 'About'],
-            ] as const
-          ).map(([id, label]) => (
+          {visibleTabs.map((item, index) => (
             <button
-              key={id}
+              key={item.id}
               type="button"
               role="tab"
-              id={`tab-${id}`}
-              aria-selected={tab === id}
-              aria-controls={`panel-${id}`}
-              onClick={() => setTab(id)}
-              className={`min-h-11 px-3 text-base ${tab === id ? 'border-b-2 border-coral font-semibold text-ink' : 'font-medium text-muted'} ${focusRing}`}
+              id={`tab-${item.id}`}
+              aria-selected={tab === item.id}
+              aria-controls={`panel-${item.id}`}
+              tabIndex={tab === item.id ? 0 : -1}
+              onKeyDown={(event) => onTabKeyDown(event, index)}
+              onClick={() => setTab(item.id)}
+              className={`min-h-11 px-3 text-base ${tab === item.id ? 'border-b-2 border-coral font-semibold text-ink' : 'font-medium text-muted'} ${focusRing}`}
             >
-              {label}
+              {item.label}
             </button>
           ))}
         </div>
         <div className="pt-5">
-          {tab === 'works' ? (
-            <div role="tabpanel" id="panel-works" aria-labelledby="tab-works" className="flex flex-col gap-4">
-              {isOwn ? (
-                <Link to="/write/drafts" className={`text-base font-medium text-coral ${focusRing}`}>
-                  My drafts
-                </Link>
-              ) : null}
+          {tab === 'posts' ? (
+            <div role="tabpanel" id="panel-posts" aria-labelledby="tab-posts">
               {current.works.length === 0 ? (
-                <EmptyState title="No works yet" message="Published works appear here." />
+                <EmptyState title="No posts yet" message="Published public work appears here." />
               ) : (
-                <>
-                  <ul className="flex flex-col gap-3">
-                    {current.works.map((work) => (
-                      <li key={work.id}>
-                        <WorkCard work={work} variant="published" showAudience={isOwn} />
-                      </li>
-                    ))}
-                  </ul>
-                  {loadMoreError ? (
-                    <ErrorState title="Could not load more" message={loadMoreError} onRetry={() => void loadMore()} />
-                  ) : null}
-                  {current.nextCursor ? (
-                    <button
-                      type="button"
-                      disabled={loadingMore}
-                      onClick={() => void loadMore()}
-                      className={`min-h-11 self-center rounded-2xl border border-line px-4 text-base font-medium ${focusRing}`}
-                    >
-                      {loadingMore ? 'Loading…' : 'Load more'}
-                    </button>
-                  ) : null}
-                </>
+                <ProfilePostsGrid
+                  works={current.works}
+                  viewerId={me?.id ?? null}
+                  profileUserId={profile.id}
+                  onLoadMore={() => void loadMore()}
+                  loadingMore={loadingMore}
+                  hasMore={Boolean(current.nextCursor)}
+                  loadMoreError={loadMoreError}
+                  onRetryLoadMore={() => void loadMore()}
+                />
               )}
             </div>
-          ) : (
+          ) : null}
+          {tab === 'drafts' && isOwn ? (
+            <div role="tabpanel" id="panel-drafts" aria-labelledby="tab-drafts">
+              <ProfileDraftsPanel />
+            </div>
+          ) : null}
+          {tab === 'about' ? (
             <div role="tabpanel" id="panel-about" aria-labelledby="tab-about" className="flex flex-col gap-3 text-base text-ink">
               <p className="whitespace-pre-wrap">{profile.bio || 'No bio yet.'}</p>
               <p className="text-muted">Joined {joined}</p>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

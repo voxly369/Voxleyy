@@ -1,12 +1,15 @@
 import { Outlet } from 'react-router-dom'
+import { CreateSheetProvider } from '../../lib/shell/CreateSheetProvider.tsx'
 import { BottomNav } from './BottomNav.tsx'
 import { SideNav } from './SideNav.tsx'
 import { SkipLink } from './SkipLink.tsx'
+import { ToastProvider } from './ToastProvider.tsx'
 import { focusRing } from './navItems.ts'
 
 export function AppShell() {
   return (
-    <>
+    <ToastProvider>
+      <CreateSheetProvider>
       <SkipLink />
       <BottomNav />
       <SideNav />
@@ -17,6 +20,7 @@ export function AppShell() {
       >
         <Outlet />
       </main>
-    </>
+      </CreateSheetProvider>
+    </ToastProvider>
   )
 }

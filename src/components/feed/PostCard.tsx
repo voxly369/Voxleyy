@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { bodyExcerpt } from '../../lib/creations/excerpt.ts'
+import { quoteStyleFromJson } from '../../lib/creations/bodyDocument.ts'
+import { QuoteCardView } from '../creations/QuoteCardView.tsx'
 import { creationTypeLabel } from '../../lib/creations/creationTypeLabel.ts'
 import type { FeedPost } from '../../lib/feed/types.ts'
 import { VerifiedBadge } from '../profile/VerifiedBadge.tsx'
@@ -76,15 +78,10 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
         className={`block ${pulseLike ? 'motion-safe:scale-[0.99] motion-reduce:scale-100' : ''} ${focusRing}`}
       >
         {isQuote ? (
-          <div
-            className={`rounded-xl bg-bg p-6 font-serif text-2xl leading-snug text-ink ${
-              post.coverUrl ? 'bg-cover bg-center text-white' : ''
-            }`}
-            style={post.coverUrl ? { backgroundImage: `linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)), url(${post.coverUrl})` } : undefined}
-          >
-            {quoteText}
+          <>
+            <QuoteCardView text={quoteText} style={quoteStyleFromJson(null)} handle={post.author.username} />
             {showReadMore ? <span className="mt-2 block text-base text-coral">Read more</span> : null}
-          </div>
+          </>
         ) : (
           <>
             {post.coverUrl ? (

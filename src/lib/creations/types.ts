@@ -62,12 +62,14 @@ export type EditableCreation = {
   id: string
   type: CreationType
   title: string
+  caption: string
   bodyText: string
   coverUrl: string | null
   status: PublishStatus
   audience: Audience
   updatedAt: string
   tags: string[]
+  bodyJson: import('../database.types.ts').Json | null
 }
 
 export type DraftListRow = {
@@ -75,6 +77,7 @@ export type DraftListRow = {
   type: CreationType
   title: string | null
   status: PublishStatus
+  audience: Audience
   updatedAt: string
   removed: boolean
 }
@@ -102,6 +105,10 @@ export type PublishedWorkSummary = {
   coverUrl: string | null
   publishedAt: string
   audience: Audience
+  likeCount: number
+  commentCount: number
+  bodyText: string | null
+  bodyJson: import('../database.types.ts').Json | null
 }
 
 export type PublishedWorksPage = {

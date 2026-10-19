@@ -1,3 +1,4 @@
+import type { Json } from '../database.types.ts'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -9,7 +10,14 @@ import {
   shouldBlockNavigation,
   shouldRunQueuedSave,
 } from './autosave.ts'
-import { bodyJsonFromText, hasEditorContent } from './bodyDocument.ts'
+import {
+  bodyJsonFromText,
+  DEFAULT_QUOTE_CARD_STYLE,
+  hasEditorContent,
+  quoteCardBodyJson,
+  quoteStyleFromJson,
+  type QuoteCardStyle,
+} from './bodyDocument.ts'
 import { createDraft, getEditableCreation, saveCreationFields } from './api.ts'
 import type { CreationType } from './creationTypes.ts'
 import type { Audience, PublishStatus } from './types.ts'
@@ -21,6 +29,7 @@ const DEBOUNCE_MS = 1500
 export type EditorForm = {
   title: string
   body: string
+  caption: string
   tags: string[]
 }
 
@@ -49,18 +58,24 @@ function failureMessage(result: CreationFailure): string {
   )
 }
 
+function buildBodyJson(type: CreationType, body: string, quoteStyle: QuoteCardStyle): Json {
+  if (type === 'quote_card') return quoteCardBodyJson(body, quoteStyle) as Json
+  return bodyJsonFromText(body) as Json
+}
+
 export function useCreationEditor({ creationId, creationType }: UseCreationEditorArgs) {
   const navigate = useNavigate()
   const [autosave, dispatchAutosave] = useReducer(autosaveReducer, initialAutosaveModel)
   const [form, setForm] = useReducer(
     (state: EditorForm, patch: Partial<EditorForm>) => ({ ...state, ...patch }),
-    { title: '', body: '', tags: [] },
+    { title: '', body: '', caption: '', tags: [] },
   )
   const [loadError, setLoadError] = useReducer((_s: string | null, v: string | null) => v, null)
   const [loading, setLoading] = useReducer((_s: boolean, v: boolean) => v, Boolean(creationId))
   const [coverUrl, setCoverUrl] = useReducer((_s: string | null, v: string | null) => v, null)
   const [creationStatus, setCreationStatus] = useState<PublishStatus>('draft')
   const [creationAudience, setCreationAudience] = useState<Audience>('private')
+  const [quoteStyle, setQuoteStyle] = useState<QuoteCardStyle>(DEFAULT_QUOTE_CARD_STYLE)
   const [tagWarning, setTagWarning] = useState<string | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
@@ -68,6 +83,8 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
   const idRef = useRef<string | null>(creationId)
   const updatedAtRef = useRef<string | null>(null)
   const formRef = useRef(form)
+  const audienceRef = useRef(creationAudience)
+  const quoteStyleRef = useRef(quoteStyle)
   const debounceRef = useRef<number | null>(null)
   const retryTimerRef = useRef<number | null>(null)
   const savingRef = useRef(false)
@@ -76,6 +93,14 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
   useEffect(() => {
     formRef.current = form
   }, [form])
+
+  useEffect(() => {
+    audienceRef.current = creationAudience
+  }, [creationAudience])
+
+  useEffect(() => {
+    quoteStyleRef.current = quoteStyle
+  }, [quoteStyle])
 
   useEffect(() => {
     autosaveRef.current = autosave
@@ -94,7 +119,8 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     updatedAtRef.current = value.updatedAt
     setCreationStatus(value.status)
     setCreationAudience(value.audience)
-    setForm({ title: value.title, body: value.bodyText, tags: value.tags })
+    setForm({ title: value.title, body: value.bodyText, caption: value.caption, tags: value.tags })
+    setQuoteStyle(quoteStyleFromJson(value.bodyJson))
     setCoverUrl(value.coverUrl)
     setTagWarning(null)
     setSaveMessage(null)
@@ -145,11 +171,15 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
   const performSave = useCallback(async (forceOverwrite: boolean) => {
     if (savingRef.current) return
     const snapshot = formRef.current
-    if (!hasEditorContent(snapshot.title, snapshot.body, snapshot.tags)) return
+    const audience = audienceRef.current
+    const style = quoteStyleRef.current
+    if (!hasEditorContent(snapshot.title, snapshot.body, snapshot.tags, snapshot.caption)) return
 
     savingRef.current = true
     setSaveMessage(null)
     dispatchAutosave({ type: 'save_start' })
+
+    const bodyJson = buildBodyJson(creationType, snapshot.body, style)
 
     try {
       let id = idRef.current
@@ -157,10 +187,11 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
         const created = await createDraft({
           type: creationType,
           title: snapshot.title.trim() || null,
+          caption: snapshot.caption.trim() || null,
           body_text: snapshot.body,
-          body_json: bodyJsonFromText(snapshot.body),
+          body_json: bodyJson,
           tags: snapshot.tags,
-          audience: 'private',
+          audience,
         })
         if (!created.ok) {
           if (isPermanentSaveFailure(created)) {
@@ -188,7 +219,10 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
         id,
         expectedUpdatedAt: updatedAtRef.current,
         title: snapshot.title,
+        caption: snapshot.caption,
         bodyText: snapshot.body,
+        bodyJson,
+        audience,
         tags: snapshot.tags,
         forceOverwrite,
       })
@@ -237,6 +271,24 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
   const onEdit = useCallback(
     (patch: Partial<EditorForm>) => {
       setForm(patch)
+      dispatchAutosave({ type: 'edit' })
+      scheduleSave()
+    },
+    [scheduleSave],
+  )
+
+  const onAudienceChange = useCallback(
+    (audience: Audience) => {
+      setCreationAudience(audience)
+      dispatchAutosave({ type: 'edit' })
+      scheduleSave()
+    },
+    [scheduleSave],
+  )
+
+  const onQuoteStyleChange = useCallback(
+    (patch: Partial<QuoteCardStyle>) => {
+      setQuoteStyle((current) => ({ ...current, ...patch }))
       dispatchAutosave({ type: 'edit' })
       scheduleSave()
     },
@@ -308,12 +360,25 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     return false
   }, [])
 
+  const saveDraftNow = useCallback(async (): Promise<boolean> => {
+    if (debounceRef.current) {
+      window.clearTimeout(debounceRef.current)
+      debounceRef.current = null
+    }
+    dispatchAutosave({ type: 'debounce_elapsed' })
+    await performSave(false)
+    return !autosaveRef.current.dirty && autosaveRef.current.ui !== 'error' && autosaveRef.current.ui !== 'conflict'
+  }, [performSave])
+
   const statusLabel = saveMessage || autosaveStatusLabel(autosave)
 
   return {
     form,
     onEdit,
     onBlur,
+    onAudienceChange,
+    onQuoteStyleChange,
+    quoteStyle,
     autosave,
     statusLabel,
     loading,
@@ -322,6 +387,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     overwriteRemote,
     retrySave,
     creationId: activeId,
+    creationType,
     creationStatus,
     creationAudience,
     tagWarning,
@@ -330,5 +396,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     coverUrl,
     setCoverUrl,
     flushPendingSave,
+    saveDraftNow,
+    buildPreviewBodyJson: () => buildBodyJson(creationType, formRef.current.body, quoteStyleRef.current),
   }
 }

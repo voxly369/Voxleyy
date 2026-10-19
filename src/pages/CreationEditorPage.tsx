@@ -116,9 +116,11 @@ export default function CreationEditorPage() {
         }}
         title={editor.form.title}
         body={editor.form.body}
+        caption={editor.form.caption}
         tags={editor.form.tags}
         coverUrl={editor.coverUrl}
         creationType={parsedType ?? 'written_post'}
+        quoteStyle={parsedType === 'quote_card' ? editor.quoteStyle : undefined}
         initialAudience={editor.creationAudience}
         mode={editor.creationStatus === 'published' ? 'audience' : 'publish'}
         busy={publishBusy}

@@ -7,7 +7,7 @@ import {
   messageForPublishError,
   TAG_SYNC_WARNING,
 } from './errors.ts'
-import { bodyJsonFromText, bodyTextFromJson } from './bodyDocument.ts'
+import { bodyTextFromJson } from './bodyDocument.ts'
 import { draftsCursorFilter, DRAFTS_PAGE_SIZE, isDraftsCursor, nextDraftsCursor } from './draftsCursor.ts'
 import { classifyPublishZeroRowUpdate } from './publishFailure.ts'
 import { fieldsForPublish, fieldsForSaveCreation } from './publishPayload.ts'
@@ -46,7 +46,7 @@ const DETAIL_COLUMNS =
   `id, type, title, caption, body_text, status, audience, cover_url, genre, mood, language, created_at, updated_at, author_id, ${AUTHOR_EMBED}` as const
 
 const EDIT_COLUMNS =
-  'id, type, title, body_text, body_json, cover_url, status, audience, updated_at, is_removed, author_id' as const
+  'id, type, title, caption, body_text, body_json, cover_url, status, audience, updated_at, is_removed, author_id' as const
 
 function fail(
   code: CreationFailure['error']['code'],
@@ -317,12 +317,14 @@ export async function getEditableCreation(id: string): Promise<CreationResult<Ed
       id: data.id,
       type: data.type,
       title: data.title ?? '',
+      caption: data.caption ?? '',
       bodyText,
       coverUrl: data.cover_url,
       status: data.status,
       audience: data.audience,
       updatedAt: data.updated_at,
       tags: tags.data,
+      bodyJson: data.body_json,
     },
   }
 }
@@ -331,25 +333,36 @@ export async function saveCreationFields(input: {
   id: string
   expectedUpdatedAt: string | null
   title: string
+  caption: string
   bodyText: string
+  bodyJson: Json
+  audience: Audience
   tags: string[]
   forceOverwrite?: boolean
 }): Promise<SaveCreationResult> {
   const userId = await currentUserId()
   if (!userId) return fail('forbidden', 'Sign in again to save this draft.')
 
-  const body_json = bodyJsonFromText(input.bodyText) as Json
   const issue = validateCreationFields({
     body_text: input.bodyText,
-    body_json,
+    body_json: input.bodyJson,
     tags: input.tags,
     title: input.title,
+    caption: input.caption,
   })
   if (issue) return fail('invalid', issue.message)
 
   let query = supabase
     .from('creations')
-    .update(fieldsForSaveCreation({ title: input.title, bodyText: input.bodyText, bodyJson: body_json }))
+    .update(
+      fieldsForSaveCreation({
+        title: input.title,
+        bodyText: input.bodyText,
+        bodyJson: input.bodyJson,
+        caption: input.caption,
+        audience: input.audience,
+      }),
+    )
     .eq('id', input.id)
     .eq('author_id', userId)
 
@@ -444,7 +457,8 @@ export async function publishCreation(input: {
   return { ok: true, updatedAt: data.updated_at, audience: data.audience, status: data.status }
 }
 
-const PUBLISHED_LIST_COLUMNS = 'id, type, title, cover_url, published_at, audience' as const
+const PUBLISHED_LIST_COLUMNS =
+  'id, type, title, cover_url, published_at, audience, like_count, comment_count, body_text, body_json' as const
 
 export async function listUserPublished(
   userId: string,
@@ -491,6 +505,10 @@ export async function listUserPublished(
           coverUrl: text(row.cover_url),
           publishedAt,
           audience: audience as PublishedWorksPage['works'][number]['audience'],
+          likeCount: typeof row.like_count === 'number' ? row.like_count : 0,
+          commentCount: typeof row.comment_count === 'number' ? row.comment_count : 0,
+          bodyText: text(row.body_text),
+          bodyJson: row.body_json ?? null,
         },
       },
     ]
@@ -509,7 +527,7 @@ export async function listMyDraftsPage(
 
   let query = supabase
     .from('creations')
-    .select('id, type, title, status, updated_at, is_removed')
+    .select('id, type, title, status, audience, updated_at, is_removed')
     .eq('author_id', userId)
     .order('updated_at', { ascending: false })
     .order('id', { ascending: false })
@@ -529,6 +547,7 @@ export async function listMyDraftsPage(
       type: row.type,
       title: row.title,
       status: row.status,
+      audience: row.audience,
       updatedAt: row.updated_at,
       removed: row.is_removed || row.status === 'removed',
     } satisfies DraftListRow,
