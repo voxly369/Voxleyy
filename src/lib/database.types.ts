@@ -204,6 +204,59 @@ export type Database = {
           },
         ]
       }
+      mentions: {
+        Row: {
+          author_id: string
+          comment_id: string
+          created_at: string
+          creation_id: string
+          mentioned_user_id: string
+        }
+        Insert: {
+          author_id: string
+          comment_id: string
+          created_at?: string
+          creation_id: string
+          mentioned_user_id: string
+        }
+        Update: {
+          author_id?: string
+          comment_id?: string
+          created_at?: string
+          creation_id?: string
+          mentioned_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mentions_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentions_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentions_creation_id_fkey"
+            columns: ["creation_id"]
+            isOneToOne: false
+            referencedRelation: "creations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mentions_mentioned_user_id_fkey"
+            columns: ["mentioned_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       creation_tags: {
         Row: {
           creation_id: string
@@ -876,7 +929,8 @@ export type Database = {
         Row: {
           audience: Database['public']['Enums']['audience'] | null
           author_id: string | null
-          body_text: string | null
+          body_excerpt: string | null
+          body_truncated: boolean | null
           caption: string | null
           comment_count: number | null
           cover_url: string | null
@@ -892,6 +946,12 @@ export type Database = {
           title: string | null
           type: Database['public']['Enums']['creation_type'] | null
         }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      following_feed: {
+        Row: Database['public']['Views']['feed_creations']['Row']
         Insert: Record<string, never>
         Update: Record<string, never>
         Relationships: []

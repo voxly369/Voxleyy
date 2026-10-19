@@ -2,7 +2,6 @@ import { supabase } from '../supabaseClient.ts'
 import { providerFields } from '../supabaseFailure.ts'
 import { buildCommentTree, type CommentAuthor, type CommentNode, type CommentRow } from './commentTree.ts'
 import { engagementErrorMessage } from './errors.ts'
-import { parseMentions } from './mentions.ts'
 
 export type CommentCursor = { createdAt: string; id: string }
 
@@ -191,7 +190,6 @@ async function insertComment(input: {
   }
   if (!data?.id) return fail('unavailable', 'We could not post your comment. Try again.')
 
-  void parseMentions(trimmed)
   return { ok: true, id: data.id }
 }
 

@@ -2,7 +2,8 @@ import type { WorkSummary } from '../creations/types.ts'
 
 export type FeedPost = WorkSummary & {
   publishedAt: string
-  bodyText: string | null
+  bodyExcerpt: string | null
+  bodyTruncated: boolean
   likeCount: number
   commentCount: number
   saveCount: number

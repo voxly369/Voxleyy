@@ -40,9 +40,12 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
     lastTap.current = now
   }
 
-  const { excerpt, truncated } = bodyExcerpt(post.bodyText)
+  const previewSource = post.bodyExcerpt ?? ''
+  const { excerpt, truncated: excerptTruncated } = bodyExcerpt(previewSource)
+  const showReadMore = post.bodyTruncated || excerptTruncated
   const isQuote = post.type === 'quote_card'
   const isPoem = post.type === 'poem'
+  const quoteText = (previewSource || post.caption || post.title || '').trim() || 'Quote'
 
   return (
     <article className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
@@ -79,7 +82,8 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
             }`}
             style={post.coverUrl ? { backgroundImage: `linear-gradient(rgba(0,0,0,.45), rgba(0,0,0,.45)), url(${post.coverUrl})` } : undefined}
           >
-            {(post.bodyText ?? post.caption ?? post.title ?? '').trim() || 'Quote'}
+            {quoteText}
+            {showReadMore ? <span className="mt-2 block text-base text-coral">Read more</span> : null}
           </div>
         ) : (
           <>
@@ -89,11 +93,14 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
             {post.title?.trim() ? <h2 className="font-serif text-xl text-ink">{post.title.trim()}</h2> : null}
             {post.caption?.trim() ? <p className="mt-2 text-sm text-muted">{post.caption.trim()}</p> : null}
             {isPoem ? (
-              <p className="mt-3 whitespace-pre-wrap font-serif text-lg text-ink">{post.bodyText ?? ''}</p>
+              <p className="mt-3 whitespace-pre-wrap font-serif text-lg text-ink">
+                {previewSource}
+                {showReadMore ? <span className="text-coral"> Read more</span> : null}
+              </p>
             ) : excerpt ? (
               <p className="mt-3 text-base text-ink">
                 {excerpt}
-                {truncated ? <span className="text-coral"> Read more</span> : null}
+                {showReadMore ? <span className="text-coral"> Read more</span> : null}
               </p>
             ) : null}
           </>

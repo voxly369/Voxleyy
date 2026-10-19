@@ -309,11 +309,18 @@ function CommentRow({
   onDelete: () => void
 }) {
   const own = viewerId === node.author.id
+  const unavailable = node.author.unavailable === true
   return (
     <div>
       <p className="text-xs font-medium text-muted">
-        {node.author.displayName || node.author.username}
-        {node.author.verified ? ' ✓' : ''}
+        {unavailable ? (
+          node.author.displayName
+        ) : (
+          <>
+            {node.author.displayName || node.author.username}
+            {node.author.verified ? ' ✓' : ''}
+          </>
+        )}
       </p>
       {node.body ? <MentionText text={node.body} knownUsernames={knownMentions} /> : null}
       <div className="mt-2 flex flex-wrap gap-2">
