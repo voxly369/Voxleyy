@@ -6,7 +6,7 @@ import type { FeedPost } from '../feed/types.ts'
 const AUTHOR_EMBED = `author:profiles_public!creations_author_id_fkey(id, username, display_name, avatar_url, verified)`
 
 const FEED_POST_COLUMNS =
-  `id, type, title, caption, body_text, cover_url, audience, published_at, like_count, comment_count, save_count, created_at, author_id, ${AUTHOR_EMBED}` as const
+  `id, type, title, caption, body_excerpt, body_truncated, cover_url, audience, published_at, like_count, comment_count, save_count, created_at, author_id, ${AUTHOR_EMBED}` as const
 
 const SAVED_PAGE_SIZE = 10
 
@@ -104,7 +104,8 @@ export async function listSaved(cursor: SavedCursor | null): Promise<SavedResult
       type: type as FeedPost['type'],
       title: text(creation.title),
       caption: text(creation.caption),
-      bodyText: text(creation.body_text),
+      bodyExcerpt: text(creation.body_excerpt),
+      bodyTruncated: creation.body_truncated === true,
       status: 'published',
       audience: audience as FeedPost['audience'],
       coverUrl: text(creation.cover_url),

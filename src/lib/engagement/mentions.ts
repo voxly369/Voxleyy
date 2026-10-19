@@ -1,4 +1,5 @@
-const MENTION_PATTERN = /@([a-z0-9_]{3,30})(?![a-z0-9_])/gi
+/** Match @handles not preceded by email/local-part characters (aligned with SQL mention sync). */
+const MENTION_PATTERN = /(?:^|[^a-z0-9_@])@([a-z0-9_]{3,30})(?![a-z0-9_])/gi
 
 /** Returns unique @username tokens (without the @), lowercase. */
 export function parseMentions(text: string): string[] {
@@ -24,7 +25,7 @@ export function segmentMentionText(text: string): MentionSegment[] {
       segments.push({ kind: 'text', value: text.slice(lastIndex, index) })
     }
     const username = match[1]?.toLowerCase() ?? ''
-    segments.push({ kind: 'mention', value: match[0], username })
+    segments.push({ kind: 'mention', value: `@${username}`, username })
     lastIndex = index + match[0].length
   }
   if (lastIndex < text.length) {

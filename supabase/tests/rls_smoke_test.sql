@@ -2006,6 +2006,402 @@ begin
   end;
 end $feed_engagement$;
 
+do $feed_scale$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_founder uuid;
+  v_public uuid;
+  v_short uuid;
+  v_long uuid;
+  v_unlisted uuid;
+  v_comment_id uuid;
+  v_mention_target uuid;
+  v_other uuid;
+  v_third uuid;
+  n integer;
+  i integer;
+  v_msg text;
+  v_excerpt text;
+  v_trunc boolean;
+  v_username_b text;
+  v_like_target uuid;
+  creation_ids uuid[] := '{}';
+begin
+  reset role;
+
+  select reader_a, reader_b, founder, public_id into v_a, v_b, v_founder, v_public from rls_ids;
+
+  v_third := gen_random_uuid();
+  perform pg_temp.create_test_user(v_third, 'feedscale.mention@voxly.test', now());
+
+  select count(*) into n
+  from information_schema.columns
+  where table_schema = 'public' and table_name = 'feed_creations' and column_name = 'body_text';
+  perform pg_temp.record('feed_creations has no body_text column', n = 0, 'cols=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_b, 'poem', 'Short body', 'public', 'published', 'Hello feed')
+  returning id into v_short;
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_b, 'poem', 'Long body', 'public', 'published', repeat('x', 1300))
+  returning id into v_long;
+
+  select body_excerpt, body_truncated into v_excerpt, v_trunc from public.feed_creations where id = v_short;
+  perform pg_temp.record(
+    'feed excerpt at most 1200 characters for short body',
+    char_length(v_excerpt) <= 1200 and v_trunc = false,
+    'len=' || char_length(v_excerpt) || ' trunc=' || v_trunc
+  );
+
+  select body_excerpt, body_truncated into v_excerpt, v_trunc from public.feed_creations where id = v_long;
+  perform pg_temp.record(
+    'feed body_truncated true for long body',
+    char_length(v_excerpt) = 1200 and v_trunc = true,
+    'len=' || char_length(v_excerpt) || ' trunc=' || v_trunc
+  );
+
+  begin
+    execute 'set local role anon';
+    select count(*) into n from public.feed_creations;
+    perform pg_temp.record('anon cannot read feed_creations after excerpt migration', false, 'rows=' || n);
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('anon cannot read feed_creations after excerpt migration', true, sqlerrm);
+    when others then
+      perform pg_temp.record('anon cannot read feed_creations after excerpt migration', true, sqlstate);
+  end;
+  execute 'set local role authenticated';
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+
+  insert into public.follows (follower_id, followee_id) values (v_a, v_b)
+  on conflict do nothing;
+
+  select count(*) into n from public.following_feed where author_id = v_b;
+  perform pg_temp.record('following_feed shows followed author public work', n >= 1, 'rows=' || n);
+
+  delete from public.follows where follower_id = v_a and followee_id = v_b;
+  select count(*) into n from public.following_feed where author_id = v_b;
+  perform pg_temp.record('unfollowing removes work from following_feed', n = 0, 'rows=' || n);
+
+  insert into public.follows (follower_id, followee_id) values (v_a, v_b);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_b, 'poem', 'Unlisted follow', 'unlisted', 'published', 'Hidden')
+  returning id into v_unlisted;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select count(*) into n from public.following_feed where id = v_unlisted;
+  perform pg_temp.record('following_feed excludes unlisted work', n = 0, 'rows=' || n);
+
+  begin
+    execute 'set local role anon';
+    select count(*) into n from public.following_feed;
+    perform pg_temp.record('anon cannot read following_feed', false, 'select ok');
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('anon cannot read following_feed', true, sqlerrm);
+    when others then
+      perform pg_temp.record('anon cannot read following_feed', true, sqlstate);
+  end;
+  execute 'set local role authenticated';
+
+  select username into v_username_b from public.profiles where id = v_b;
+
+  perform set_config('request.jwt.claim.sub', v_third::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_third::text, 'role', 'authenticated', 'email', 'feedscale.mention@voxly.test')::text,
+    true
+  );
+  insert into public.comments (creation_id, author_id, body)
+  values (v_short, v_third, 'Hello @' || v_username_b || ' and a@bcd.com')
+  returning id into v_comment_id;
+
+  select count(*) into n
+  from public.mentions
+  where comment_id = v_comment_id and mentioned_user_id = v_b;
+  perform pg_temp.record('mention row created for active user', n = 1, 'rows=' || n);
+
+  insert into public.comments (creation_id, author_id, body)
+  values (v_short, v_third, 'Self @' || (select username from public.profiles where id = v_third))
+  returning id into v_comment_id;
+  select count(*) into n from public.mentions where comment_id = v_comment_id;
+  perform pg_temp.record('no mention for self-mention', n = 0, 'rows=' || n);
+
+  insert into public.comments (creation_id, author_id, body)
+  values (v_short, v_third, 'Unknown @no_such_user_zzzz')
+  returning id into v_comment_id;
+  select count(*) into n from public.mentions where comment_id = v_comment_id;
+  perform pg_temp.record('no mention for unknown username', n = 0, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_third::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_third::text, 'role', 'authenticated', 'email', 'feedscale.mention@voxly.test')::text,
+    true
+  );
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_third, 'poem', 'A work for block mention', 'public', 'published', 'Own')
+  returning id into v_mention_target;
+  insert into public.blocks (blocker_id, blocked_id) values (v_third, v_b);
+  insert into public.comments (creation_id, author_id, body)
+  values (v_mention_target, v_third, 'Blocked @' || v_username_b)
+  returning id into v_comment_id;
+  select count(*) into n from public.mentions where comment_id = v_comment_id;
+  perform pg_temp.record('no mention for blocked pair', n = 0, 'rows=' || n);
+  delete from public.blocks where blocker_id = v_third and blocked_id = v_b;
+
+  insert into public.comments (creation_id, author_id, body)
+  select
+    v_short,
+    v_third,
+    (
+      select string_agg('@' || p.username::text, ' ' order by p.username)
+      from (
+        select username
+        from public.profiles
+        where status = 'active'
+          and id <> v_third
+        order by username
+        limit 11
+      ) p
+    )
+  returning id into v_comment_id;
+  select count(*) into n from public.mentions where comment_id = v_comment_id;
+  perform pg_temp.record('at most ten mentions stored per comment', n = 10, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  select p.id, p.username into v_other, v_username_b
+  from public.profiles p
+  where p.status = 'active' and p.id <> v_third and p.id <> v_founder
+  order by p.username
+  offset 5 limit 1;
+  perform public.founder_set_user_status(v_other, 'suspended', 'mention test', now() + interval '1 day');
+  perform set_config('request.jwt.claim.sub', v_third::text, true);
+  insert into public.comments (creation_id, author_id, body)
+  values (v_short, v_third, 'Suspended target @' || v_username_b)
+  returning id into v_comment_id;
+  select count(*) into n from public.mentions where comment_id = v_comment_id;
+  perform pg_temp.record('no mention for suspended user', n = 0, 'rows=' || n);
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_other, 'active', 'restore suspended mention target', null);
+
+  select p.id, p.username into v_other, v_username_b
+  from public.profiles p
+  where p.status = 'active' and p.id <> v_third and p.id <> v_founder
+  order by p.username
+  offset 4 limit 1;
+  perform public.founder_set_user_status(v_other, 'banned', 'mention test', null);
+  perform set_config('request.jwt.claim.sub', v_third::text, true);
+  insert into public.comments (creation_id, author_id, body)
+  values (v_short, v_third, 'Banned target @' || v_username_b)
+  returning id into v_comment_id;
+  select count(*) into n from public.mentions where comment_id = v_comment_id;
+  perform pg_temp.record('no mention for banned user', n = 0, 'rows=' || n);
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_other, 'active', 'restore banned mention target', null);
+
+  select username into v_username_b from public.profiles where id = v_b;
+
+  perform set_config('request.jwt.claim.sub', v_third::text, true);
+  insert into public.comments (creation_id, author_id, body)
+  values (v_short, v_third, 'Edit @' || v_username_b)
+  returning id into v_mention_target;
+  update public.comments set body = 'Now @' || v_username_b || ' twice @' || v_username_b where id = v_mention_target;
+  select count(*) into n from public.mentions where comment_id = v_mention_target;
+  perform pg_temp.record('editing comment body rebuilds mention rows', n = 1, 'rows=' || n);
+
+  reset role;
+  update public.comments set is_removed = true where id = v_mention_target;
+  perform set_config('request.jwt.claim.sub', v_third::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_third::text, 'role', 'authenticated', 'email', 'feedscale.mention@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  select count(*) into n from public.mentions where comment_id = v_mention_target;
+  perform pg_temp.record('removed comment keeps no mention rows', n = 0, 'rows=' || n);
+
+  begin
+    insert into public.mentions (comment_id, creation_id, author_id, mentioned_user_id)
+    values (
+      v_comment_id,
+      v_short,
+      v_third,
+      v_b
+    );
+    perform pg_temp.record('client cannot insert mention row', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('client cannot insert mention row', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  select count(*) into n from public.mentions where mentioned_user_id = v_b;
+  perform pg_temp.record('mentioned user can read their mentions', n >= 1, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_third::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_third::text, 'role', 'authenticated', 'email', 'feedscale.mention@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  select count(*) into n from public.mentions where mentioned_user_id = v_b and author_id = v_third;
+  perform pg_temp.record('comment author can read mentions on their comment', n >= 1, 'rows=' || n);
+
+  reset role;
+  v_other := gen_random_uuid();
+  perform pg_temp.create_test_user(v_other, 'mentions.other@voxly.test', now());
+  perform set_config('request.jwt.claim.sub', v_other::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_other::text, 'role', 'authenticated', 'email', 'mentions.other@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  select count(*) into n from public.mentions where author_id = v_third and mentioned_user_id = v_b;
+  perform pg_temp.record('third user cannot read others mention rows', n = 0, 'rows=' || n);
+
+  reset role;
+  v_other := gen_random_uuid();
+  perform pg_temp.create_test_user(v_other, 'likes.limiter@voxly.test', now());
+
+  alter table public.creations disable trigger creations_rate_limit;
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  for i in 1..301 loop
+    insert into public.creations (author_id, type, title, audience, status, body_text)
+    values (v_b, 'poem', 'Like target ' || i::text, 'public', 'published', 'Body')
+    returning id into v_like_target;
+    creation_ids := array_append(creation_ids, v_like_target);
+  end loop;
+  reset role;
+  alter table public.creations enable trigger creations_rate_limit;
+
+  perform set_config('request.jwt.claim.sub', v_other::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_other::text, 'role', 'authenticated', 'email', 'likes.limiter@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  for i in 1..300 loop
+    insert into public.likes (user_id, creation_id) values (v_other, creation_ids[i]);
+  end loop;
+  begin
+    insert into public.likes (user_id, creation_id) values (v_other, creation_ids[301]);
+    perform pg_temp.record('like rate limit rejects the 301st in one hour', false, 'insert succeeded');
+  exception
+    when others then
+      get stacked diagnostics v_msg = message_text;
+      perform pg_temp.record('like rate limit rejects the 301st in one hour', v_msg like '%too fast%', v_msg);
+  end;
+
+  delete from public.likes where user_id = v_other and creation_id = creation_ids[1];
+  begin
+    insert into public.likes (user_id, creation_id) values (v_other, creation_ids[1]);
+    perform pg_temp.record('like rate limit holds after delete and reinsert', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('like rate limit holds after delete and reinsert', true, sqlerrm);
+  end;
+
+  for i in 1..300 loop
+    insert into public.saves (user_id, creation_id) values (v_other, creation_ids[i]);
+  end loop;
+  begin
+    insert into public.saves (user_id, creation_id) values (v_other, creation_ids[301]);
+    perform pg_temp.record('save rate limit rejects the 301st in one hour', false, 'insert succeeded');
+  exception
+    when others then
+      get stacked diagnostics v_msg = message_text;
+      perform pg_temp.record('save rate limit rejects the 301st in one hour', v_msg like '%too fast%', v_msg);
+  end;
+
+  delete from public.saves where user_id = v_other and creation_id = creation_ids[2];
+  begin
+    insert into public.saves (user_id, creation_id) values (v_other, creation_ids[2]);
+    perform pg_temp.record('save rate limit holds after delete and reinsert', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('save rate limit holds after delete and reinsert', true, sqlerrm);
+  end;
+
+  reset role;
+  v_other := gen_random_uuid();
+  perform pg_temp.create_test_user(v_other, 'feedscale.vis@voxly.test', now());
+  perform set_config('request.jwt.claim.sub', v_other::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_other::text, 'role', 'authenticated', 'email', 'feedscale.vis@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  insert into public.comments (creation_id, author_id, body)
+  values (v_short, v_other, 'Suspended author comment')
+  returning id into v_comment_id;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_other, 'suspended', 'comment visibility', now() + interval '1 day');
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  select count(*) into n from public.comments where id = v_comment_id;
+  perform pg_temp.record('comments by suspended author hidden from others', n = 0, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_other::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_other::text, 'role', 'authenticated', 'email', 'feedscale.vis@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  select count(*) into n from public.comments where id = v_comment_id;
+  perform pg_temp.record('suspended comment author can read own comment', n = 1, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  execute 'set local role authenticated';
+  select count(*) into n from public.comments where id = v_comment_id;
+  perform pg_temp.record('founder can read suspended author comment', n = 1, 'rows=' || n);
+
+  perform public.founder_set_user_status(v_other, 'active', 'restore comment visibility', null);
+end $feed_scale$;
+
 do $$
 declare
   n integer;

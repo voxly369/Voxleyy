@@ -100,4 +100,24 @@ describe('buildCommentTree', () => {
     expect(tree[0]?.replies.map((r) => r.id)).toEqual(['child', 'grand'])
     expect(tree[0]?.replies.every((r) => r.replies.length === 0)).toBe(true)
   })
+
+  it('renders unavailable user when author profile is missing', () => {
+    const rows: CommentRow[] = [
+      {
+        id: 'c1',
+        creationId: 'w1',
+        authorId: 'banned-author',
+        parentId: null,
+        body: 'Ghost comment',
+        isRemoved: false,
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      },
+    ]
+    const tree = buildCommentTree(rows, new Map(), { viewerIsFounder: false })
+    expect(tree).toHaveLength(1)
+    expect(tree[0]?.author.displayName).toBe('Unavailable user')
+    expect(tree[0]?.author.username).toBe('')
+    expect(tree[0]?.author.unavailable).toBe(true)
+  })
 })

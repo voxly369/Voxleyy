@@ -38,6 +38,8 @@ Profile reads that include city go through the `profiles_public` view, not the b
 
 Lists and feeds of **other people's** work (Home, Discover, search, tags, and another user's profile Works tab) must query `audience = 'public'` in addition to whatever the database RLS allows. The signed-in owner's own profile may show every audience and label each item.
 
-Home and Following feeds must read published posts from the `feed_creations` view (never from raw `creations` alone). That view already enforces public audience, active authors, and blocks. Direct client reads of other people's work outside the feed must still filter `audience = 'public'`.
+Home and Following feeds must read published posts from the `feed_creations` and `following_feed` views (never from raw `creations` alone). Those views expose `body_excerpt` and `body_truncated`, not full `body_text`. Direct client reads of other people's work outside the feed must still filter `audience = 'public'`.
+
+Home currently shows newest public work from everyone; the suggestions mix and ranked For You arrive with the ranking prompt.
 
 Never show raw database or PostgREST error text to users. Map provider failures to short, plain messages in the data layer (`saveErrors`, `engagement/errors`, creation write helpers).

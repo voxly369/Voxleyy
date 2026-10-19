@@ -15,6 +15,16 @@ export type CommentAuthor = {
   displayName: string
   avatarUrl: string | null
   verified: boolean
+  unavailable?: boolean
+}
+
+const UNAVAILABLE_AUTHOR: CommentAuthor = {
+  id: '',
+  username: '',
+  displayName: 'Unavailable user',
+  avatarUrl: null,
+  verified: false,
+  unavailable: true,
 }
 
 export type CommentNode = {
@@ -36,8 +46,7 @@ export function buildCommentTree(
 ): CommentNode[] {
   const byId = new Map<string, CommentNode>()
   for (const row of rows) {
-    const author = authors.get(row.authorId)
-    if (!author) continue
+    const author = authors.get(row.authorId) ?? UNAVAILABLE_AUTHOR
     const body = row.isRemoved ? (options.viewerIsFounder ? REMOVED_COPY : '') : row.body
     byId.set(row.id, {
       id: row.id,

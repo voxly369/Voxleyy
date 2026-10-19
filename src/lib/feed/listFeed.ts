@@ -7,7 +7,7 @@ import type { FeedKind, FeedPage, FeedPost } from './types.ts'
 const AUTHOR_EMBED = `author:profiles_public!creations_author_id_fkey(id, username, display_name, avatar_url, verified)`
 
 const FEED_COLUMNS =
-  `id, type, title, caption, body_text, cover_url, audience, published_at, like_count, comment_count, save_count, created_at, author_id, ${AUTHOR_EMBED}` as const
+  `id, type, title, caption, body_excerpt, body_truncated, cover_url, audience, published_at, like_count, comment_count, save_count, created_at, author_id, ${AUTHOR_EMBED}` as const
 
 export type FeedFailure = {
   ok: false
@@ -48,15 +48,13 @@ function count(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : 0
 }
 
+function bool(value: unknown): boolean {
+  return value === true
+}
+
 async function currentUserId(): Promise<string | null> {
   const { data } = await supabase.auth.getSession()
   return data.session?.user.id ?? null
-}
-
-async function followeeIdsFor(viewerId: string): Promise<FeedResult | Set<string>> {
-  const { data, error } = await supabase.from('follows').select('followee_id').eq('follower_id', viewerId)
-  if (error) return fail('unavailable', 'We could not load your follows. Try again.', error)
-  return new Set((data ?? []).map((row) => row.followee_id))
 }
 
 async function viewerLikeSaveSets(viewerId: string, creationIds: string[]): Promise<FeedResult | { liked: Set<string>; saved: Set<string> }> {
@@ -68,7 +66,7 @@ async function viewerLikeSaveSets(viewerId: string, creationIds: string[]): Prom
   ])
 
   if (likes.error) return fail('unavailable', 'We could not load your likes. Try again.', likes.error)
-  if (saves.error) return fail('unavailable', 'We could not save your place. Try again.', saves.error)
+  if (saves.error) return fail('unavailable', 'We could not load your saves. Try again.', saves.error)
 
   return {
     liked: new Set((likes.data ?? []).map((row) => row.creation_id)),
@@ -95,8 +93,10 @@ export async function listFeed(kind: FeedKind, cursor: import('./cursor.ts').Fee
   const viewerId = await currentUserId()
   if (!viewerId) return fail('forbidden', 'Sign in to see your feed.')
 
+  const table = kind === 'following' ? 'following_feed' : 'feed_creations'
+
   let query = supabase
-    .from('feed_creations')
+    .from(table)
     .select(FEED_COLUMNS)
     .order('published_at', { ascending: false })
     .order('id', { ascending: false })
@@ -104,16 +104,6 @@ export async function listFeed(kind: FeedKind, cursor: import('./cursor.ts').Fee
 
   const filter = feedCursorFilter(cursor)
   if (filter) query = query.or(filter)
-
-  if (kind === 'following') {
-    const followees = await followeeIdsFor(viewerId)
-    if ('ok' in followees && followees.ok === false) return followees
-    const ids = followees as Set<string>
-    if (ids.size === 0) {
-      return { ok: true, data: { posts: [], nextCursor: null } }
-    }
-    query = query.in('author_id', [...ids])
-  }
 
   const { data, error } = await query
   if (error) return fail('unavailable', 'We could not load the feed. Try again.', error)
@@ -137,7 +127,8 @@ export async function listFeed(kind: FeedKind, cursor: import('./cursor.ts').Fee
           type: type as FeedPost['type'],
           title: text(row.title),
           caption: text(row.caption),
-          bodyText: text(row.body_text),
+          bodyExcerpt: text(row.body_excerpt),
+          bodyTruncated: bool(row.body_truncated),
           status: 'published' as const,
           audience: audience as FeedPost['audience'],
           coverUrl: text(row.cover_url),

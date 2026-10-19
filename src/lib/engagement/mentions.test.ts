@@ -9,4 +9,13 @@ describe('parseMentions', () => {
   it('ignores invalid handles', () => {
     expect(parseMentions('@ab @way_too_long_username_that_exceeds_limit')).toEqual([])
   })
+
+  it('does not treat email addresses as mentions', () => {
+    expect(parseMentions('a@bcd.com')).toEqual([])
+  })
+
+  it('parses mentions next to punctuation', () => {
+    expect(parseMentions('hi @bob_1!')).toEqual(['bob_1'])
+    expect(parseMentions('(@alice)')).toEqual(['alice'])
+  })
 })
