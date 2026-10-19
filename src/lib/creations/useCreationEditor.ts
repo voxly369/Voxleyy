@@ -11,15 +11,20 @@ import {
   shouldRunQueuedSave,
 } from './autosave.ts'
 import {
-  bodyJsonFromText,
+  bodyContentFromJson,
   DEFAULT_QUOTE_CARD_STYLE,
+  emptyRichDocument,
   hasEditorContent,
   quoteCardBodyJson,
   quoteStyleFromJson,
+  richDocumentFingerprint,
+  richToPlainText,
+  validateRichDocumentSize,
   type QuoteCardStyle,
+  type RichBodyDocument,
 } from './bodyDocument.ts'
+import { isPhase1CreationType, type CreationType } from './creationTypes.ts'
 import { createDraft, getEditableCreation, saveCreationFields } from './api.ts'
-import type { CreationType } from './creationTypes.ts'
 import type { Audience, PublishStatus } from './types.ts'
 import { isTransientSaveError, saveErrorMessage } from './saveErrors.ts'
 import type { CreationFailure } from './types.ts'
@@ -58,9 +63,14 @@ function failureMessage(result: CreationFailure): string {
   )
 }
 
-function buildBodyJson(type: CreationType, body: string, quoteStyle: QuoteCardStyle): Json {
+function usesRichEditor(type: CreationType): boolean {
+  return isPhase1CreationType(type) && type !== 'quote_card'
+}
+
+function buildBodyJson(type: CreationType, body: string, quoteStyle: QuoteCardStyle, richDoc: RichBodyDocument): Json {
   if (type === 'quote_card') return quoteCardBodyJson(body, quoteStyle) as Json
-  return bodyJsonFromText(body) as Json
+  if (usesRichEditor(type)) return richDoc as unknown as Json
+  return { version: 1, format: 'plain', text: body } as Json
 }
 
 export function useCreationEditor({ creationId, creationType }: UseCreationEditorArgs) {
@@ -76,6 +86,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
   const [creationStatus, setCreationStatus] = useState<PublishStatus>('draft')
   const [creationAudience, setCreationAudience] = useState<Audience>('private')
   const [quoteStyle, setQuoteStyle] = useState<QuoteCardStyle>(DEFAULT_QUOTE_CARD_STYLE)
+  const [richDoc, setRichDoc] = useState<RichBodyDocument>(() => emptyRichDocument())
   const [tagWarning, setTagWarning] = useState<string | null>(null)
   const [saveMessage, setSaveMessage] = useState<string | null>(null)
 
@@ -85,6 +96,8 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
   const formRef = useRef(form)
   const audienceRef = useRef(creationAudience)
   const quoteStyleRef = useRef(quoteStyle)
+  const richDocRef = useRef(richDoc)
+  const savedFingerprintRef = useRef<string>(richDocumentFingerprint(emptyRichDocument()))
   const debounceRef = useRef<number | null>(null)
   const retryTimerRef = useRef<number | null>(null)
   const savingRef = useRef(false)
@@ -103,6 +116,10 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
   }, [quoteStyle])
 
   useEffect(() => {
+    richDocRef.current = richDoc
+  }, [richDoc])
+
+  useEffect(() => {
     autosaveRef.current = autosave
   }, [autosave])
 
@@ -119,7 +136,15 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     updatedAtRef.current = value.updatedAt
     setCreationStatus(value.status)
     setCreationAudience(value.audience)
-    setForm({ title: value.title, body: value.bodyText, caption: value.caption, tags: value.tags })
+    const loadedRich = bodyContentFromJson(value.bodyJson, value.bodyText)
+    setForm({
+      title: value.title,
+      body: richToPlainText(loadedRich),
+      caption: value.caption,
+      tags: value.tags,
+    })
+    setRichDoc(loadedRich)
+    savedFingerprintRef.current = richDocumentFingerprint(loadedRich)
     setQuoteStyle(quoteStyleFromJson(value.bodyJson))
     setCoverUrl(value.coverUrl)
     setTagWarning(null)
@@ -179,7 +204,17 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     setSaveMessage(null)
     dispatchAutosave({ type: 'save_start' })
 
-    const bodyJson = buildBodyJson(creationType, snapshot.body, style)
+    const richSnapshot = richDocRef.current
+    if (usesRichEditor(creationType)) {
+      const sizeIssue = validateRichDocumentSize(richSnapshot)
+      if (!sizeIssue.ok) {
+        setSaveMessage(sizeIssue.message)
+        dispatchAutosave({ type: 'save_permanent_error' })
+        savingRef.current = false
+        return
+      }
+    }
+    const bodyJson = buildBodyJson(creationType, snapshot.body, style, richSnapshot)
 
     try {
       let id = idRef.current
@@ -211,6 +246,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
         setCreationAudience(created.data.audience)
         if (created.tagError) setTagWarning(created.tagError.message)
         navigate(`/create/${id}`, { replace: true })
+        savedFingerprintRef.current = richDocumentFingerprint(richSnapshot)
         dispatchAutosave({ type: 'save_success', savedAt: created.data.updatedAt })
         return
       }
@@ -246,6 +282,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
       updatedAtRef.current = result.updatedAt
       if (result.tagError) setTagWarning(result.tagError.message)
       else setTagWarning(null)
+      savedFingerprintRef.current = richDocumentFingerprint(richSnapshot)
       dispatchAutosave({ type: 'save_success', savedAt: result.updatedAt })
     } finally {
       savingRef.current = false
@@ -280,6 +317,21 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
   const onAudienceChange = useCallback(
     (audience: Audience) => {
       setCreationAudience(audience)
+      dispatchAutosave({ type: 'edit' })
+      scheduleSave()
+    },
+    [scheduleSave],
+  )
+
+  const onRichDocumentChange = useCallback(
+    (doc: RichBodyDocument, plain: string) => {
+      setRichDoc(doc)
+      setForm({ body: plain })
+      const fingerprint = richDocumentFingerprint(doc)
+      if (fingerprint === savedFingerprintRef.current) {
+        dispatchAutosave({ type: 'revert_to_clean' })
+        return
+      }
       dispatchAutosave({ type: 'edit' })
       scheduleSave()
     },
@@ -378,7 +430,9 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     onBlur,
     onAudienceChange,
     onQuoteStyleChange,
+    onRichDocumentChange,
     quoteStyle,
+    richDoc,
     autosave,
     statusLabel,
     loading,
@@ -397,6 +451,9 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     setCoverUrl,
     flushPendingSave,
     saveDraftNow,
-    buildPreviewBodyJson: () => buildBodyJson(creationType, formRef.current.body, quoteStyleRef.current),
+    buildPreviewBodyJson: () =>
+      buildBodyJson(creationType, formRef.current.body, quoteStyleRef.current, richDocRef.current),
+    usesRichEditor: usesRichEditor(creationType),
+    literaryLineBreaks: creationType === 'poem' || creationType === 'lyric' || creationType === 'script',
   }
 }

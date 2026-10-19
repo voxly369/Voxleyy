@@ -80,6 +80,14 @@ h6,
   }
 }
 
+.voxly-rich-editor.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: rgb(var(--c-muted));
+}
+
 @media (prefers-reduced-motion: reduce) {
   .skeleton::after {
     animation: none;

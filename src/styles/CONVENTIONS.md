@@ -42,6 +42,12 @@ Lists and feeds of **other people's** work (Home, Discover, search, tags) must q
 
 **Quote card** body is stored as plain `body_text` plus `body_json` `{ version: 1, format: 'quote_card', text, style: { background, color, size } }` with validated `#RRGGBB` colours only in inline styles.
 
+**Rich body** (essays, poems, and other written types except quote cards) uses `body_text` as derived plain text and `body_json` `{ version: 1, format: 'rich', content: [...] }`. Allowed blocks are paragraphs and headings level 2 or 3 only; inline nodes are text (with optional `bold` / `italic` marks) and hard line breaks. Never store or render user content as HTML strings — only validated JSON rendered as React elements (`RichTextView`). Legacy `{ format: 'plain' }` drafts still open; they convert in memory and save as `rich` after the writer edits.
+
+**Modals** (Create sheet, Comments, Publish, Confirm, Preview) share `useModal` / `Modal`: focus moves into the dialog, Tab is trapped, the app root is `inert` while open, background scroll is locked, Escape closes (except Confirm while busy), and focus returns to the opener on close. Stack order follows open order (Preview over editor, Confirm over Comments).
+
+Do not nest interactive elements inside links (for example a Save button inside a post tile link). Keep the link and actions as siblings.
+
 **Create (+)** opens the grouped “What will you share?” sheet from any page; `/create` is the same picker as a full page. Home currently shows newest public work from everyone; the suggestions mix and ranked For You arrive with the ranking prompt.
 
 Home and Following feeds must read published posts from the `feed_creations` and `following_feed` views (never from raw `creations` alone). Those views expose `body_excerpt` and `body_truncated`, not full `body_text`. Direct client reads of other people's work outside the feed must still filter `audience = 'public'`.

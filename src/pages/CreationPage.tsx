@@ -21,6 +21,9 @@ import type { CreationDetail } from '../lib/creations/types.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 import { EngagementBar } from '../components/engagement/EngagementBar.tsx'
 import { CommentsSheet } from '../components/engagement/CommentsSheet.tsx'
+import { RichTextView } from '../components/creations/RichTextView.tsx'
+import { quoteStyleFromJson } from '../lib/creations/bodyDocument.ts'
+import { QuoteCardView } from '../components/creations/QuoteCardView.tsx'
 import { supabase } from '../lib/supabaseClient.ts'
 
 type LocationState = {
@@ -222,8 +225,18 @@ export default function CreationPage() {
           {work.author.verified ? <VerifiedBadge /> : null}
         </Link>
       </header>
-      {work.bodyText ? (
-        <div className="whitespace-pre-wrap font-serif text-lg leading-relaxed text-ink">{work.bodyText}</div>
+      {work.type === 'quote_card' ? (
+        work.bodyText ? (
+          <QuoteCardView
+            text={work.bodyText}
+            style={quoteStyleFromJson(work.bodyJson)}
+            handle={work.author.username}
+          />
+        ) : (
+          <p className="text-muted">No text yet.</p>
+        )
+      ) : work.bodyText || work.bodyJson ? (
+        <RichTextView bodyJson={work.bodyJson} bodyText={work.bodyText ?? ''} creationType={work.type} />
       ) : (
         <p className="text-muted">No text yet.</p>
       )}

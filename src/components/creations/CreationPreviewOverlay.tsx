@@ -1,12 +1,13 @@
-import { useEffect, useId } from 'react'
-import { Link } from 'react-router-dom'
+import { useId } from 'react'
 import { quoteStyleFromJson } from '../../lib/creations/bodyDocument.ts'
 import type { CreationType } from '../../lib/creations/creationTypes.ts'
 import type { Json } from '../../lib/database.types.ts'
 import { PostCard } from '../feed/PostCard.tsx'
 import type { FeedPost } from '../../lib/feed/types.ts'
+import { Modal } from '../shell/Modal.tsx'
 import { focusRing } from '../shell/navItems.ts'
 import { QuoteCardView } from './QuoteCardView.tsx'
+import { RichTextView } from './RichTextView.tsx'
 
 type CreationPreviewOverlayProps = {
   open: boolean
@@ -35,20 +36,6 @@ export function CreationPreviewOverlay({
 }: CreationPreviewOverlayProps) {
   const titleId = useId()
 
-  useEffect(() => {
-    if (!open) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [open, onClose])
-
-  if (!open) return null
-
   const previewPost: FeedPost = {
     id: 'preview',
     type: creationType,
@@ -71,7 +58,14 @@ export function CreationPreviewOverlay({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col bg-bg" role="presentation">
+    <Modal
+      open={open}
+      onClose={onClose}
+      hideBackdrop
+      labelledBy={titleId}
+      containerClassName="fixed inset-0 flex flex-col p-0"
+      className="flex h-full w-full flex-col bg-bg outline-none"
+    >
       <header className="flex items-center gap-3 border-b border-line px-5 py-4">
         <button type="button" onClick={onClose} className={`min-h-11 rounded-2xl px-3 font-medium ${focusRing}`}>
           Back
@@ -88,12 +82,9 @@ export function CreationPreviewOverlay({
             <QuoteCardView text={body} style={quoteStyleFromJson(bodyJson)} handle={author.username} />
           </div>
         ) : (
-          <article className="prose mt-6 max-w-[65ch] whitespace-pre-wrap font-serif text-lg text-ink">{body}</article>
+          <RichTextView bodyJson={bodyJson} bodyText={body} creationType={creationType} className="mt-6" />
         )}
-        <Link to="#" onClick={(e) => e.preventDefault()} className="sr-only">
-          Preview only
-        </Link>
       </div>
-    </div>
+    </Modal>
   )
 }

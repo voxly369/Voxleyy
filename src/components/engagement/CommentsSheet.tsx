@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
+import { Modal } from '../shell/Modal.tsx'
 import { focusRing } from '../shell/navItems.ts'
 import { ConfirmDialog } from '../states/ConfirmDialog.tsx'
 import { EmptyState } from '../states/EmptyState.tsx'
@@ -27,8 +28,6 @@ type CommentsSheetProps = {
 export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps) {
   const titleId = useId()
   const { profile, user, isFounder } = useAuth()
-  const panelRef = useRef<HTMLDivElement>(null)
-  const lastFocus = useRef<HTMLElement | null>(null)
   const [comments, setComments] = useState<CommentNode[]>([])
   const [cursor, setCursor] = useState<CommentCursor | null>(null)
   const [loading, setLoading] = useState(false)
@@ -48,24 +47,6 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
       : profile?.status === 'suspended'
         ? 'Your account is suspended and cannot comment.'
         : null
-
-  useEffect(() => {
-    if (!open) return
-    lastFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    panelRef.current?.focus()
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      lastFocus.current?.focus()
-    }
-  }, [open, onClose])
 
   useEffect(() => {
     if (!open) return
@@ -133,17 +114,15 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
     setCursor(result.data.nextCursor)
   }
 
-  if (!open) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex justify-end" role="presentation">
-      <button type="button" className="absolute inset-0 bg-black/50" aria-label="Close comments" onClick={onClose} />
-      <div
-        ref={panelRef}
-        tabIndex={-1}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
+    <>
+      <Modal
+        open={open}
+        onClose={onClose}
+        labelledBy={titleId}
+        containerClassName="fixed inset-0 flex justify-end p-0"
+        backdropClassName="absolute inset-0 bg-black/50"
+        backdropLabel="Close comments"
         className="relative z-10 flex h-full w-full max-w-lg flex-col border-l border-line bg-surface shadow-xl sm:max-w-md"
       >
         <header className="flex items-center justify-between border-b border-line px-4 py-3">
@@ -266,7 +245,7 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
             </button>
           </div>
         </footer>
-      </div>
+      </Modal>
 
       <ConfirmDialog
         open={Boolean(confirmDeleteId)}
@@ -289,7 +268,7 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
           })()
         }}
       />
-    </div>
+    </>
   )
 }
 

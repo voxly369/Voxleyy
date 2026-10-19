@@ -15,3 +15,6 @@ Render needs the same two names set in the service dashboard. `.env.local` stays
 
 - **For You** feed: switcher label only; ranked full-screen feed is not built yet.
 - **@mention notifications**: mentions render as profile links when the username exists; notification rows are not created yet (no `mentions` table in the database).
+- **Cover Studio** is not built yet.
+- **Manuscript import** is not built yet.
+- **Links inside body text** are not supported yet (rich text allows bold, italic, headings, and line breaks only).

@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useId, useState } from 'react'
+import { Modal } from '../shell/Modal.tsx'
 import { focusRing } from '../shell/navItems.ts'
 import { AUDIENCE_OPTIONS } from '../../lib/creations/audienceOptions.ts'
 import { publishContentStats, validatePublishContent } from '../../lib/creations/publishValidation.ts'
@@ -42,28 +43,6 @@ export function PublishSheet({
 }: PublishSheetProps) {
   const titleId = useId()
   const [audience, setAudience] = useState<Audience>(initialAudience)
-  const closeRef = useRef<HTMLButtonElement>(null)
-  const lastFocus = useRef<HTMLElement | null>(null)
-
-  useEffect(() => {
-    if (!open) return
-    lastFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    closeRef.current?.focus()
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        onClose()
-      }
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      lastFocus.current?.focus()
-    }
-  }, [open, onClose])
-
-  if (!open) return null
 
   const check = validatePublishContent({ title, body, caption, creationType, quoteStyle })
   const stats = publishContentStats(body)
@@ -72,93 +51,87 @@ export function PublishSheet({
   const actionLabel = mode === 'publish' ? 'Publish' : 'Save audience'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center" role="presentation">
-      <button type="button" className="absolute inset-0 bg-black/50" aria-label="Close sheet" onClick={onClose} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-lg"
-      >
-        <div className="overflow-y-auto p-5">
-          <h2 id={titleId} className="font-serif text-2xl text-ink">
-            {heading}
-          </h2>
-          <fieldset className="mt-4 flex flex-col gap-3">
-            <legend className="text-sm font-medium text-ink">Who can see this?</legend>
-            {AUDIENCE_OPTIONS.map((option) => (
-              <label
-                key={option.value}
-                className={`flex cursor-pointer gap-3 rounded-2xl border p-3 ${audience === option.value ? 'border-coral bg-raised/50' : 'border-line'} ${focusRing}`}
-              >
-                <input
-                  type="radio"
-                  name="audience"
-                  value={option.value}
-                  checked={audience === option.value}
-                  onChange={() => setAudience(option.value)}
-                  className="mt-1 size-4 accent-coral"
-                />
-                <span className="flex flex-col gap-1">
-                  <span className="font-medium text-ink">{option.label}</span>
-                  <span className="text-sm text-muted">{option.description}</span>
-                </span>
-              </label>
-            ))}
-          </fieldset>
-
-          <section className="mt-5 flex flex-col gap-2" aria-labelledby="publish-check-heading">
-            <h3 id="publish-check-heading" className="text-sm font-medium text-ink">
-              Content check
-            </h3>
-            {!check.ok ? <p className="text-sm text-coral">{check.message}</p> : null}
-            <p className="text-sm text-muted">
-              {stats.words} words · {stats.lines} lines · {stats.characters} characters
-            </p>
-          </section>
-
-          <section className="mt-5 flex flex-col gap-2" aria-labelledby="publish-preview-heading">
-            <h3 id="publish-preview-heading" className="text-sm font-medium text-ink">
-              Preview
-            </h3>
-            <div className="flex gap-3 rounded-lg border border-line p-3">
-              <ImageWithFallback
-                src={coverUrl ?? undefined}
-                alt=""
-                label={title.trim().charAt(0) || 'U'}
-                className="size-16 rounded-md"
+    <Modal
+      open={open}
+      onClose={onClose}
+      closeOnEscape={!busy}
+      labelledBy={titleId}
+      className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-lg"
+      backdropLabel="Close sheet"
+    >
+      <div className="overflow-y-auto p-5">
+        <h2 id={titleId} className="font-serif text-2xl text-ink">
+          {heading}
+        </h2>
+        <fieldset className="mt-4 flex flex-col gap-3">
+          <legend className="text-sm font-medium text-ink">Who can see this?</legend>
+          {AUDIENCE_OPTIONS.map((option) => (
+            <label
+              key={option.value}
+              className={`flex cursor-pointer gap-3 rounded-2xl border p-3 ${audience === option.value ? 'border-coral bg-raised/50' : 'border-line'} ${focusRing}`}
+            >
+              <input
+                type="radio"
+                name="audience"
+                value={option.value}
+                checked={audience === option.value}
+                onChange={() => setAudience(option.value)}
+                className="mt-1 size-4 accent-coral"
               />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-serif text-lg text-ink">{title.trim() || 'Untitled'}</p>
-                <p className="text-sm text-muted">{creationTypeLabel(creationType)}</p>
-                {tags.length > 0 ? (
-                  <p className="mt-1 truncate text-sm text-muted">{tags.join(', ')}</p>
-                ) : null}
-              </div>
-            </div>
-          </section>
+              <span className="flex flex-col gap-1">
+                <span className="font-medium text-ink">{option.label}</span>
+                <span className="text-sm text-muted">{option.description}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
 
-          {error ? <p className="mt-4 text-sm text-coral">{error}</p> : null}
-        </div>
-        <div className="flex flex-col gap-2 border-t border-line p-5 sm:flex-row sm:justify-end">
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={onClose}
-            className={`min-h-11 rounded-2xl px-4 text-base font-medium text-ink ${focusRing}`}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={!canSubmit}
-            onClick={() => onConfirm(audience)}
-            className={`min-h-11 rounded-2xl bg-coral px-4 text-base font-semibold text-white disabled:opacity-50 ${focusRing}`}
-          >
-            {busy ? 'Working…' : actionLabel}
-          </button>
-        </div>
+        <section className="mt-5 flex flex-col gap-2" aria-labelledby="publish-check-heading">
+          <h3 id="publish-check-heading" className="text-sm font-medium text-ink">
+            Content check
+          </h3>
+          {!check.ok ? <p className="text-sm text-coral">{check.message}</p> : null}
+          <p className="text-sm text-muted">
+            {stats.words} words · {stats.lines} lines · {stats.characters} characters
+          </p>
+        </section>
+
+        <section className="mt-5 flex flex-col gap-2" aria-labelledby="publish-preview-heading">
+          <h3 id="publish-preview-heading" className="text-sm font-medium text-ink">
+            Preview
+          </h3>
+          <div className="flex gap-3 rounded-lg border border-line p-3">
+            <ImageWithFallback
+              src={coverUrl ?? undefined}
+              alt=""
+              label={title.trim().charAt(0) || 'U'}
+              className="size-16 rounded-md"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-serif text-lg text-ink">{title.trim() || 'Untitled'}</p>
+              <p className="text-sm text-muted">{creationTypeLabel(creationType)}</p>
+              {tags.length > 0 ? (
+                <p className="mt-1 truncate text-sm text-muted">{tags.join(', ')}</p>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
+        {error ? <p className="mt-4 text-sm text-coral">{error}</p> : null}
       </div>
-    </div>
+      <div className="flex flex-col gap-2 border-t border-line p-5 sm:flex-row sm:justify-end">
+        <button type="button" onClick={onClose} className={`min-h-11 rounded-2xl px-4 text-base font-medium text-ink ${focusRing}`}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={!canSubmit}
+          onClick={() => onConfirm(audience)}
+          className={`min-h-11 rounded-2xl bg-coral px-4 text-base font-semibold text-white disabled:opacity-50 ${focusRing}`}
+        >
+          {busy ? 'Working…' : actionLabel}
+        </button>
+      </div>
+    </Modal>
   )
 }

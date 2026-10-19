@@ -85,4 +85,10 @@ describe('autosave state machine', () => {
     expect(shouldAutoRetry(errored)).toBe(false)
     expect(autosaveStatusLabel(errored)).toBe('Not saved. Retry')
   })
+
+  it('clears dirty when reverting to the saved fingerprint', () => {
+    let model = autosaveReducer(initialAutosaveModel, { type: 'edit' })
+    model = autosaveReducer(model, { type: 'revert_to_clean' })
+    expect(model.dirty).toBe(false)
+  })
 })

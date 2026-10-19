@@ -26,6 +26,7 @@ export type WorkSummary = {
 
 export type CreationDetail = WorkSummary & {
   bodyText: string | null
+  bodyJson: import('../database.types.ts').Json | null
   genre: string | null
   mood: string | null
   language: string

@@ -1,16 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createRoot } from 'react-dom/client'
-import { act } from 'react'
+import { render, act } from '@testing-library/react'
 import { ConfirmDialog } from './ConfirmDialog.tsx'
+import { ModalStackProvider } from '../../lib/shell/modalStack.tsx'
 
 describe('ConfirmDialog', () => {
   it('calls cancel on Escape', () => {
     const onCancel = vi.fn()
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    const root = createRoot(container)
-    act(() => {
-      root.render(
+    render(
+      <ModalStackProvider>
         <ConfirmDialog
           open
           title="Test"
@@ -18,14 +15,12 @@ describe('ConfirmDialog', () => {
           confirmLabel="OK"
           onConfirm={() => {}}
           onCancel={onCancel}
-        />,
-      )
-    })
+        />
+      </ModalStackProvider>,
+    )
     act(() => {
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     })
     expect(onCancel).toHaveBeenCalled()
-    root.unmount()
-    container.remove()
   })
 })
