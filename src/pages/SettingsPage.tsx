@@ -83,12 +83,20 @@ export default function SettingsPage() {
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Profile</h2>
-        <Link
-          to="/settings/profile"
-          className={`mt-4 inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
-        >
-          Profile
-        </Link>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <Link
+            to="/settings/profile"
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Profile
+          </Link>
+          <Link
+            to="/write/drafts"
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Drafts
+          </Link>
+        </div>
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 id="theme-label" className="text-xs font-semibold uppercase tracking-wide text-muted">
