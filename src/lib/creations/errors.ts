@@ -42,3 +42,17 @@ export const creationUserMessages = {
   slowDown: SLOW_DOWN,
   cantDelete: CANT_DELETE,
 } as const
+
+export const TAG_SYNC_WARNING = 'Draft saved, but tags were not saved. Retry.'
+
+export function messageForPublishError(error: { message?: string; code?: string } | null): string {
+  const msg = error?.message ?? ''
+  const lower = msg.toLowerCase()
+  if (error?.code === '42501' || lower.includes('policy') || lower.includes('permission')) {
+    return 'You do not have permission to publish this work.'
+  }
+  if (lower.includes('too fast') || lower.includes('slow down')) return SLOW_DOWN
+  if (lower.includes('not available') || lower.includes('not found')) return 'This work is not available.'
+  if (lower.includes('sign in')) return 'Sign in again to publish this work.'
+  return messageForCreationWriteError(error)
+}

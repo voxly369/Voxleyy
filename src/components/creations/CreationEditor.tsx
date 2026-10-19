@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { focusRing } from '../shell/navItems.ts'
-import { autosaveStatusLabel } from '../../lib/creations/autosave.ts'
+import { audienceLabel } from '../../lib/creations/audienceOptions.ts'
 import { bodyOctets, countLines } from '../../lib/creations/bodyDocument.ts'
 import { prepareCoverImage } from '../../lib/creations/coverImage.ts'
 import { removeCreationCover, uploadCreationCover } from '../../lib/creations/coverUpload.ts'
@@ -18,9 +18,10 @@ type CreationEditorProps = {
   editor: EditorState
   coverUrl: string | null
   onCoverUrlChange: (url: string | null) => void
+  onOpenPublish: () => void
 }
 
-export function CreationEditor({ creationType, editor, coverUrl, onCoverUrlChange }: CreationEditorProps) {
+export function CreationEditor({ creationType, editor, coverUrl, onCoverUrlChange, onOpenPublish }: CreationEditorProps) {
   const { user } = useAuth()
   const fileRef = useRef<HTMLInputElement>(null)
   const [coverError, setCoverError] = useState<string | null>(null)
@@ -29,7 +30,8 @@ export function CreationEditor({ creationType, editor, coverUrl, onCoverUrlChang
   const bytes = bodyOctets(editor.form.body)
   const jsonBytes = new TextEncoder().encode(JSON.stringify({ version: 1, format: 'plain', text: editor.form.body })).length
   const lines = countLines(editor.form.body)
-  const status = autosaveStatusLabel(editor.autosave)
+  const status = editor.statusLabel
+  const isLive = editor.creationStatus === 'published'
 
   async function onPickCover(file: File) {
     if (!user?.id || !editor.creationId) {
@@ -69,12 +71,20 @@ export function CreationEditor({ creationType, editor, coverUrl, onCoverUrlChang
 
   return (
     <div className="flex flex-col gap-6 pb-32">
+      {isLive ? (
+        <div className="rounded-2xl border border-coral/40 bg-coral/10 px-4 py-3" role="status">
+          <p className="font-medium text-ink">Live</p>
+          <p className="text-sm text-muted">Changes you save here update the published work.</p>
+          <p className="mt-1 text-sm text-muted">Audience: {audienceLabel(editor.creationAudience)}</p>
+        </div>
+      ) : null}
       <div
         className="sticky top-0 z-10 -mx-5 border-b border-line bg-bg/95 px-5 py-3 backdrop-blur"
         aria-live="polite"
         aria-atomic="true"
       >
         <p className="text-sm text-muted">{status || 'Start writing to save a draft'}</p>
+        {editor.tagWarning ? <p className="mt-1 text-sm text-coral">{editor.tagWarning}</p> : null}
         {editor.autosave.ui === 'error' ? (
           <button type="button" onClick={editor.retrySave} className={`mt-2 text-sm font-medium text-coral ${focusRing}`}>
             Retry save
@@ -97,6 +107,15 @@ export function CreationEditor({ creationType, editor, coverUrl, onCoverUrlChang
               Keep my version (overwrite)
             </button>
           </div>
+        ) : null}
+        {editor.creationId ? (
+          <button
+            type="button"
+            onClick={onOpenPublish}
+            className={`mt-3 min-h-11 self-start rounded-2xl bg-coral px-4 text-base font-semibold text-white ${focusRing}`}
+          >
+            {isLive ? 'Update audience' : 'Publish'}
+          </button>
         ) : null}
       </div>
 

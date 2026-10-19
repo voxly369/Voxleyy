@@ -79,7 +79,31 @@ export type DraftListPage = {
   nextCursor: import('./draftsCursor.ts').DraftsCursor | null
 }
 
+export type TagSyncWarning = { message: string }
+
 export type SaveCreationResult =
-  | { ok: true; updatedAt: string }
+  | { ok: true; updatedAt: string; tagError?: TagSyncWarning }
+  | { ok: false; conflict: true; remoteUpdatedAt: string }
+  | CreationFailure
+
+export type CreateDraftResult =
+  | { ok: true; data: CreationDetail; tagError?: TagSyncWarning }
+  | CreationFailure
+
+export type PublishedWorkSummary = {
+  id: string
+  type: CreationType
+  title: string | null
+  coverUrl: string | null
+  publishedAt: string
+}
+
+export type PublishedWorksPage = {
+  works: PublishedWorkSummary[]
+  nextCursor: import('./publishedCursor.ts').PublishedCursor | null
+}
+
+export type PublishCreationResult =
+  | { ok: true; updatedAt: string; audience: Audience; status: PublishStatus }
   | { ok: false; conflict: true; remoteUpdatedAt: string }
   | CreationFailure

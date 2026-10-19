@@ -1,9 +1,24 @@
+import type { UserRole } from '../auth/profile.ts'
 import type { Json } from '../database.types.ts'
 import { supabase } from '../supabaseClient.ts'
-import { messageForCreationDeleteError, messageForCreationWriteError } from './errors.ts'
+import {
+  messageForCreationDeleteError,
+  messageForCreationWriteError,
+  messageForPublishError,
+  TAG_SYNC_WARNING,
+} from './errors.ts'
 import { bodyJsonFromText, bodyTextFromJson } from './bodyDocument.ts'
 import { draftsCursorFilter, DRAFTS_PAGE_SIZE, isDraftsCursor, nextDraftsCursor } from './draftsCursor.ts'
+import { fieldsForPublish, fieldsForSaveCreation } from './publishPayload.ts'
+import {
+  isPublishedCursor,
+  nextPublishedCursor,
+  PUBLISHED_PAGE_SIZE,
+  publishedCursorFilter,
+} from './publishedCursor.ts'
 import type {
+  Audience,
+  CreateDraftResult,
   CreationAuthor,
   CreationDetail,
   CreationFailure,
@@ -12,6 +27,8 @@ import type {
   DraftListPage,
   DraftListRow,
   EditableCreation,
+  PublishedWorksPage,
+  PublishCreationResult,
   SaveCreationResult,
   WorkSummary,
 } from './types.ts'
@@ -105,7 +122,7 @@ async function syncTags(creationId: string, tags: string[]): Promise<CreationFai
   return null
 }
 
-export async function createDraft(input: DraftInput): Promise<CreationResult<CreationDetail>> {
+export async function createDraft(input: DraftInput): Promise<CreateDraftResult> {
   const userId = await currentUserId()
   if (!userId) return fail('forbidden', 'Sign in again to save a draft.')
 
@@ -134,9 +151,9 @@ export async function createDraft(input: DraftInput): Promise<CreationResult<Cre
 
   if (error || !data) return fail('unavailable', messageForCreationWriteError(error))
 
+  let tagWarning: CreationFailure | null = null
   if (tags && tags.length > 0) {
-    const tagError = await syncTags(data.id, tags)
-    if (tagError) return tagError
+    tagWarning = await syncTags(data.id, tags)
   }
 
   const work = parseWork(data as Record<string, unknown>)
@@ -152,6 +169,7 @@ export async function createDraft(input: DraftInput): Promise<CreationResult<Cre
       updatedAt: text((data as Record<string, unknown>).updated_at) ?? new Date().toISOString(),
       isOwn: true,
     },
+    ...(tagWarning ? { tagError: { message: TAG_SYNC_WARNING } } : {}),
   }
 }
 
@@ -226,19 +244,18 @@ export async function updateDraft(id: string, input: DraftInput): Promise<Creati
   if (issue) return fail('invalid', issue.message)
 
   const { tags, type: _type, ...fields } = input
+  const patch: import('../database.types.ts').Database['public']['Tables']['creations']['Update'] = {}
+  if (fields.title !== undefined) patch.title = fields.title
+  if (fields.caption !== undefined) patch.caption = fields.caption
+  if (fields.body_text !== undefined) patch.body_text = fields.body_text
+  if (fields.body_json !== undefined) patch.body_json = fields.body_json as Json
+  if (fields.genre !== undefined) patch.genre = fields.genre
+  if (fields.mood !== undefined) patch.mood = fields.mood
+  if (fields.language !== undefined) patch.language = fields.language
+  if (fields.audience !== undefined) patch.audience = fields.audience
   const { error: updateError } = await supabase
     .from('creations')
-    .update({
-      media_url: null,
-      ...(fields.title !== undefined ? { title: fields.title } : {}),
-      ...(fields.caption !== undefined ? { caption: fields.caption } : {}),
-      ...(fields.body_text !== undefined ? { body_text: fields.body_text } : {}),
-      ...(fields.body_json !== undefined ? { body_json: fields.body_json as Json } : {}),
-      ...(fields.genre !== undefined ? { genre: fields.genre } : {}),
-      ...(fields.mood !== undefined ? { mood: fields.mood } : {}),
-      ...(fields.language !== undefined ? { language: fields.language } : {}),
-      ...(fields.audience !== undefined ? { audience: fields.audience } : {}),
-    })
+    .update(patch)
     .eq('id', id)
     .eq('author_id', userId)
   if (updateError) return fail('unavailable', messageForCreationWriteError(updateError))
@@ -314,12 +331,7 @@ export async function saveCreationFields(input: {
 
   let query = supabase
     .from('creations')
-    .update({
-      title: input.title.trim() || null,
-      body_text: input.bodyText,
-      body_json,
-      media_url: null,
-    })
+    .update(fieldsForSaveCreation({ title: input.title, bodyText: input.bodyText, bodyJson: body_json }))
     .eq('id', input.id)
     .eq('author_id', userId)
 
@@ -339,9 +351,102 @@ export async function saveCreationFields(input: {
   }
 
   const tagError = await syncTags(input.id, input.tags)
-  if (tagError) return tagError
+  if (tagError) {
+    return { ok: true, updatedAt: data.updated_at, tagError: { message: TAG_SYNC_WARNING } }
+  }
 
   return { ok: true, updatedAt: data.updated_at }
+}
+
+export async function fetchProfileRole(userId: string): Promise<CreationResult<UserRole>> {
+  const { data, error } = await supabase.from('profiles_public').select('role').eq('id', userId).maybeSingle()
+  if (error) return fail('unavailable', 'We could not load your profile. Try again.')
+  if (!data?.role) return fail('not_found', 'Profile not found.')
+  const role = data.role
+  if (role !== 'reader' && role !== 'writer' && role !== 'founder') return fail('unavailable', 'We could not load your profile. Try again.')
+  return { ok: true, data: role }
+}
+
+export async function publishCreation(input: {
+  id: string
+  audience: Audience
+  expectedUpdatedAt: string | null
+  forceOverwrite?: boolean
+}): Promise<PublishCreationResult> {
+  const userId = await currentUserId()
+  if (!userId) return fail('forbidden', 'Sign in again to publish this work.')
+
+  let query = supabase
+    .from('creations')
+    .update(fieldsForPublish(input.audience))
+    .eq('id', input.id)
+    .eq('author_id', userId)
+
+  if (!input.forceOverwrite && input.expectedUpdatedAt) {
+    query = query.eq('updated_at', input.expectedUpdatedAt)
+  }
+
+  const { data, error } = await query.select('updated_at, audience, status').maybeSingle()
+  if (error) return fail('unavailable', messageForPublishError(error))
+  if (!data) {
+    const remote = await supabase.from('creations').select('updated_at').eq('id', input.id).maybeSingle()
+    return {
+      ok: false,
+      conflict: true,
+      remoteUpdatedAt: remote.data?.updated_at ?? input.expectedUpdatedAt ?? '',
+    }
+  }
+
+  return { ok: true, updatedAt: data.updated_at, audience: data.audience, status: data.status }
+}
+
+const PUBLISHED_LIST_COLUMNS = 'id, type, title, cover_url, published_at' as const
+
+export async function listUserPublished(
+  userId: string,
+  cursor: import('./publishedCursor.ts').PublishedCursor | null,
+): Promise<CreationResult<PublishedWorksPage>> {
+  if (cursor && !isPublishedCursor(cursor)) return fail('invalid', 'We could not load the next page.')
+
+  let query = supabase
+    .from('creations')
+    .select(PUBLISHED_LIST_COLUMNS)
+    .eq('author_id', userId)
+    .eq('status', 'published')
+    .eq('is_removed', false)
+    .not('published_at', 'is', null)
+    .order('published_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(PUBLISHED_PAGE_SIZE + 1)
+
+  const filter = publishedCursorFilter(cursor)
+  if (filter) query = query.or(filter)
+
+  const { data, error } = await query
+  if (error) return fail('unavailable', 'We could not load works. Try again.')
+
+  const mapped = (data ?? []).flatMap((row) => {
+    const publishedAt = text(row.published_at)
+    const id = text(row.id)
+    const type = row.type
+    if (!publishedAt || !id || typeof type !== 'string') return []
+    return [
+      {
+        publishedAt,
+        id,
+        work: {
+          id,
+          type: type as PublishedWorksPage['works'][number]['type'],
+          title: text(row.title),
+          coverUrl: text(row.cover_url),
+          publishedAt,
+        },
+      },
+    ]
+  })
+
+  const { page, nextCursor } = nextPublishedCursor(mapped)
+  return { ok: true, data: { works: page.map((entry) => entry.work), nextCursor } }
 }
 
 export async function listMyDraftsPage(

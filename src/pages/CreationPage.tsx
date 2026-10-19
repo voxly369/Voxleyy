@@ -1,27 +1,54 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { VerifiedBadge } from '../components/profile/VerifiedBadge.tsx'
+import { PublishSheet } from '../components/creations/PublishSheet.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { ConfirmDialog } from '../components/states/ConfirmDialog.tsx'
 import { ErrorState } from '../components/states/ErrorState.tsx'
 import { ImageWithFallback } from '../components/states/ImageWithFallback.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
-import { deleteCreation, getCreationById, unpublishCreation } from '../lib/creations/api.ts'
+import { useAuth } from '../lib/auth/auth-context.ts'
+import { audienceLabel } from '../lib/creations/audienceOptions.ts'
+import {
+  deleteCreation,
+  fetchProfileRole,
+  getCreationById,
+  publishCreation,
+  unpublishCreation,
+} from '../lib/creations/api.ts'
+import { becameWriterAfterPublish } from '../lib/creations/roleChange.ts'
 import type { CreationDetail } from '../lib/creations/types.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
+
+type LocationState = {
+  published?: boolean
+  writerPromoted?: boolean
+}
 
 export default function CreationPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const { profile } = useAuth()
   const [attempt, setAttempt] = useState(0)
   const [work, setWork] = useState<CreationDetail | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [publishOpen, setPublishOpen] = useState(false)
+  const [publishBusy, setPublishBusy] = useState(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
+  const navFlash = location.state as LocationState | null
+  const publishedNotice = navFlash?.published ? 'Published' : null
+  const writerNotice = Boolean(navFlash?.writerPromoted)
 
   const title = work?.title?.trim() || work?.caption?.trim() || 'Work'
   useDocumentTitle(title)
+
+  useEffect(() => {
+    if (location.state) window.history.replaceState({}, document.title)
+  }, [location.state])
 
   useEffect(() => {
     let active = true
@@ -87,8 +114,54 @@ export default function CreationPage() {
     navigate(`/u/${work.author.username}`)
   }
 
+  async function onPublishConfirm(audience: import('../lib/creations/types.ts').Audience) {
+    if (!work) return
+    setPublishError(null)
+    setPublishBusy(true)
+    const roleBefore = profile?.id ? await fetchProfileRole(profile.id) : null
+    const beforeRole = roleBefore?.ok ? roleBefore.data : null
+
+    const result = await publishCreation({
+      id: work.id,
+      audience,
+      expectedUpdatedAt: work.updatedAt,
+    })
+    setPublishBusy(false)
+
+    if (!result.ok) {
+      if ('conflict' in result) {
+        setPublishError('Someone else saved a newer version. Reload and try again.')
+        return
+      }
+      setPublishError(result.error.message)
+      return
+    }
+
+    setPublishOpen(false)
+    const roleAfter = profile?.id ? await fetchProfileRole(profile.id) : null
+    const afterRole = roleAfter?.ok ? roleAfter.data : null
+    setAttempt((n) => n + 1)
+    navigate(`/c/${work.id}`, {
+      replace: true,
+      state: {
+        published: true,
+        writerPromoted: becameWriterAfterPublish(beforeRole, afterRole),
+      },
+    })
+  }
+
   return (
     <article className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-8">
+      {publishedNotice ? (
+        <p className="rounded-2xl border border-line bg-raised px-4 py-2 text-sm font-medium text-ink" aria-live="polite">
+          {publishedNotice}
+        </p>
+      ) : null}
+      {writerNotice ? (
+        <p className="rounded-2xl border border-line bg-raised px-4 py-2 text-sm text-ink" role="status">
+          You are now a Writer on Voxly. Keep sharing your work.
+        </p>
+      ) : null}
       {work.coverUrl ? (
         <ImageWithFallback
           src={work.coverUrl}
@@ -99,6 +172,14 @@ export default function CreationPage() {
       ) : null}
       <header className="flex flex-col gap-3">
         <h1 className="font-serif text-3xl text-ink">{title}</h1>
+        {work.isOwn ? (
+          <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
+            <span className="rounded-full bg-raised px-2 py-1 font-semibold uppercase tracking-wide">
+              {work.status === 'published' ? 'Live' : 'Draft'}
+            </span>
+            {work.status === 'published' ? <span>Audience: {audienceLabel(work.audience)}</span> : null}
+          </p>
+        ) : null}
         <Link to={`/u/${work.author.username}`} className={`inline-flex items-center gap-2 text-base text-ink ${focusRing}`}>
           <ImageWithFallback
             src={work.author.avatarUrl ?? undefined}
@@ -124,6 +205,25 @@ export default function CreationPage() {
           >
             Edit
           </Link>
+          {work.status === 'draft' ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setPublishOpen(true)}
+              className={`min-h-11 rounded-md bg-raised px-4 text-base font-medium text-ink ${focusRing}`}
+            >
+              Publish
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setPublishOpen(true)}
+              className={`min-h-11 rounded-md bg-raised px-4 text-base font-medium text-ink ${focusRing}`}
+            >
+              Update audience
+            </button>
+          )}
           {work.status === 'published' ? (
             <button
               type="button"
@@ -147,6 +247,23 @@ export default function CreationPage() {
           </p>
         </div>
       ) : null}
+      <PublishSheet
+        open={publishOpen}
+        onClose={() => {
+          setPublishOpen(false)
+          setPublishError(null)
+        }}
+        title={work.title ?? ''}
+        body={work.bodyText ?? ''}
+        tags={[]}
+        coverUrl={work.coverUrl}
+        creationType={work.type}
+        initialAudience={work.audience}
+        mode={work.status === 'published' ? 'audience' : 'publish'}
+        busy={publishBusy}
+        error={publishError}
+        onConfirm={(audience) => void onPublishConfirm(audience)}
+      />
       <ConfirmDialog
         open={confirmDelete}
         title="Delete this work permanently?"

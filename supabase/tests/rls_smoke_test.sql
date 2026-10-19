@@ -1643,6 +1643,148 @@ begin
   execute 'set local role authenticated';
 end $limits$;
 
+-- Publish flow: draft to published, visibility, counters, and column guards.
+do $publish$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_founder uuid;
+  v_new uuid := gen_random_uuid();
+  v_draft uuid;
+  v_unlisted uuid;
+  v_role public.user_role;
+  v_count integer;
+  v_pub timestamptz;
+  n integer;
+begin
+  select reader_a, reader_b, founder into v_a, v_b, v_founder from rls_ids;
+
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_new, 'publish.new@voxly.test', now());
+  execute 'set local role authenticated';
+
+  perform set_config('request.jwt.claim.sub', v_new::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_new::text, 'role', 'authenticated', 'email', 'publish.new@voxly.test')::text,
+    true
+  );
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_new, 'poem', 'First publish', 'public', 'draft', 'A line')
+  returning id into v_draft;
+
+  update public.creations set status = 'published', audience = 'public' where id = v_draft and author_id = v_new;
+  select published_at into v_pub from public.creations where id = v_draft;
+  perform pg_temp.record(
+    'author publishes own draft and published_at is set',
+    v_pub is not null,
+    coalesce(v_pub::text, 'null')
+  );
+
+  select role, creation_count into v_role, v_count from public.profiles where id = v_new;
+  perform pg_temp.record(
+    'first publish promotes reader to writer exactly once and creation_count becomes 1',
+    v_role = 'writer' and v_count = 1,
+    'role=' || coalesce(v_role::text, 'null') || ' count=' || coalesce(v_count::text, 'null')
+  );
+
+  update public.creations set status = 'draft' where id = v_draft and author_id = v_new;
+  select creation_count into v_count from public.profiles where id = v_new;
+  perform pg_temp.record('unpublish decrements creation_count', v_count = 0, 'count=' || coalesce(v_count::text, 'null'));
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform set_config('search_path', 'pg_temp, public, auth', true);
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_b, 'journal', 'Invisible draft', 'private', 'draft', 'Draft only')
+  returning id into v_draft;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select count(*) into n from public.creations where id = v_draft;
+  perform pg_temp.record('draft stays invisible to another user', n = 0, 'rows=' || n);
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_b, 'poem', 'Private published', 'private', 'published', 'Secret')
+  returning id into v_draft;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select count(*) into n from public.creations where id = v_draft;
+  perform pg_temp.record('published with audience private is invisible to another user', n = 0, 'rows=' || n);
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_b, 'poem', 'Unlisted link', 'unlisted', 'published', 'Hidden feed')
+  returning id into v_unlisted;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select count(*) into n from public.creations where id = v_unlisted;
+  perform pg_temp.record('published unlisted is readable by another user who knows the id', n = 1, 'rows=' || n);
+
+  select count(*) into n from public.creations where id = (select public_id from rls_ids);
+  perform pg_temp.record('published public is readable', n = 1, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  update public.creations set status = 'published', audience = 'public'
+    where id = v_draft and author_id = v_b;
+  get diagnostics n = row_count;
+  perform pg_temp.record('cannot publish someone else''s creation', n = 0, 'rows=' || n);
+
+  update public.creations set status = 'removed' where id = v_unlisted and author_id = v_b;
+  get diagnostics n = row_count;
+  perform pg_temp.record('cannot set status to removed', n = 0, 'rows=' || n);
+
+  update public.creations set published_at = now() where id = v_unlisted and author_id = v_b;
+  get diagnostics n = row_count;
+  perform pg_temp.record('cannot set published_at', n = 0, 'rows=' || n);
+
+  update public.creations set is_removed = true where id = v_unlisted and author_id = v_b;
+  get diagnostics n = row_count;
+  perform pg_temp.record('cannot set is_removed', n = 0, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+  perform public.founder_set_user_status(v_a, 'suspended', 'publish block', now() + interval '1 day');
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated')::text,
+    true
+  );
+  begin
+    insert into public.creations (author_id, type, title, audience, status, body_text)
+    values (v_a, 'poem', 'Suspended publish', 'public', 'published', 'Nope');
+    perform pg_temp.record('suspended user cannot publish', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('suspended user cannot publish', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_a, 'active', 'restore suspended', null);
+  perform public.founder_set_user_status(v_a, 'banned', 'publish block', null);
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    insert into public.creations (author_id, type, title, audience, status, body_text)
+    values (v_a, 'poem', 'Banned publish', 'public', 'published', 'Nope');
+    perform pg_temp.record('banned user cannot publish', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('banned user cannot publish', true, sqlerrm);
+  end;
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_a, 'active', 'restore banned', null);
+end $publish$;
+
 do $$
 declare
   n integer;
