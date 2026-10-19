@@ -6,10 +6,23 @@ const USERNAME_PATTERN = /^[a-z0-9_]{3,30}$/
 
 export const emailSchema = z.email('Enter a valid email address.')
 
-export const passwordSchema = z
-  .string()
-  .min(10, 'Use at least 10 characters.')
-  .refine((value) => !isCommonPassword(value), 'That password is too common. Choose another.')
+export const passwordSchema = z.string().superRefine((value, ctx) => {
+  if (value.length < 10) {
+    ctx.addIssue({ code: 'custom', message: 'Use at least 10 characters.' })
+  }
+  if (!/[a-z]/.test(value)) {
+    ctx.addIssue({ code: 'custom', message: 'Use at least one lowercase letter.' })
+  }
+  if (!/[A-Z]/.test(value)) {
+    ctx.addIssue({ code: 'custom', message: 'Use at least one uppercase letter.' })
+  }
+  if (!/[0-9]/.test(value)) {
+    ctx.addIssue({ code: 'custom', message: 'Use at least one digit.' })
+  }
+  if (isCommonPassword(value)) {
+    ctx.addIssue({ code: 'custom', message: 'That password is too common. Choose another.' })
+  }
+})
 
 export const usernameSchema = z
   .string()

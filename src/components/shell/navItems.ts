@@ -16,14 +16,16 @@ export type NavItem = {
   create?: boolean
 }
 
-export const navItems: readonly NavItem[] = [
-  { to: '/', label: 'Home', icon: HomeIcon, end: true },
-  { to: '/discover', label: 'Discover', icon: DiscoverIcon },
-  { to: '/create', label: 'Create', icon: PlusIcon, create: true },
-  { to: '/messages', label: 'Messages', icon: MessagesIcon },
-  { to: '/settings', label: 'Settings', icon: SettingsIcon },
-  { to: '/profile', label: 'Profile', icon: ProfileIcon },
-]
+export function primaryNavItems(username: string): readonly NavItem[] {
+  return [
+    { to: '/', label: 'Home', icon: HomeIcon, end: true },
+    { to: '/discover', label: 'Discover', icon: DiscoverIcon },
+    { to: '/create', label: 'Create', icon: PlusIcon, create: true },
+    { to: '/messages', label: 'Messages', icon: MessagesIcon },
+    { to: '/settings', label: 'Settings', icon: SettingsIcon },
+    { to: `/u/${username}`, label: 'Profile', icon: ProfileIcon, end: true },
+  ]
+}
 
 export const focusRing =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral'
