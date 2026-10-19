@@ -1,0 +1,3 @@
+# Pre-launch: allow all crawlers for now. SEO prompt will tighten rules.
+User-agent: *
+Allow: /

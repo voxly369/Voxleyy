@@ -1,16 +1,15 @@
+import { CreateTypePicker } from '../components/creations/CreateTypePicker.tsx'
+import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
-import { EmptyState } from '../components/states/EmptyState.tsx'
-import { ImageWithFallback } from '../components/states/ImageWithFallback.tsx'
+import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 
 export default function CreatePage() {
+  useDocumentTitle('Create')
+
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-8">
-      <PageHeader title="Create" />
-      <EmptyState
-        icon={<ImageWithFallback alt="" label="Create" />}
-        title="Create"
-        message="Create arrives in a later step."
-      />
-    </div>
+    <PageContainer variant="wide" className="flex flex-col gap-6 py-8 pb-28">
+      <PageHeader title="What will you share?" />
+      <CreateTypePicker />
+    </PageContainer>
   )
 }

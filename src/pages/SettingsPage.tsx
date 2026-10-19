@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { PageContainer } from '../components/shell/PageContainer.tsx'
+import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { EmptyState } from '../components/states/EmptyState.tsx'
@@ -53,7 +55,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-5 py-8">
+    <PageContainer variant="wide" className="flex flex-col gap-6 py-8">
       <PageHeader title="Settings" />
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Account</h2>
@@ -79,6 +81,29 @@ export default function SettingsPage() {
             </button>
           </div>
         ) : null}
+      </section>
+      <section className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Profile</h2>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <Link
+            to="/settings/profile"
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Profile
+          </Link>
+          <Link
+            to="/library"
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Library
+          </Link>
+          <Link
+            to="/write/drafts"
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Drafts
+          </Link>
+        </div>
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 id="theme-label" className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -118,6 +143,6 @@ export default function SettingsPage() {
       >
         {signingOut ? 'Please wait…' : 'Log out'}
       </button>
-    </div>
+    </PageContainer>
   )
 }

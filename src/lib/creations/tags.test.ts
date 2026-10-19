@@ -1,0 +1,18 @@
+import { describe, expect, it } from 'vitest'
+import { addTag, normalizeTagInput } from './tags.ts'
+
+describe('tag normalisation', () => {
+  it('lowercases and strips hash marks', () => {
+    expect(normalizeTagInput(' #Hello_World ')).toBe('hello_world')
+  })
+
+  it('ignores duplicates and enforces max', () => {
+    let tags: string[] = []
+    for (let i = 0; i < 15; i += 1) {
+      const next = addTag(tags, `tag_${i}`)
+      tags = next.tags
+    }
+    expect(tags).toHaveLength(15)
+    expect(addTag(tags, 'tag_16').error).toMatch(/15 tags/)
+  })
+})
