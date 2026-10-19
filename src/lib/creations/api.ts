@@ -1,12 +1,18 @@
 import type { Json } from '../database.types.ts'
 import { supabase } from '../supabaseClient.ts'
 import { messageForCreationDeleteError, messageForCreationWriteError } from './errors.ts'
+import { bodyJsonFromText, bodyTextFromJson } from './bodyDocument.ts'
+import { draftsCursorFilter, DRAFTS_PAGE_SIZE, isDraftsCursor, nextDraftsCursor } from './draftsCursor.ts'
 import type {
   CreationAuthor,
   CreationDetail,
   CreationFailure,
   CreationResult,
   DraftInput,
+  DraftListPage,
+  DraftListRow,
+  EditableCreation,
+  SaveCreationResult,
   WorkSummary,
 } from './types.ts'
 import { validateCreationFields } from './validation.ts'
@@ -17,7 +23,10 @@ const WORK_LIST_COLUMNS =
   `id, type, title, caption, status, audience, cover_url, created_at, author_id, ${AUTHOR_EMBED}` as const
 
 const DETAIL_COLUMNS =
-  `id, type, title, caption, body_text, status, audience, cover_url, genre, mood, language, created_at, author_id, ${AUTHOR_EMBED}` as const
+  `id, type, title, caption, body_text, status, audience, cover_url, genre, mood, language, created_at, updated_at, author_id, ${AUTHOR_EMBED}` as const
+
+const EDIT_COLUMNS =
+  'id, type, title, body_text, body_json, cover_url, status, audience, updated_at, is_removed, author_id' as const
 
 function fail(code: CreationFailure['error']['code'], message: string): CreationFailure {
   return { ok: false, error: { code, message } }
@@ -140,6 +149,7 @@ export async function createDraft(input: DraftInput): Promise<CreationResult<Cre
       genre: text((data as Record<string, unknown>).genre),
       mood: text((data as Record<string, unknown>).mood),
       language: text((data as Record<string, unknown>).language) ?? 'en',
+      updatedAt: text((data as Record<string, unknown>).updated_at) ?? new Date().toISOString(),
       isOwn: true,
     },
   }
@@ -178,6 +188,7 @@ export async function getCreationById(id: string): Promise<CreationResult<Creati
       genre: text((data as Record<string, unknown>).genre),
       mood: text((data as Record<string, unknown>).mood),
       language: text((data as Record<string, unknown>).language) ?? 'en',
+      updatedAt: text((data as Record<string, unknown>).updated_at) ?? new Date().toISOString(),
       isOwn: Boolean(userId && userId === work.author.id),
     },
   }
@@ -238,6 +249,139 @@ export async function updateDraft(id: string, input: DraftInput): Promise<Creati
   }
 
   return getCreationById(id)
+}
+
+async function loadTags(creationId: string): Promise<CreationResult<string[]>> {
+  const { data, error } = await supabase.from('creation_tags').select('tag').eq('creation_id', creationId)
+  if (error) return fail('unavailable', messageForCreationWriteError(error))
+  return { ok: true, data: (data ?? []).map((row) => row.tag) }
+}
+
+export async function getEditableCreation(id: string): Promise<CreationResult<EditableCreation>> {
+  const userId = await currentUserId()
+  if (!userId) return fail('forbidden', 'Sign in again to edit this draft.')
+
+  const { data, error } = await supabase
+    .from('creations')
+    .select(EDIT_COLUMNS)
+    .eq('id', id)
+    .eq('author_id', userId)
+    .maybeSingle()
+  if (error) return fail('unavailable', 'We could not load this draft. Try again.')
+  if (!data) return fail('not_found', 'This draft is not available.')
+
+  const tags = await loadTags(id)
+  if (!tags.ok) return tags
+
+  const bodyFromJson = bodyTextFromJson(data.body_json)
+  const bodyText = data.body_text ?? bodyFromJson
+
+  return {
+    ok: true,
+    data: {
+      id: data.id,
+      type: data.type,
+      title: data.title ?? '',
+      bodyText,
+      coverUrl: data.cover_url,
+      status: data.status,
+      audience: data.audience,
+      updatedAt: data.updated_at,
+      tags: tags.data,
+    },
+  }
+}
+
+export async function saveCreationFields(input: {
+  id: string
+  expectedUpdatedAt: string | null
+  title: string
+  bodyText: string
+  tags: string[]
+  forceOverwrite?: boolean
+}): Promise<SaveCreationResult> {
+  const userId = await currentUserId()
+  if (!userId) return fail('forbidden', 'Sign in again to save this draft.')
+
+  const body_json = bodyJsonFromText(input.bodyText) as Json
+  const issue = validateCreationFields({
+    body_text: input.bodyText,
+    body_json,
+    tags: input.tags,
+    title: input.title,
+  })
+  if (issue) return fail('invalid', issue.message)
+
+  let query = supabase
+    .from('creations')
+    .update({
+      title: input.title.trim() || null,
+      body_text: input.bodyText,
+      body_json,
+      media_url: null,
+    })
+    .eq('id', input.id)
+    .eq('author_id', userId)
+
+  if (!input.forceOverwrite && input.expectedUpdatedAt) {
+    query = query.eq('updated_at', input.expectedUpdatedAt)
+  }
+
+  const { data, error } = await query.select('updated_at').maybeSingle()
+  if (error) return fail('unavailable', messageForCreationWriteError(error))
+  if (!data) {
+    const remote = await supabase.from('creations').select('updated_at').eq('id', input.id).maybeSingle()
+    return {
+      ok: false,
+      conflict: true,
+      remoteUpdatedAt: remote.data?.updated_at ?? input.expectedUpdatedAt ?? '',
+    }
+  }
+
+  const tagError = await syncTags(input.id, input.tags)
+  if (tagError) return tagError
+
+  return { ok: true, updatedAt: data.updated_at }
+}
+
+export async function listMyDraftsPage(
+  cursor: import('./draftsCursor.ts').DraftsCursor | null,
+): Promise<CreationResult<DraftListPage>> {
+  const userId = await currentUserId()
+  if (!userId) return fail('forbidden', 'Sign in again to see your drafts.')
+  if (cursor && !isDraftsCursor(cursor)) return fail('invalid', 'We could not load the next page.')
+
+  let query = supabase
+    .from('creations')
+    .select('id, type, title, status, updated_at, is_removed')
+    .eq('author_id', userId)
+    .order('updated_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(DRAFTS_PAGE_SIZE + 1)
+
+  const filter = draftsCursorFilter(cursor)
+  if (filter) query = query.or(filter)
+
+  const { data, error } = await query
+  if (error) return fail('unavailable', 'We could not load your drafts. Try again.')
+
+  const mapped = (data ?? []).map((row) => ({
+    updatedAt: row.updated_at,
+    id: row.id,
+    row: {
+      id: row.id,
+      type: row.type,
+      title: row.title,
+      status: row.status,
+      updatedAt: row.updated_at,
+      removed: row.is_removed || row.status === 'removed',
+    } satisfies DraftListRow,
+  }))
+
+  const { page, nextCursor } = nextDraftsCursor(mapped)
+  const rows = page.map((entry) => entry.row)
+
+  return { ok: true, data: { rows, nextCursor } }
 }
 
 /** Author fields for cards; never reads profiles.city. */

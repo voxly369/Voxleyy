@@ -29,6 +29,7 @@ export type CreationDetail = WorkSummary & {
   genre: string | null
   mood: string | null
   language: string
+  updatedAt: string
   isOwn: boolean
 }
 
@@ -51,3 +52,34 @@ export type DraftInput = {
   audience?: Audience
   tags?: string[]
 }
+
+export type EditableCreation = {
+  id: string
+  type: CreationType
+  title: string
+  bodyText: string
+  coverUrl: string | null
+  status: PublishStatus
+  audience: Audience
+  updatedAt: string
+  tags: string[]
+}
+
+export type DraftListRow = {
+  id: string
+  type: CreationType
+  title: string | null
+  status: PublishStatus
+  updatedAt: string
+  removed: boolean
+}
+
+export type DraftListPage = {
+  rows: DraftListRow[]
+  nextCursor: import('./draftsCursor.ts').DraftsCursor | null
+}
+
+export type SaveCreationResult =
+  | { ok: true; updatedAt: string }
+  | { ok: false; conflict: true; remoteUpdatedAt: string }
+  | CreationFailure

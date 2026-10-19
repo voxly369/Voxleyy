@@ -1,3 +1,4 @@
+import { MAX_TITLE_CHARS } from './creationTypes.ts'
 import {
   CREATION_TAG_PATTERN,
   MAX_BODY_JSON_OCTETS,
@@ -8,6 +9,7 @@ import {
 } from './limits.ts'
 
 export type CreationFieldInput = {
+  title?: string | null
   body_text?: string | null
   body_json?: unknown
   genre?: string | null
@@ -28,6 +30,9 @@ function bodyJsonOctets(value: unknown): number {
 }
 
 export function validateCreationFields(input: CreationFieldInput): ValidationIssue | null {
+  if (input.title != null && input.title.length > MAX_TITLE_CHARS) {
+    return { code: 'too_long', message: 'Title is too long.' }
+  }
   if (input.body_text != null && octetLength(input.body_text) > MAX_BODY_TEXT_OCTETS) {
     return { code: 'too_long', message: 'That text is too long. Shorten it and try again.' }
   }
