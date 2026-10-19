@@ -191,6 +191,7 @@ export function CreationEditor({ creationType, editor, coverUrl, onCoverUrlChang
             document={editor.richDoc}
             literaryLineBreaks={editor.literaryLineBreaks}
             onChange={editor.onRichDocumentChange}
+            onStructureFailure={editor.onRichStructureFailure}
             onBlur={editor.onBlur}
           />
         </div>

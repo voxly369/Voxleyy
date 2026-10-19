@@ -11,6 +11,7 @@ export {
   parseRichDocument,
   plainToRich,
   richDocumentFingerprint,
+  normalizePlainTextForRich,
   richToPlainText,
   validateRichDocumentSize,
 } from './richDocument.ts'

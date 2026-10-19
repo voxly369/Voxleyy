@@ -10,6 +10,28 @@ describe('RichTextView', () => {
     expect(document.querySelector('img')).toBeNull()
   })
 
+  it('renders hard breaks inside headings', () => {
+    render(
+      <RichTextView
+        bodyJson={{
+          version: 1,
+          format: 'rich',
+          content: [
+            {
+              type: 'heading',
+              level: 2,
+              content: [{ type: 'text', text: 'One' }, { type: 'hardBreak' }, { type: 'text', text: 'Two' }],
+            },
+          ],
+        }}
+        bodyText=""
+        creationType="essay"
+      />,
+    )
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('OneTwo')
+    expect(screen.getByRole('heading', { level: 2 }).querySelector('br')).toBeTruthy()
+  })
+
   it('falls back to plain body_text when body_json is invalid', () => {
     render(<RichTextView bodyJson={{ version: 1, format: 'rich', content: [{ type: 'evil' }] }} bodyText="Plain fallback" creationType="essay" />)
     expect(screen.getByText('Plain fallback')).toBeInTheDocument()

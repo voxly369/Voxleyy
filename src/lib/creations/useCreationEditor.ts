@@ -263,6 +263,8 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
         forceOverwrite,
       })
 
+      if (!result) return
+
       if ('conflict' in result && result.conflict) {
         dispatchAutosave({ type: 'save_conflict', remoteUpdatedAt: result.remoteUpdatedAt })
         return
@@ -337,6 +339,10 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     },
     [scheduleSave],
   )
+
+  const onRichStructureFailure = useCallback(() => {
+    dispatchAutosave({ type: 'edit' })
+  }, [])
 
   const onQuoteStyleChange = useCallback(
     (patch: Partial<QuoteCardStyle>) => {
@@ -431,6 +437,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     onAudienceChange,
     onQuoteStyleChange,
     onRichDocumentChange,
+    onRichStructureFailure,
     quoteStyle,
     richDoc,
     autosave,
