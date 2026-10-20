@@ -2468,6 +2468,138 @@ begin
   perform pg_temp.record('private publish still promotes reader to writer', v_role = 'writer', coalesce(v_role::text, 'null'));
 end $public_post_count$;
 
+do $discover_search$
+declare
+  v_founder uuid;
+  v_a uuid;
+  v_b uuid;
+  v_other uuid;
+  v_public uuid;
+  v_private uuid;
+  v_draft uuid;
+  n integer;
+begin
+  select founder, reader_a, reader_b into v_founder, v_a, v_b from rls_ids;
+
+  begin
+    execute 'set local role anon';
+    select count(*) into n from public.ranking_settings;
+    perform pg_temp.record('anon cannot read ranking_settings', false, 'rows=' || n);
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('anon cannot read ranking_settings', true, sqlerrm);
+    when others then
+      perform pg_temp.record('anon cannot read ranking_settings', true, sqlstate);
+  end;
+  execute 'set local role authenticated';
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    update public.ranking_settings set like_weight = 4 where id = 1;
+    perform pg_temp.record('normal user cannot update ranking_settings', false, 'update succeeded');
+  exception
+    when others then
+      perform pg_temp.record('normal user cannot update ranking_settings', true, sqlerrm);
+  end;
+
+  begin
+    execute 'set local role anon';
+    select count(*) into n from public.discover_trending_creations;
+    perform pg_temp.record('anon cannot read discover_trending_creations', false, 'rows=' || n);
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('anon cannot read discover_trending_creations', true, sqlerrm);
+    when others then
+      perform pg_temp.record('anon cannot read discover_trending_creations', true, sqlstate);
+  end;
+  execute 'set local role authenticated';
+
+  begin
+    execute 'set local role anon';
+    select count(*) into n from public.founder_featured_writers;
+    perform pg_temp.record('anon cannot read founder_featured_writers', false, 'rows=' || n);
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('anon cannot read founder_featured_writers', true, sqlerrm);
+    when others then
+      perform pg_temp.record('anon cannot read founder_featured_writers', true, sqlstate);
+  end;
+  execute 'set local role authenticated';
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    insert into public.founder_featured_writers (writer_id) values (v_b);
+    perform pg_temp.record('normal user cannot insert founder_featured_writers', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('normal user cannot insert founder_featured_writers', true, sqlerrm);
+  end;
+
+  begin
+    perform public.founder_set_featured_writer(v_b, true, 0);
+    perform pg_temp.record('founder_set_featured_writer rejects non-founder', false, 'rpc succeeded');
+  exception
+    when others then
+      perform pg_temp.record('founder_set_featured_writer rejects non-founder', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_featured_writer(v_b, true, 1);
+  select count(*) into n from public.founder_featured_writers_public where writer_id = v_b;
+  perform pg_temp.record('founder can feature active writer', n = 1, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_b, 'poem', 'Discover public', 'public', 'draft', 'Line')
+  returning id into v_public;
+  update public.creations set status = 'published', audience = 'public', published_at = now() where id = v_public;
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_b, 'poem', 'Discover private', 'private', 'published', 'Secret')
+  returning id into v_private;
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_b, 'poem', 'Discover draft', 'public', 'draft', 'Draft')
+  returning id into v_draft;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select count(*) into n from public.discover_trending_creations where id = v_public;
+  perform pg_temp.record('discover trending includes public published work', n = 1, 'rows=' || n);
+  select count(*) into n from public.discover_trending_creations where id = v_private;
+  perform pg_temp.record('discover trending excludes private work', n = 0, 'rows=' || n);
+  select count(*) into n from public.discover_trending_creations where id = v_draft;
+  perform pg_temp.record('discover trending excludes drafts', n = 0, 'rows=' || n);
+
+  perform public.founder_set_user_status(v_b, 'suspended', 'discover smoke', now() + interval '1 day');
+  select count(*) into n from public.discover_new_creations where author_id = v_b;
+  perform pg_temp.record('suspended author hidden from discover_new_creations', n = 0, 'rows=' || n);
+  perform public.founder_set_user_status(v_b, 'active', 'restore discover', null);
+
+  insert into public.blocks (blocker_id, blocked_id) values (v_a, v_b);
+  select count(*) into n from public.discover_new_creations where author_id = v_b;
+  perform pg_temp.record('blocked author hidden from discover_new_creations', n = 0, 'rows=' || n);
+  delete from public.blocks where blocker_id = v_a and blocked_id = v_b;
+
+  v_other := gen_random_uuid();
+  perform pg_temp.create_test_user(v_other, 'search.rate@voxly.test', now());
+  perform set_config('request.jwt.claim.sub', v_other::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_other::text, 'role', 'authenticated', 'email', 'search.rate@voxly.test')::text,
+    true
+  );
+  for n in 1..61 loop
+    perform public.record_search_event(v_other);
+  end loop;
+  begin
+    perform public.record_search_event(v_other);
+    perform pg_temp.record('search rate limit holds at 60 per minute', false, '61st event accepted');
+  exception
+    when others then
+      perform pg_temp.record('search rate limit holds at 60 per minute', true, sqlerrm);
+  end;
+end $discover_search$;
+
 do $$
 declare
   n integer;

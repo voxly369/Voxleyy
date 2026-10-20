@@ -956,6 +956,56 @@ export type Database = {
         Update: Record<string, never>
         Relationships: []
       }
+      discover_trending_creations: {
+        Row: Database['public']['Views']['feed_creations']['Row'] & {
+          country: string | null
+          engagement_score: number | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      discover_new_creations: {
+        Row: Database['public']['Views']['feed_creations']['Row'] & { country: string | null }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      discover_top_week_creations: {
+        Row: Database['public']['Views']['feed_creations']['Row'] & { country: string | null }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      discover_rising_writers: {
+        Row: {
+          id: string | null
+          username: string | null
+          display_name: string | null
+          avatar_url: string | null
+          verified: boolean | null
+          follower_count: number | null
+          momentum_score: number | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      founder_featured_writers_public: {
+        Row: {
+          writer_id: string | null
+          sort_order: number | null
+          username: string | null
+          display_name: string | null
+          avatar_url: string | null
+          verified: boolean | null
+          bio: string | null
+          follower_count: number | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
     }
     Functions: {
       can_view_creation: { Args: { c: string }; Returns: boolean }
@@ -980,6 +1030,22 @@ export type Database = {
       is_active_user: { Args: never; Returns: boolean }
       is_blocked_between: { Args: { a: string; b: string }; Returns: boolean }
       is_founder: { Args: never; Returns: boolean }
+      search_discovery: {
+        Args: { p_query: string; p_tab?: string; p_limit?: number }
+        Returns: Json
+      }
+      writing_prompt_for_date: { Args: { p_on?: string }; Returns: string }
+      tag_public_post_count: { Args: { p_tag: string }; Returns: number }
+      compute_engagement_score: {
+        Args: {
+          p_like_count: number
+          p_save_count: number
+          p_comment_count: number
+          p_view_count: number
+          p_published_at: string
+        }
+        Returns: number
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       username_available: { Args: { candidate: string }; Returns: boolean }

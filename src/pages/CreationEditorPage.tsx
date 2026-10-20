@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useBlocker, useNavigate, useParams } from 'react-router-dom'
+import { useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { CreationEditor } from '../components/creations/CreationEditor.tsx'
 import { PublishSheet } from '../components/creations/PublishSheet.tsx'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
@@ -8,7 +8,7 @@ import { ConfirmDialog } from '../components/states/ConfirmDialog.tsx'
 import { ErrorState } from '../components/states/ErrorState.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
 import { useAuth } from '../lib/auth/auth-context.ts'
-import { fetchProfileRole, publishCreation } from '../lib/creations/api.ts'
+import { fetchProfileRole, publishCreation, saveCreationFields } from '../lib/creations/api.ts'
 import { parseCreationType } from '../lib/creations/creationTypes.ts'
 import { becameWriterAfterPublish } from '../lib/creations/roleChange.ts'
 import { useCreationEditor } from '../lib/creations/useCreationEditor.ts'
@@ -19,11 +19,17 @@ export default function CreationEditorPage() {
   const { type: typeParam, id: idParam } = useParams()
   const parsedType = typeParam ? parseCreationType(typeParam) : null
   const navigate = useNavigate()
+  const location = useLocation()
   const { profile } = useAuth()
+  const seedBody =
+    location.state && typeof location.state === 'object' && 'seedBody' in location.state
+      ? String((location.state as { seedBody?: unknown }).seedBody ?? '')
+      : null
 
   const editor = useCreationEditor({
     creationId: idParam ?? null,
     creationType: parsedType ?? 'written_post',
+    seedBody,
   })
 
   const [publishOpen, setPublishOpen] = useState(false)
@@ -56,7 +62,10 @@ export default function CreationEditorPage() {
 
   const heading = parsedType ? `New ${parsedType.replace(/_/g, ' ')}` : 'Edit draft'
 
-  async function onPublishConfirm(audience: import('../lib/creations/types.ts').Audience) {
+  async function onPublishConfirm(input: {
+    audience: import('../lib/creations/types.ts').Audience
+    mood: string | null
+  }) {
     const id = editor.creationId
     if (!id) return
     setPublishError(null)
@@ -68,13 +77,38 @@ export default function CreationEditorPage() {
       return
     }
 
+    const moodSave = await saveCreationFields({
+      id,
+      expectedUpdatedAt: editor.getUpdatedAt(),
+      title: editor.form.title,
+      caption: editor.form.caption,
+      bodyText: editor.form.body,
+      bodyJson: editor.buildPreviewBodyJson(),
+      audience: input.audience,
+      tags: editor.form.tags,
+      mood: input.mood,
+    })
+    if (!moodSave.ok) {
+      setPublishBusy(false)
+      if ('conflict' in moodSave && moodSave.conflict) {
+        setPublishError('Someone else saved a newer version. Reload and try again.')
+        return
+      }
+      if ('error' in moodSave) {
+        setPublishError(moodSave.error.message)
+      } else {
+        setPublishError('We could not save mood before publishing.')
+      }
+      return
+    }
+
     const roleBefore = profile?.id ? await fetchProfileRole(profile.id) : null
     const beforeRole = roleBefore?.ok ? roleBefore.data : null
 
     const result = await publishCreation({
       id,
-      audience,
-      expectedUpdatedAt: editor.getUpdatedAt(),
+      audience: input.audience,
+      expectedUpdatedAt: moodSave.updatedAt,
     })
     setPublishBusy(false)
 
@@ -123,10 +157,11 @@ export default function CreationEditorPage() {
         creationType={parsedType ?? 'written_post'}
         quoteStyle={parsedType === 'quote_card' ? editor.quoteStyle : undefined}
         initialAudience={editor.creationAudience}
+        initialMood={editor.creationMood}
         mode={editor.creationStatus === 'published' ? 'audience' : 'publish'}
         busy={publishBusy}
         error={publishError}
-        onConfirm={(audience) => void onPublishConfirm(audience)}
+        onConfirm={(payload) => void onPublishConfirm(payload)}
       />
       <ConfirmDialog
         open={blocker.state === 'blocked'}

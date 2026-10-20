@@ -282,6 +282,45 @@ function handleRest(url: string, method: string, postData: unknown): unknown[] {
 
   if (url.includes('/rest/v1/feed_creations') || url.includes('/rest/v1/following_feed')) return posts
 
+  if (url.includes('/rest/v1/discover_trending_creations') || url.includes('/rest/v1/discover_new_creations')) {
+    return posts.slice(0, 4)
+  }
+  if (url.includes('/rest/v1/discover_top_week_creations')) return posts.slice(0, 2)
+  if (url.includes('/rest/v1/discover_rising_writers')) return []
+  if (url.includes('/rest/v1/founder_featured_writers_public')) return []
+
+  if (url.includes('/rest/v1/rpc/writing_prompt_for_date')) return 'Write about the horizon.'
+  if (url.includes('/rest/v1/rpc/tag_public_post_count')) return 2
+  if (url.includes('/rest/v1/rpc/search_discovery')) {
+    return {
+      writers: [
+        {
+          id: OTHER.id,
+          username: OTHER.username,
+          display_name: OTHER.display_name,
+          avatar_url: null,
+          verified: false,
+          follower_count: 12,
+        },
+      ],
+      posts: posts.slice(0, 2).map((p) => ({
+        id: p.id,
+        type: p.type,
+        title: p.title,
+        caption: p.caption,
+        body_excerpt: p.body_excerpt,
+        body_truncated: p.body_truncated,
+        published_at: p.published_at,
+        like_count: p.like_count,
+        author_username: OTHER.username,
+        author_display_name: OTHER.display_name,
+        author_avatar_url: null,
+        author_verified: false,
+      })),
+      tags: [{ tag: 'poetry', post_count: 3 }],
+    }
+  }
+
   if (url.includes('/rest/v1/comments')) return commentTree()
 
   if (url.includes('/rest/v1/notifications') || url.includes('/rest/v1/mentions')) return []
@@ -304,12 +343,14 @@ function handleRest(url: string, method: string, postData: unknown): unknown[] {
     return posts
   }
 
-  if (
-    url.includes('/rest/v1/likes') ||
-    url.includes('/rest/v1/saves') ||
-    url.includes('/rest/v1/creation_tags') ||
-    url.includes('/rest/v1/follows')
-  ) {
+  if (url.includes('/rest/v1/creation_tags')) {
+    if (url.includes('tag=eq.poetry')) {
+      return posts.slice(0, 3).map((p) => ({ creation_id: p.id, tag: 'poetry' }))
+    }
+    return []
+  }
+
+  if (url.includes('/rest/v1/likes') || url.includes('/rest/v1/saves') || url.includes('/rest/v1/follows')) {
     return []
   }
 

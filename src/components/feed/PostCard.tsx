@@ -12,6 +12,7 @@ import { EngagementBar } from '../engagement/EngagementBar.tsx'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { focusRing } from '../shell/navItems.ts'
 import { toggleLike } from '../../lib/engagement/toggleLike.ts'
+import { tagPagePath } from '../../lib/discover/tagLink.ts'
 
 type PostCardProps = {
   post: FeedPost
@@ -119,9 +120,13 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
       {post.tags.length > 0 ? (
         <p className="mt-3 flex flex-wrap gap-2 text-xs text-muted">
           {post.tags.map((tag) => (
-            <span key={tag} className="rounded-full bg-bg px-2 py-1">
+            <Link
+              key={tag}
+              to={tagPagePath(tag)}
+              className={`rounded-full bg-bg px-2 py-1 ${focusRing}`}
+            >
               #{tag}
-            </span>
+            </Link>
           ))}
         </p>
       ) : null}

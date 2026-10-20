@@ -9,6 +9,9 @@ import { RequireAuth, RequireFounder, RequireGuest } from './guards.tsx'
 
 const HomePage = lazy(() => import('../pages/HomePage.tsx'))
 const DiscoverPage = lazy(() => import('../pages/DiscoverPage.tsx'))
+const DiscoverSearchPage = lazy(() => import('../pages/DiscoverSearchPage.tsx'))
+const DiscoverBrowsePage = lazy(() => import('../pages/DiscoverBrowsePage.tsx'))
+const TagPage = lazy(() => import('../pages/TagPage.tsx'))
 const CreatePage = lazy(() => import('../pages/CreatePage.tsx'))
 const CreationEditorPage = lazy(() => import('../pages/CreationEditorPage.tsx'))
 const DraftsListPage = lazy(() => import('../pages/DraftsListPage.tsx'))
@@ -75,6 +78,9 @@ const router = createBrowserRouter(
               children: [
                 { path: '/', element: <HomePage /> },
                 { path: '/discover', element: <DiscoverPage /> },
+                { path: '/discover/search', element: <DiscoverSearchPage /> },
+                { path: '/discover/browse', element: <DiscoverBrowsePage /> },
+                { path: '/tags/:tag', element: <TagPage /> },
                 { path: '/create', element: <CreatePage /> },
                 { path: '/create/new/:type', element: <CreationEditorPage /> },
                 { path: '/create/:id', element: <CreationEditorPage /> },
