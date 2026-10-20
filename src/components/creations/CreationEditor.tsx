@@ -6,6 +6,7 @@ import { prepareCoverImage } from '../../lib/creations/coverImage.ts'
 import { removeCreationCover, uploadCreationCover } from '../../lib/creations/coverUpload.ts'
 import { MAX_BODY_JSON_OCTETS, MAX_CAPTION_CHARS } from '../../lib/creations/limits.ts'
 import { MAX_TITLE_CHARS, usesLiterarySurface, type CreationType } from '../../lib/creations/creationTypes.ts'
+import { publishDisabledReason } from '../../lib/creations/publishValidation.ts'
 import type { useCreationEditor } from '../../lib/creations/useCreationEditor.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { TagEditor } from './TagEditor.tsx'
@@ -38,6 +39,14 @@ export function CreationEditor({ creationType, editor, coverUrl, onCoverUrlChang
   const jsonBytes = new TextEncoder().encode(JSON.stringify(editor.buildPreviewBodyJson())).length
   const status = editor.statusLabel
   const isLive = editor.creationStatus === 'published'
+  const publishBlockReason = publishDisabledReason({
+    title: editor.form.title,
+    body: editor.form.body,
+    caption: editor.form.caption,
+    creationType,
+    quoteStyle: editor.quoteStyle,
+    hasPersistedDraft: Boolean(editor.creationId),
+  })
 
   async function onPickCover(file: File) {
     if (!user?.id || !editor.creationId) {
@@ -137,15 +146,19 @@ export function CreationEditor({ creationType, editor, coverUrl, onCoverUrlChang
         >
           Preview
         </button>
-        {editor.creationId ? (
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <button
             type="button"
+            disabled={Boolean(publishBlockReason)}
             onClick={onOpenPublish}
-            className={`min-h-11 rounded-2xl bg-coral px-4 text-base font-semibold text-white ${focusRing}`}
+            className={`min-h-11 rounded-2xl bg-coral px-4 text-base font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`}
           >
             {isLive ? 'Update audience' : 'Publish'}
           </button>
-        ) : null}
+          {publishBlockReason ? (
+            <span className="text-sm text-muted">{publishBlockReason}</span>
+          ) : null}
+        </div>
       </div>
     </div>
   )

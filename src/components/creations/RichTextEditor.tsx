@@ -109,7 +109,7 @@ export function RichTextEditor({
         role: 'textbox',
         'aria-multiline': 'true',
         'aria-label': 'Write your piece',
-        class: `voxly-rich-editor min-h-[16rem] max-w-[65ch] rounded-2xl border border-line bg-surface px-3 py-3 text-lg leading-relaxed text-ink outline-none focus-visible:ring-2 focus-visible:ring-coral ${literaryLineBreaks ? 'font-serif' : ''}`,
+        class: `voxly-rich-editor min-h-[16rem] w-full rounded-2xl border border-line bg-surface px-3 py-3 text-lg leading-relaxed text-ink outline-none focus-visible:ring-2 focus-visible:ring-coral ${literaryLineBreaks ? 'font-serif' : ''}`,
         'data-placeholder': 'Start writing…',
       },
       handlePaste(_view, event) {

@@ -39,7 +39,8 @@ export function CreateSheetProvider({ children }: { children: ReactNode }) {
         onClose={closeCreateSheet}
         returnFocusRef={returnFocusRef}
         labelledBy={titleId}
-        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-line bg-surface shadow-lg sm:rounded-2xl"
+        containerClassName="fixed inset-0 flex items-end justify-center p-0 md:items-center md:p-4"
+        className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-line bg-surface shadow-lg md:max-h-[min(90vh,640px)] md:max-w-[480px] md:rounded-2xl"
         backdropLabel="Close create sheet"
       >
         <div className="flex items-center justify-between border-b border-line px-5 py-4">

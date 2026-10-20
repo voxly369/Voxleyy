@@ -4,8 +4,6 @@ import { HomeIcon } from '../icons/HomeIcon.tsx'
 import { MessagesIcon } from '../icons/MessagesIcon.tsx'
 import { PlusIcon } from '../icons/PlusIcon.tsx'
 import { ProfileIcon } from '../icons/ProfileIcon.tsx'
-import { SettingsIcon } from '../icons/SettingsIcon.tsx'
-
 export type NavIcon = ComponentType<{ filled?: boolean; className?: string }>
 
 export type NavItem = {
@@ -16,15 +14,30 @@ export type NavItem = {
   create?: boolean
 }
 
-export function primaryNavItems(username: string): readonly NavItem[] {
+export function railNavItems(username: string): readonly NavItem[] {
+  return [
+    { to: '/', label: 'Home', icon: HomeIcon, end: true },
+    { to: '/discover', label: 'Discover', icon: DiscoverIcon },
+    { to: '/messages', label: 'Messages', icon: MessagesIcon },
+    { to: '/create', label: 'Create', icon: PlusIcon, create: true },
+    { to: `/u/${username}`, label: 'Profile', icon: ProfileIcon, end: true },
+  ]
+}
+
+/** Mobile bottom bar: Home, Discover, Create (+), Messages, Profile. */
+export function bottomNavItems(username: string): readonly NavItem[] {
   return [
     { to: '/', label: 'Home', icon: HomeIcon, end: true },
     { to: '/discover', label: 'Discover', icon: DiscoverIcon },
     { to: '/create', label: 'Create', icon: PlusIcon, create: true },
     { to: '/messages', label: 'Messages', icon: MessagesIcon },
-    { to: '/settings', label: 'Settings', icon: SettingsIcon },
     { to: `/u/${username}`, label: 'Profile', icon: ProfileIcon, end: true },
   ]
+}
+
+/** @deprecated Use railNavItems or bottomNavItems. */
+export function primaryNavItems(username: string): readonly NavItem[] {
+  return bottomNavItems(username)
 }
 
 export const focusRing =

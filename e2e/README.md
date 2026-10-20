@@ -18,4 +18,6 @@ Feed data is synthetic (10 posts including long title, long unbroken word, quote
 
 ## What is checked
 
-For each viewport width and light/dark scheme, tests visit core screens and assert: no horizontal document scroll, nav visibility (bottom bar below 1024px, sidebar at 1024px+), right rail only on Home/Following at 1280px+, minimum touch targets, reading line length, and non-broken images.
+For each viewport width and light/dark scheme, tests visit core screens and assert: no horizontal document scroll, nav visibility (bottom bar below 768px, left rail from 768px with 72px icons until 1280px labels at 244px), right rail only on Home/Following at 1280px+, minimum touch targets, reading line length, and non-broken images.
+
+`e2e/navigation-tiers.spec.ts` asserts tier breakpoints (375, 767, 768, 1024, 1279, 1280, 1440), Create sheet focus/Escape on tablet+, and More menu keyboard/outside-click behavior.

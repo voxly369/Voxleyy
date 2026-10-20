@@ -86,7 +86,7 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
         )}
         </div>
         <div className="flex shrink-0 flex-col gap-3 lg:items-end lg:text-right">
-        <div className="flex flex-wrap gap-3 lg:justify-end" aria-live="polite">
+        <div className="flex flex-nowrap gap-3 overflow-x-auto lg:justify-end" aria-live="polite">
           <CountLink to={`/u/${profile.username}/followers`} count={followerCount} label="followers" />
           <CountLink to={`/u/${profile.username}/following`} count={profile.followingCount} label="following" />
           <CountLink count={profile.creationCount} label="works" />

@@ -7,8 +7,8 @@ import { EmptyState } from '../components/states/EmptyState.tsx'
 import { ImageWithFallback } from '../components/states/ImageWithFallback.tsx'
 import { useAuth } from '../lib/auth/auth-context.ts'
 import { USERNAME_TAKEN_NOTICE } from '../lib/auth/messages.ts'
+import { ThemeChoiceGroup } from '../components/shell/ThemeChoiceGroup.tsx'
 import { useTheme } from '../lib/useTheme.ts'
-import type { ThemeChoice } from '../lib/theme.ts'
 
 const USERNAME_NOTICE_KEY = 'voxly-username-notice'
 
@@ -33,12 +33,6 @@ function dismissNotice(userId: string) {
     // The notice can still close for this visit.
   }
 }
-
-const themeOptions: { value: ThemeChoice; label: string }[] = [
-  { value: 'system', label: 'System' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-]
 
 export default function SettingsPage() {
   const { choice, setTheme } = useTheme()
@@ -109,23 +103,7 @@ export default function SettingsPage() {
         <h2 id="theme-label" className="text-xs font-semibold uppercase tracking-wide text-muted">
           Dark or light mode
         </h2>
-        <div role="radiogroup" aria-labelledby="theme-label" className="mt-4 grid grid-cols-3 gap-2">
-          {themeOptions.map((option) => {
-            const selected = choice === option.value
-            return (
-              <button
-                key={option.value}
-                type="button"
-                role="radio"
-                aria-checked={selected}
-                onClick={() => setTheme(option.value)}
-                className={`min-h-11 rounded-2xl px-2 text-sm ${selected ? 'bg-raised font-semibold text-ink ring-1 ring-line' : 'font-medium text-muted'} ${focusRing}`}
-              >
-                {option.label}
-              </button>
-            )
-          })}
-        </div>
+        <ThemeChoiceGroup choice={choice} onChange={setTheme} labelledBy="theme-label" />
       </section>
       <EmptyState
         icon={<ImageWithFallback alt="" label="Settings" />}

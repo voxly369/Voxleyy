@@ -1,22 +1,22 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../lib/auth/auth-context.ts'
 import { useCreateSheet } from '../../lib/shell/useCreateSheet.ts'
-import { focusRing, primaryNavItems } from './navItems.ts'
+import { bottomNavItems, focusRing } from './navItems.ts'
 
 export function BottomNav() {
   const { profile } = useAuth()
   const { openCreateSheet } = useCreateSheet()
   const location = useLocation()
-  const navItems = primaryNavItems(profile?.username ?? '')
+  const navItems = bottomNavItems(profile?.username ?? '')
 
   return (
     <nav
       aria-label="Primary"
       data-testid="bottom-nav"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
-      <ul className="grid h-16 grid-cols-6">
+      <ul className="grid h-16 grid-cols-5">
         {navItems.map((item) => {
           const Icon = item.icon
           if (item.create) {
