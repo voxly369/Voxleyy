@@ -7,6 +7,7 @@ import type { QuoteCardStyle } from '../../lib/creations/bodyDocument.ts'
 import type { Audience } from '../../lib/creations/types.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { creationTypeLabel } from '../../lib/creations/creationTypeLabel.ts'
+import { MOOD_OPTIONS, isCreationMood } from '../../lib/creations/moodOptions.ts'
 
 type PublishSheetProps = {
   open: boolean
@@ -19,10 +20,11 @@ type PublishSheetProps = {
   creationType: string
   quoteStyle?: QuoteCardStyle
   initialAudience: Audience
+  initialMood?: string | null
   mode: 'publish' | 'audience'
   busy: boolean
   error: string | null
-  onConfirm: (audience: Audience) => void
+  onConfirm: (input: { audience: Audience; mood: string | null }) => void
 }
 
 export function PublishSheet({
@@ -36,6 +38,7 @@ export function PublishSheet({
   creationType,
   quoteStyle,
   initialAudience,
+  initialMood = null,
   mode,
   busy,
   error,
@@ -43,6 +46,7 @@ export function PublishSheet({
 }: PublishSheetProps) {
   const titleId = useId()
   const [audience, setAudience] = useState<Audience>(initialAudience)
+  const [mood, setMood] = useState<string>(() => (isCreationMood(initialMood) ? initialMood : ''))
 
   const check = validatePublishContent({ title, body, caption, creationType, quoteStyle })
   const stats = publishContentStats(body)
@@ -87,6 +91,27 @@ export function PublishSheet({
           ))}
         </fieldset>
 
+        {mode === 'publish' ? (
+          <div className="mt-4 flex flex-col gap-2">
+            <label htmlFor={`${titleId}-mood`} className="text-sm font-medium text-ink">
+              Mood (optional)
+            </label>
+            <select
+              id={`${titleId}-mood`}
+              value={mood}
+              onChange={(event) => setMood(event.target.value)}
+              className={`min-h-11 rounded-2xl border border-line bg-surface px-3 text-base text-ink ${focusRing}`}
+            >
+              <option value="">No mood</option>
+              {MOOD_OPTIONS.map((option) => (
+                <option key={option.slug} value={option.slug}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+
         <section className="mt-5 flex flex-col gap-2" aria-labelledby="publish-check-heading">
           <h3 id="publish-check-heading" className="text-sm font-medium text-ink">
             Content check
@@ -127,7 +152,7 @@ export function PublishSheet({
         <button
           type="button"
           disabled={!canSubmit}
-          onClick={() => onConfirm(audience)}
+          onClick={() => onConfirm({ audience, mood: isCreationMood(mood) ? mood : null })}
           className={`min-h-11 rounded-2xl bg-coral px-4 text-base font-semibold text-white disabled:opacity-50 ${focusRing}`}
         >
           {busy ? 'Working…' : actionLabel}

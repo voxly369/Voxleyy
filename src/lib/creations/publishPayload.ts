@@ -9,14 +9,16 @@ export function fieldsForSaveCreation(input: {
   bodyJson: Json
   caption?: string
   audience?: Audience
-}): Pick<CreationUpdate, 'title' | 'body_text' | 'body_json' | 'caption' | 'audience'> {
-  const patch: Pick<CreationUpdate, 'title' | 'body_text' | 'body_json' | 'caption' | 'audience'> = {
+  mood?: string | null
+}): Pick<CreationUpdate, 'title' | 'body_text' | 'body_json' | 'caption' | 'audience' | 'mood'> {
+  const patch: Pick<CreationUpdate, 'title' | 'body_text' | 'body_json' | 'caption' | 'audience' | 'mood'> = {
     title: input.title.trim() || null,
     body_text: input.bodyText,
     body_json: input.bodyJson,
     caption: input.caption?.trim() ? input.caption.trim() : null,
   }
   if (input.audience) patch.audience = input.audience
+  if (input.mood !== undefined) patch.mood = input.mood
   return patch
 }
 

@@ -66,6 +66,7 @@ export type EditableCreation = {
   caption: string
   bodyText: string
   coverUrl: string | null
+  mood: string | null
   status: PublishStatus
   audience: Audience
   updatedAt: string

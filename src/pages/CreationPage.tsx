@@ -336,7 +336,7 @@ export default function CreationPage() {
         mode={work.status === 'published' ? 'audience' : 'publish'}
         busy={publishBusy}
         error={publishError}
-        onConfirm={(audience) => void onPublishConfirm(audience)}
+        onConfirm={({ audience }) => void onPublishConfirm(audience)}
       />
       {commentsOpen ? (
         <CommentsSheet open={true} creationId={work.id} onClose={() => setCommentsOpen(false)} />
