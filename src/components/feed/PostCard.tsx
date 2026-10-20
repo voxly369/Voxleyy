@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { LiteraryBodyView } from '../creations/LiteraryBodyView.tsx'
 import { bodyExcerpt } from '../../lib/creations/excerpt.ts'
+import { wholeLineExcerpt } from '../../lib/creations/wholeLineExcerpt.ts'
 import { quoteStyleFromJson } from '../../lib/creations/bodyDocument.ts'
 import { QuoteCardView } from '../creations/QuoteCardView.tsx'
 import { creationTypeLabel } from '../../lib/creations/creationTypeLabel.ts'
@@ -94,12 +96,16 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
               <ImageWithFallback src={post.coverUrl} alt="" label="Cover" className="mb-3 max-h-80 w-full rounded-xl object-cover" />
             ) : null}
             {post.title?.trim() ? <h2 className="font-serif text-xl text-ink">{post.title.trim()}</h2> : null}
-            {post.caption?.trim() ? <p className="mt-2 text-sm text-muted">{post.caption.trim()}</p> : null}
+            {post.caption?.trim() ? <p className="mt-1 text-sm text-muted">{post.caption.trim()}</p> : null}
             {isPoem ? (
-              <p className="mt-3 whitespace-pre-wrap font-serif text-lg text-ink">
-                {previewSource}
-                {showReadMore ? <span className="text-coral"> Read more</span> : null}
-              </p>
+              <div className="mt-1">
+                <LiteraryBodyView
+                  bodyJson={null}
+                  bodyText={wholeLineExcerpt(previewSource, 8).text}
+                  className="text-base"
+                />
+                {showReadMore ? <span className="mt-1 block text-coral">Read more</span> : null}
+              </div>
             ) : excerpt ? (
               <p className="mt-3 text-base text-ink">
                 {excerpt}

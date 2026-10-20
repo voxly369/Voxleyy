@@ -3,6 +3,7 @@ import { focusRing } from '../shell/navItems.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { countryFlag, countryName } from '../../lib/profiles/countries.ts'
 import type { PublicProfile } from '../../lib/profiles/types.ts'
+import { MenuLinesIcon } from '../icons/MenuLinesIcon.tsx'
 import { CountLink, SafeWebsite } from './SafeWebsite.tsx'
 import { FollowButton } from './FollowButton.tsx'
 import { VerifiedBadge } from './VerifiedBadge.tsx'
@@ -23,6 +24,16 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
   return (
     <header className="flex flex-col">
       <div className="relative">
+        {isOwn ? (
+          <Link
+            to="/settings"
+            aria-label="Settings and activity"
+            data-testid="profile-settings-button"
+            className={`absolute right-5 top-5 z-20 inline-flex size-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-line bg-surface/95 text-ink backdrop-blur md:hidden ${focusRing}`}
+          >
+            <MenuLinesIcon className="size-6" />
+          </Link>
+        ) : null}
         <ImageWithFallback
           src={profile.bannerUrl ?? undefined}
           alt=""
@@ -87,9 +98,9 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
         </div>
         <div className="flex shrink-0 flex-col gap-3 lg:items-end lg:text-right">
         <div className="flex flex-nowrap gap-3 overflow-x-auto lg:justify-end" aria-live="polite">
-          <CountLink to={`/u/${profile.username}/followers`} count={followerCount} label="followers" />
-          <CountLink to={`/u/${profile.username}/following`} count={profile.followingCount} label="following" />
-          <CountLink count={profile.creationCount} label="works" />
+          <CountLink to={`/u/${profile.username}/followers`} count={followerCount} noun="follower" />
+          <CountLink to={`/u/${profile.username}/following`} count={profile.followingCount} noun="following" />
+          <CountLink count={profile.creationCount} noun="work" />
         </div>
         {!isOwn ? (
           <div className="hidden lg:block">

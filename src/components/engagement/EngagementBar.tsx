@@ -1,4 +1,5 @@
 import { useReducer, useState } from 'react'
+import { formatCountLabel } from '../../lib/formatCountLabel.ts'
 import { focusRing } from '../shell/navItems.ts'
 import { toggleLike } from '../../lib/engagement/toggleLike.ts'
 import { toggleSave } from '../../lib/engagement/toggleSave.ts'
@@ -89,7 +90,7 @@ export function EngagementBar({
         } ${likePulse ? 'scale-95 motion-reduce:scale-100' : ''} ${focusRing}`}
       >
         <span aria-hidden>♥</span>
-        <span>{likeCount}</span>
+        <span>{formatCountLabel(likeCount, 'like')}</span>
       </button>
       <button
         type="button"
@@ -98,7 +99,7 @@ export function EngagementBar({
         className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-2xl px-3 text-sm font-medium text-muted ${focusRing}`}
       >
         <span aria-hidden>💬</span>
-        <span>{commentCount}</span>
+        <span>{formatCountLabel(commentCount, 'comment')}</span>
       </button>
       <button
         type="button"
@@ -111,7 +112,7 @@ export function EngagementBar({
         } ${savePulse ? 'scale-95 motion-reduce:scale-100' : ''} ${focusRing}`}
       >
         <span aria-hidden>🔖</span>
-        <span>{saveCount}</span>
+        <span>{formatCountLabel(saveCount, 'save')}</span>
       </button>
     </div>
   )

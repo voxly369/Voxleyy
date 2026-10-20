@@ -25,6 +25,7 @@ import {
   type RichBodyDocument,
 } from './bodyDocument.ts'
 import { isPhase1CreationType, type CreationType } from './creationTypes.ts'
+import { literaryPlainFromRich, trimLiteraryRichDocument } from './literaryDisplay.ts'
 import { createDraft, getEditableCreation, saveCreationFields } from './api.ts'
 import type { Audience, PublishStatus } from './types.ts'
 import { isTransientSaveError, saveErrorMessage } from './saveErrors.ts'
@@ -66,6 +67,16 @@ function failureMessage(result: CreationFailure): string {
 
 function usesRichEditor(type: CreationType): boolean {
   return isPhase1CreationType(type) && type !== 'quote_card'
+}
+
+function isLiteraryType(type: CreationType): boolean {
+  return type === 'poem' || type === 'lyric' || type === 'script'
+}
+
+function normalizeLiteraryPayload(type: CreationType, body: string, richDoc: RichBodyDocument) {
+  if (!isLiteraryType(type)) return { body, richDoc }
+  const richDocTrimmed = trimLiteraryRichDocument(richDoc)
+  return { body: literaryPlainFromRich(richDocTrimmed), richDoc: richDocTrimmed }
 }
 
 function buildBodyJson(type: CreationType, body: string, quoteStyle: QuoteCardStyle, richDoc: RichBodyDocument): Json {
@@ -213,8 +224,14 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
     setSaveMessage(null)
     dispatchAutosave({ type: 'save_start' })
 
-    const richSnapshot = richDocRef.current
+    let richSnapshot = richDocRef.current
+    let bodyText = snapshot.body
     if (usesRichEditor(creationType)) {
+      const normalized = normalizeLiteraryPayload(creationType, bodyText, richSnapshot)
+      bodyText = normalized.body
+      richSnapshot = normalized.richDoc
+      richDocRef.current = richSnapshot
+      formRef.current = { ...formRef.current, body: bodyText }
       const sizeIssue = validateRichDocumentSize(richSnapshot)
       if (!sizeIssue.ok) {
         setSaveMessage(sizeIssue.message)
@@ -223,7 +240,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
         return
       }
     }
-    const bodyJson = buildBodyJson(creationType, snapshot.body, style, richSnapshot)
+    const bodyJson = buildBodyJson(creationType, bodyText, style, richSnapshot)
 
     try {
       let id = idRef.current
@@ -232,7 +249,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
           type: creationType,
           title: snapshot.title.trim() || null,
           caption: snapshot.caption.trim() || null,
-          body_text: snapshot.body,
+          body_text: bodyText,
           body_json: bodyJson,
           tags: snapshot.tags,
           audience,
@@ -264,7 +281,7 @@ export function useCreationEditor({ creationId, creationType }: UseCreationEdito
         expectedUpdatedAt: updatedAtRef.current,
         title: snapshot.title,
         caption: snapshot.caption,
-        bodyText: snapshot.body,
+        bodyText,
         bodyJson,
         audience,
         tags: snapshot.tags,

@@ -4,6 +4,8 @@ import { CreationTypeIcon } from '../creations/CreationTypeIcon.tsx'
 import { QuoteCardView } from '../creations/QuoteCardView.tsx'
 import { focusRing } from '../shell/navItems.ts'
 import { quoteStyleFromJson } from '../../lib/creations/bodyDocument.ts'
+import { formatCountLabel } from '../../lib/formatCountLabel.ts'
+import { wholeLineExcerpt } from '../../lib/creations/wholeLineExcerpt.ts'
 import type { PublishedWorkSummary } from '../../lib/creations/types.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 
@@ -90,6 +92,9 @@ export function ProfilePostTile({ work, saved, saveBusy, onToggleSave }: Profile
     onToggleSave(work.id, saved)
   }
 
+  const excerptSource = work.bodyText ?? work.title ?? 'Work'
+  const excerpt = wholeLineExcerpt(excerptSource, 6)
+
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface">
       <div
@@ -118,7 +123,9 @@ export function ProfilePostTile({ work, saved, saveBusy, onToggleSave }: Profile
           ) : work.coverUrl ? (
             <ImageWithFallback src={work.coverUrl} alt="" label="Cover" className="size-full object-cover" />
           ) : (
-            <p className="line-clamp-6 p-3 font-serif text-sm text-ink">{work.bodyText ?? work.title ?? 'Work'}</p>
+            <p className="h-[7.5rem] overflow-hidden whitespace-pre-wrap p-3 font-serif text-sm leading-normal text-ink">
+              {excerpt.text}
+            </p>
           )}
         </Link>
         <button
@@ -137,7 +144,7 @@ export function ProfilePostTile({ work, saved, saveBusy, onToggleSave }: Profile
           <span className="truncate font-medium text-ink">{work.title?.trim() || 'Untitled'}</span>
         </div>
         <p className="text-xs text-muted">
-          {work.likeCount} likes · {work.commentCount} comments
+          {formatCountLabel(work.likeCount, 'like')} · {formatCountLabel(work.commentCount, 'comment')}
         </p>
       </div>
     </article>

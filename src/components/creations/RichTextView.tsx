@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { CreationType } from '../../lib/creations/creationTypes.ts'
 import { usesLiterarySurface } from '../../lib/creations/creationTypes.ts'
+import { LiteraryBodyView } from './LiteraryBodyView.tsx'
 import type { Json } from '../../lib/database.types.ts'
 import { bodyContentFromJson, type RichBodyDocument } from '../../lib/creations/bodyDocument.ts'
 import type { RichInline } from '../../lib/creations/richDocument.ts'
@@ -38,8 +39,15 @@ function renderBlock(block: RichBodyDocument['content'][number], index: number, 
   )
 }
 
+function usesPoemLineLayout(type: CreationType | undefined): boolean {
+  return type === 'poem' || type === 'lyric' || type === 'script'
+}
+
 export function RichTextView({ bodyJson, bodyText, creationType, className = '' }: RichTextViewProps) {
   const literary = creationType ? usesLiterarySurface(creationType) : true
+  if (usesPoemLineLayout(creationType)) {
+    return <LiteraryBodyView bodyJson={bodyJson} bodyText={bodyText} className={className} />
+  }
   const doc = bodyContentFromJson(bodyJson, bodyText)
   const content = doc.content
 

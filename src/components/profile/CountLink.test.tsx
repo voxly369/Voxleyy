@@ -7,12 +7,9 @@ describe('CountLink', () => {
   it('separates count and label with visible space', () => {
     render(
       <MemoryRouter>
-        <CountLink count={0} label="followers" />
+        <CountLink count={1} noun="follower" />
       </MemoryRouter>,
     )
-    expect(screen.getByText('0')).toBeInTheDocument()
-    expect(screen.getByText('followers')).toBeInTheDocument()
-    const row = screen.getByText('0').parentElement
-    expect(row?.textContent).toMatch(/0\s+followers/)
+    expect(screen.getByText('1 follower')).toBeInTheDocument()
   })
 })

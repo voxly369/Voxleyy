@@ -1,4 +1,5 @@
 import type { Page, Route } from '@playwright/test'
+import { audienceMockHandleRest } from './publishAudienceState.ts'
 import { Buffer } from 'node:buffer'
 
 export const PROJECT_REF = 'ktgxdqplvggeyrnuqljx'
@@ -258,7 +259,10 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
   })
 }
 
-function handleRest(url: string, method: string): unknown[] {
+function handleRest(url: string, method: string, postData: unknown): unknown[] {
+  const audienceResult = audienceMockHandleRest(url, method, postData)
+  if (audienceResult !== undefined) return audienceResult
+
   const posts = feedPosts()
 
   if (url.includes('/rest/v1/profiles_public')) {
@@ -346,7 +350,13 @@ export async function installSupabaseMocks(page: Page) {
     }
 
     if (url.includes('/rest/v1/')) {
-      const body = handleRest(url, route.request().method())
+      let postData: unknown = null
+      try {
+        postData = route.request().postDataJSON()
+      } catch {
+        postData = null
+      }
+      const body = handleRest(url, route.request().method(), postData)
       await fulfillJson(route, body)
       return
     }
