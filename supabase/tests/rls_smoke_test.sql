@@ -1493,15 +1493,26 @@ begin
   end;
 
   insert into public.creations (author_id, type, title, audience, status, genre, mood, language)
-  values (v_a, 'poem', 'Meta at limit', 'private', 'draft', repeat('g', 60), repeat('m', 60), '12345678')
+  values (v_a, 'poem', 'Meta at limit', 'private', 'draft', repeat('g', 60), 'hope', '12345678')
   returning id into v_creation;
   perform pg_temp.record(
     'creation genre mood and language accept at-limit values',
     (select char_length(genre) from public.creations where id = v_creation) = 60
-      and (select char_length(mood) from public.creations where id = v_creation) = 60
+      and (select lower(mood) from public.creations where id = v_creation) = 'hope'
       and (select char_length(language) from public.creations where id = v_creation) = 8,
     'ok'
   );
+
+  begin
+    insert into public.creations (author_id, type, title, audience, status, mood)
+    values (v_a, 'poem', 'Mood invalid', 'private', 'draft', repeat('m', 60));
+    perform pg_temp.record('creation mood rejects disallowed slug', false, 'insert succeeded');
+  exception
+    when check_violation then
+      perform pg_temp.record('creation mood rejects disallowed slug', true, sqlerrm);
+    when others then
+      perform pg_temp.record('creation mood rejects disallowed slug', false, sqlstate || ' ' || sqlerrm);
+  end;
 
   begin
     insert into public.creations (author_id, type, title, audience, status, genre)
@@ -2477,9 +2488,11 @@ declare
   v_public uuid;
   v_private uuid;
   v_draft uuid;
+  v_discover_author uuid;
   n integer;
 begin
   select founder, reader_a, reader_b into v_founder, v_a, v_b from rls_ids;
+  v_discover_author := v_b;
 
   begin
     execute 'set local role anon';
@@ -2548,20 +2561,22 @@ begin
   select count(*) into n from public.founder_featured_writers_public where writer_id = v_b;
   perform pg_temp.record('founder can feature active writer', n = 1, 'rows=' || n);
 
-  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  execute format('set local role %I', session_user);
+  alter table public.creations disable trigger creations_rate_limit;
   insert into public.creations (author_id, type, title, audience, status, body_text)
-  values (v_b, 'poem', 'Discover public', 'public', 'draft', 'Line')
+  values (v_discover_author, 'poem', 'Discover public', 'public', 'draft', 'Line')
   returning id into v_public;
   update public.creations set status = 'published', audience = 'public', published_at = now() where id = v_public;
 
   insert into public.creations (author_id, type, title, audience, status, body_text)
-  values (v_b, 'poem', 'Discover private', 'private', 'published', 'Secret')
+  values (v_discover_author, 'poem', 'Discover private', 'private', 'published', 'Secret')
   returning id into v_private;
 
   insert into public.creations (author_id, type, title, audience, status, body_text)
-  values (v_b, 'poem', 'Discover draft', 'public', 'draft', 'Draft')
+  values (v_discover_author, 'poem', 'Discover draft', 'public', 'draft', 'Draft')
   returning id into v_draft;
-
+  alter table public.creations enable trigger creations_rate_limit;
+  execute 'set local role authenticated';
   perform set_config('request.jwt.claim.sub', v_a::text, true);
   select count(*) into n from public.discover_trending_creations where id = v_public;
   perform pg_temp.record('discover trending includes public published work', n = 1, 'rows=' || n);
@@ -2570,30 +2585,36 @@ begin
   select count(*) into n from public.discover_trending_creations where id = v_draft;
   perform pg_temp.record('discover trending excludes drafts', n = 0, 'rows=' || n);
 
-  perform public.founder_set_user_status(v_b, 'suspended', 'discover smoke', now() + interval '1 day');
-  select count(*) into n from public.discover_new_creations where author_id = v_b;
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_discover_author, 'suspended', 'discover smoke', now() + interval '1 day');
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select count(*) into n from public.discover_new_creations where author_id = v_discover_author;
   perform pg_temp.record('suspended author hidden from discover_new_creations', n = 0, 'rows=' || n);
-  perform public.founder_set_user_status(v_b, 'active', 'restore discover', null);
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_discover_author, 'active', 'restore discover', null);
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
 
-  insert into public.blocks (blocker_id, blocked_id) values (v_a, v_b);
-  select count(*) into n from public.discover_new_creations where author_id = v_b;
+  insert into public.blocks (blocker_id, blocked_id) values (v_a, v_discover_author);
+  select count(*) into n from public.discover_new_creations where author_id = v_discover_author;
   perform pg_temp.record('blocked author hidden from discover_new_creations', n = 0, 'rows=' || n);
-  delete from public.blocks where blocker_id = v_a and blocked_id = v_b;
+  delete from public.blocks where blocker_id = v_a and blocked_id = v_discover_author;
 
   v_other := gen_random_uuid();
-  perform pg_temp.create_test_user(v_other, 'search.rate@voxly.test', now());
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_other, 'search.rate+' || v_other::text || '@voxly.test', now());
+  execute 'set local role authenticated';
   perform set_config('request.jwt.claim.sub', v_other::text, true);
   perform set_config(
     'request.jwt.claims',
     json_build_object('sub', v_other::text, 'role', 'authenticated', 'email', 'search.rate@voxly.test')::text,
     true
   );
-  for n in 1..61 loop
-    perform public.record_search_event(v_other);
+  for n in 1..60 loop
+    perform public.search_discovery('ab', 'top', 5);
   end loop;
   begin
-    perform public.record_search_event(v_other);
-    perform pg_temp.record('search rate limit holds at 60 per minute', false, '61st event accepted');
+    perform public.search_discovery('ab', 'top', 5);
+    perform pg_temp.record('search rate limit holds at 60 per minute', false, '61st search accepted');
   exception
     when others then
       perform pg_temp.record('search rate limit holds at 60 per minute', true, sqlerrm);
