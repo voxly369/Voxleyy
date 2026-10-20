@@ -687,7 +687,7 @@ The following belong to the full Voxly platform and are specified here so the ar
 
 - **Modes:** dark and light, with a toggle in Settings. Dark: near-black background, slightly lighter card surfaces with thin borders, large rounded corners, small uppercase section labels with a coral icon, off-white text, muted grey secondary text.
 
-- **Navigation:** a fixed bottom bar with Home, Discover, a raised coral Create (+) button, Messages, Settings and Profile. The bar is opaque, every screen has bottom padding equal to the bar height plus the device safe area, and every role sees the same bar. Desktop uses a sidebar.
+- **Navigation:** a fixed bottom bar with Home, Discover, a raised coral Create (+) button, Messages and Profile; on phones Settings opens from the three-line button at the top right of your own profile; desktop uses the rail with a More menu. The bar is opaque, every screen has bottom padding equal to the bar height plus the device safe area, and every role sees the same bar.
 
 - **Verified badge:** one colour everywhere (purple).
 

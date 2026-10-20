@@ -88,6 +88,15 @@ h6,
   }
 }
 
+.voxly-literary-editor .ProseMirror p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.voxly-literary-editor .ProseMirror p + p {
+  margin-top: 1.25rem;
+}
+
 @keyframes shimmer {
   100% {
     transform: translateX(100%);

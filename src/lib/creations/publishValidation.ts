@@ -1,4 +1,5 @@
 import { MAX_CAPTION_CHARS, MAX_QUOTE_LINE_CHARS } from './limits.ts'
+import { trimLiteraryPlainText } from './literaryDisplay.ts'
 import { contrastRatio } from './quoteCardContrast.ts'
 import type { QuoteCardStyle } from './bodyDocument.ts'
 
@@ -23,13 +24,17 @@ export function nonEmptyBodyLines(body: string): number {
 }
 
 export function validatePublishContent(input: PublishCheckInput): PublishCheckResult {
+  const body =
+    input.creationType === 'poem' || input.creationType === 'lyric' || input.creationType === 'script'
+      ? trimLiteraryPlainText(input.body)
+      : input.body
   const caption = input.caption?.trim() ?? ''
   if (caption.length > MAX_CAPTION_CHARS) {
     return { ok: false, message: 'Caption is too long.' }
   }
 
   if (input.creationType === 'quote_card') {
-    const line = input.body.trim()
+    const line = body.trim()
     if (!line) return { ok: false, message: 'Add your quote line before you publish.' }
     if (line.length > MAX_QUOTE_LINE_CHARS) {
       return { ok: false, message: 'Quote lines can be up to 400 characters.' }
@@ -47,7 +52,7 @@ export function validatePublishContent(input: PublishCheckInput): PublishCheckRe
   if (!input.title.trim()) {
     return { ok: false, message: 'Add a title before you publish.' }
   }
-  if (nonEmptyBodyLines(input.body) < 1) {
+  if (nonEmptyBodyLines(body) < 1) {
     return { ok: false, message: 'Add at least one line of writing before you publish.' }
   }
   return { ok: true }

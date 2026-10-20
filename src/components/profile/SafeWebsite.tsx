@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { formatCountLabel, type CountNoun } from '../../lib/formatCountLabel.ts'
 import { focusRing } from '../shell/navItems.ts'
 import { parseWebsite } from '../../lib/profiles/website.ts'
 
@@ -18,22 +19,16 @@ export function SafeWebsite({ value }: { value: string | null }) {
   )
 }
 
-export function CountLink({ to, count, label }: { to?: string; count: number; label: string }) {
-  const content = (
-    <>
-      <span className="font-semibold text-ink">{count}</span>
-      <span className="text-muted">{'\u00a0'}
-        {label}
-      </span>
-    </>
-  )
+export function CountLink({ to, count, noun }: { to?: string; count: number; noun: CountNoun }) {
+  const label = formatCountLabel(count, noun)
+  const content = <span className="text-sm text-ink">{label}</span>
   if (!to) {
-    return <span className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap text-sm">{content}</span>
+    return <span className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap">{content}</span>
   }
   return (
     <Link
       to={to}
-      className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-xl px-1 text-sm ${focusRing}`}
+      className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-xl px-1 ${focusRing}`}
     >
       {content}
     </Link>
