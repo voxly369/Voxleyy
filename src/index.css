@@ -10,7 +10,21 @@
   --c-ink: 24 24 27;
   --c-muted: 113 113 122;
   --nav-h: 64px;
+  --rail-width: 0px;
   color-scheme: light;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --rail-width: 72px;
+    --nav-h: 0px;
+  }
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --rail-width: 244px;
+  }
 }
 
 .dark {

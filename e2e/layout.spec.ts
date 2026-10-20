@@ -8,10 +8,12 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 const viewports = [
-  { name: '320x640', width: 320, height: 640 },
   { name: '375x812', width: 375, height: 812 },
+  { name: '767x812', width: 767, height: 812 },
   { name: '768x1024', width: 768, height: 1024 },
   { name: '1024x768', width: 1024, height: 768 },
+  { name: '1279x900', width: 1279, height: 900 },
+  { name: '1280x900', width: 1280, height: 900 },
   { name: '1440x900', width: 1440, height: 900 },
 ] as const
 
@@ -118,14 +120,14 @@ async function assertInViewport(page: Page) {
 }
 
 async function assertNavVisibility(page: Page, width: number) {
-  const sideNav = page.getByTestId('side-nav')
+  const rail = page.getByTestId('nav-rail')
   const bottomNav = page.getByTestId('bottom-nav')
-  if (width >= 1024) {
-    await expect(sideNav).toBeVisible()
+  if (width >= 768) {
+    await expect(rail).toBeVisible()
     await expect(bottomNav).toBeHidden()
   } else {
     await expect(bottomNav).toBeVisible()
-    await expect(sideNav).toBeHidden()
+    await expect(rail).toBeHidden()
   }
 }
 

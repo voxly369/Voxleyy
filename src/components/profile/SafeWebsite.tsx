@@ -22,14 +22,19 @@ export function CountLink({ to, count, label }: { to?: string; count: number; la
   const content = (
     <>
       <span className="font-semibold text-ink">{count}</span>
-      <span className="text-muted"> {label}</span>
+      <span className="text-muted">{'\u00a0'}
+        {label}
+      </span>
     </>
   )
   if (!to) {
-    return <span className="inline-flex min-h-11 items-center text-sm">{content}</span>
+    return <span className="inline-flex min-h-11 shrink-0 items-center whitespace-nowrap text-sm">{content}</span>
   }
   return (
-    <Link to={to} className={`inline-flex min-h-11 items-center rounded-xl px-1 text-sm ${focusRing}`}>
+    <Link
+      to={to}
+      className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-xl px-1 text-sm ${focusRing}`}
+    >
       {content}
     </Link>
   )

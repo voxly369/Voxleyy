@@ -1,5 +1,6 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
+import { ProfileDisplayNamePrompt } from '../components/profile/ProfileDisplayNamePrompt.tsx'
 import { ProfileHeader } from '../components/profile/ProfileHeader.tsx'
 import { ProfileDraftsPanel } from '../components/profile/ProfileDraftsPanel.tsx'
 import { ProfilePostsGrid } from '../components/profile/ProfilePostsGrid.tsx'
@@ -16,6 +17,10 @@ import type { PublishedCursor } from '../lib/creations/publishedCursor.ts'
 import type { PublishedWorkSummary } from '../lib/creations/types.ts'
 import { getProfileByUsername, isFollowing } from '../lib/profiles/api.ts'
 import type { PublicProfile } from '../lib/profiles/types.ts'
+import {
+  displayNamePromptDismissed,
+  needsDisplayName,
+} from '../lib/profiles/needsDisplayName.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 
 type Tab = 'posts' | 'drafts' | 'about'
@@ -40,6 +45,7 @@ export default function ProfilePage() {
   const [tab, setTab] = useState<Tab>(initialTab)
   const [loadingMore, setLoadingMore] = useState(false)
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null)
+  const [namePromptDismissedVisit, setNamePromptDismissedVisit] = useState(false)
   const key = username.toLowerCase()
   const current = view?.key === key ? view : null
   const activeProblem = problem?.key === key ? problem : null
@@ -158,6 +164,12 @@ export default function ProfilePage() {
   const joined = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(new Date(profile.createdAt))
   const isOwn = isOwnProfile
   const visibleTabs = tabs.filter((t) => !t.ownOnly || isOwn)
+  const showNamePrompt =
+    isOwn &&
+    Boolean(me) &&
+    needsDisplayName(profile) &&
+    !displayNamePromptDismissed(me!.id) &&
+    !namePromptDismissedVisit
 
   return (
     <PageContainer variant="wide" className="flex flex-col gap-6 pb-8">
@@ -174,6 +186,9 @@ export default function ProfilePage() {
           })
         }}
       />
+      {showNamePrompt && me ? (
+        <ProfileDisplayNamePrompt userId={me.id} onDismiss={() => setNamePromptDismissedVisit(true)} />
+      ) : null}
       <div className="px-5">
         <div
           role="tablist"

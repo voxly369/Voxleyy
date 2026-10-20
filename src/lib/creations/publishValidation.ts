@@ -53,6 +53,19 @@ export function validatePublishContent(input: PublishCheckInput): PublishCheckRe
   return { ok: true }
 }
 
+export type PublishGateInput = PublishCheckInput & {
+  hasPersistedDraft: boolean
+}
+
+export function publishDisabledReason(input: PublishGateInput): string | null {
+  if (!input.hasPersistedDraft) {
+    return 'Save a draft before you publish.'
+  }
+  const check = validatePublishContent(input)
+  if (!check.ok) return check.message
+  return null
+}
+
 export function publishContentStats(body: string) {
   return {
     words: countWords(body),
