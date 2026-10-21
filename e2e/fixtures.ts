@@ -360,6 +360,16 @@ function handleRest(url: string, method: string, postData: unknown): unknown[] {
     return posts
   }
 
+  if (
+    url.includes('/rest/v1/post_reading_progress') ||
+    url.includes('/rest/v1/reader_preferences') ||
+    url.includes('/rest/v1/library_') ||
+    url.includes('/rest/v1/reader_collections') ||
+    url.includes('/rest/v1/reader_collection_items')
+  ) {
+    return []
+  }
+
   if (url.includes('/rest/v1/creation_tags')) {
     if (url.includes('tag=eq.poetry')) {
       return posts.slice(0, 3).map((p) => ({ creation_id: p.id, tag: 'poetry' }))

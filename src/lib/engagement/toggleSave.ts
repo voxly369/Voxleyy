@@ -1,3 +1,4 @@
+import { notifyLibrarySavesChanged } from '../library/saveEvents.ts'
 import { supabase } from '../supabaseClient.ts'
 import { providerFields } from '../supabaseFailure.ts'
 import { engagementErrorMessage } from './errors.ts'
@@ -37,11 +38,15 @@ export async function toggleSave(creationId: string, currentlySaved: boolean): P
     if (error) {
       return fail(error, engagementErrorMessage(error, 'We could not update your save. Try again.'))
     }
+    notifyLibrarySavesChanged()
     return { ok: true, saved: false, saveCountDelta: -1 }
   }
 
   const { error } = await supabase.from('saves').insert({ user_id: userId, creation_id: creationId })
-  if (!error) return { ok: true, saved: true, saveCountDelta: 1 }
+  if (!error) {
+    notifyLibrarySavesChanged()
+    return { ok: true, saved: true, saveCountDelta: 1 }
+  }
   if (error.code === '23505') return { ok: true, saved: true, saveCountDelta: 0 }
   return fail(error, engagementErrorMessage(error, 'We could not update your save. Try again.'))
 }

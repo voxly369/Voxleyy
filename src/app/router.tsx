@@ -4,6 +4,7 @@ import { AuthLayout } from '../components/auth/AuthLayout.tsx'
 import { AppShell } from '../components/shell/AppShell.tsx'
 import { RouteErrorBoundary } from '../components/shell/RouteErrorBoundary.tsx'
 import { PageSkeleton } from '../components/states/Skeleton.tsx'
+import { ModalStackProvider } from '../lib/shell/modalStack.tsx'
 import { AuthProvider } from '../lib/auth/AuthProvider.tsx'
 import { RequireAuth, RequireFounder, RequireGuest } from './guards.tsx'
 
@@ -24,6 +25,7 @@ const ProfilePage = lazy(() => import('../pages/ProfilePage.tsx'))
 const FollowListPage = lazy(() => import('../pages/FollowListPage.tsx'))
 const LibraryPage = lazy(() => import('../pages/LibraryPage.tsx'))
 const SavedPage = lazy(() => import('../pages/SavedPage.tsx'))
+const ReaderPage = lazy(() => import('../pages/ReaderPage.tsx'))
 const FounderPage = lazy(() => import('../pages/FounderPage.tsx'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage.tsx'))
 const LoginPage = lazy(() => import('../pages/auth/LoginPage.tsx'))
@@ -73,6 +75,14 @@ const router = createBrowserRouter(
         {
           element: <RequireAuth />,
           children: [
+            {
+              element: (
+                <ModalStackProvider>
+                  <Outlet />
+                </ModalStackProvider>
+              ),
+              children: [{ path: '/read/:id', element: <ReaderPage /> }],
+            },
             {
               element: <AppShell />,
               children: [

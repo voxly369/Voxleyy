@@ -27,6 +27,10 @@ import { CommentsSheet } from '../components/engagement/CommentsSheet.tsx'
 import { RichTextView } from '../components/creations/RichTextView.tsx'
 import { quoteStyleFromJson } from '../lib/creations/bodyDocument.ts'
 import { QuoteCardView } from '../components/creations/QuoteCardView.tsx'
+import { AddToCollectionModal } from '../components/library/AddToCollectionModal.tsx'
+import { ResumeReaderPrompt } from '../components/reader/ResumeReaderPrompt.tsx'
+import { isReaderEligibleType } from '../lib/reader/readerEligible.ts'
+import { fetchPostProgress } from '../lib/reader/progressApi.ts'
 import { supabase } from '../lib/supabaseClient.ts'
 
 type LocationState = {
@@ -55,6 +59,8 @@ export default function CreationPage() {
   const [saved, setSaved] = useState(false)
   const [commentsOpen, setCommentsOpen] = useState(false)
   const [coverOpen, setCoverOpen] = useState(false)
+  const [collectionOpen, setCollectionOpen] = useState(false)
+  const [readProgress, setReadProgress] = useState<{ percent: number; completed: boolean } | null>(null)
   const navFlash = location.state as LocationState | null
   const publishedNotice = navFlash?.published ? 'Published' : null
   const writerNotice = Boolean(navFlash?.writerPromoted)
@@ -98,6 +104,12 @@ export default function CreationPage() {
           ])
           setLiked(Boolean(likeRow.data))
           setSaved(Boolean(saveRow.data))
+          if (isReaderEligibleType(result.data.type)) {
+            const progress = await fetchPostProgress(result.data.id)
+            if (active && progress && !progress.completed && progress.percent > 0) {
+              setReadProgress({ percent: progress.percent, completed: progress.completed })
+            }
+          }
         }
       }
     })()
@@ -270,6 +282,26 @@ export default function CreationPage() {
           {work.author.verified ? <VerifiedBadge /> : null}
         </Link>
         {engagement ? <div className="xl:hidden">{engagement}</div> : null}
+        {work.status === 'published' && isReaderEligibleType(work.type) ? (
+          <div className="flex flex-wrap gap-2">
+            <Link
+              to={`/read/${work.id}`}
+              className={`inline-flex min-h-11 items-center rounded-2xl bg-coral px-4 text-sm font-semibold text-white ${focusRing}`}
+            >
+              Read
+            </Link>
+            {saved ? (
+              <button
+                type="button"
+                onClick={() => setCollectionOpen(true)}
+                className={`inline-flex min-h-11 items-center rounded-2xl border border-line bg-surface px-4 text-sm font-medium text-ink ${focusRing}`}
+              >
+                Add to collection
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {readProgress ? <ResumeReaderPrompt creationId={work.id} percent={readProgress.percent} /> : null}
       </header>
       {work.type === 'quote_card' ? (
         work.bodyText ? (
@@ -394,6 +426,7 @@ export default function CreationPage() {
           Close
         </button>
       </Modal>
+      <AddToCollectionModal open={collectionOpen} creationId={work.id} onClose={() => setCollectionOpen(false)} />
     </PageContainer>
   )
 }
