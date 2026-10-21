@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { CreationDetail } from '../../lib/creations/types.ts'
 import { createBookmark, deleteBookmarkAtPosition, listBookmarksForCreation } from '../../lib/reader/bookmarksApi.ts'
 import { normalizeLookupWord } from '../../lib/reader/dictionaryWord.ts'
@@ -61,11 +61,19 @@ export function ReaderAnnotationHost({
   const [lookupWord, setLookupWord] = useState('')
   const [lookupResult, setLookupResult] = useState<DictionaryResult | null>(null)
   const [lookupLoading, setLookupLoading] = useState(false)
+  const selectionRangeRef = useRef<ReturnType<typeof rangeFromSelection>>(null)
+  const loadSeqRef = useRef(0)
+
+  useEffect(() => {
+    selectionRangeRef.current = selectionRange
+  }, [selectionRange])
 
   const loadRemote = useCallback(async () => {
+    const seq = ++loadSeqRef.current
     const offlinePkg = offlineEnabled ? await getOfflinePackage(work.id) : null
     if (!online && offlinePkg) {
       const anchored = reanchorHighlights(offlinePkg.highlights, work.bodyJson, work.bodyText ?? '')
+      if (seq !== loadSeqRef.current) return
       setHighlights(anchored)
       setBookmarks(offlinePkg.bookmarks)
       onHighlightsChange?.(anchored)
@@ -76,13 +84,14 @@ export function ReaderAnnotationHost({
       listHighlightsForCreation(work.id),
       listBookmarksForCreation(work.id),
     ])
+    if (seq !== loadSeqRef.current) return
     const anchored = reanchorHighlights(remoteHighlights, work.bodyJson, work.bodyText ?? '')
     setHighlights(anchored)
     setBookmarks(remoteBookmarks)
     onHighlightsChange?.(anchored)
     onBookmarksChange?.(remoteBookmarks)
     if (online) void syncOfflinePackage(work.id)
-  }, [work, offlineEnabled, online, onHighlightsChange, onBookmarksChange])
+  }, [work.id, work.bodyJson, work.bodyText, offlineEnabled, online, onHighlightsChange, onBookmarksChange])
 
   useEffect(() => {
     void loadRemote()
@@ -121,7 +130,7 @@ export function ReaderAnnotationHost({
       root.removeEventListener('mouseup', onSelectionChange)
       root.removeEventListener('keyup', onSelectionChange)
     }
-  })
+  }, [bodyRootRef, work.bodyJson, work.bodyText])
 
   async function persistHighlightLocallyOrRemote(
     next: AnchoredHighlight[],
@@ -153,15 +162,16 @@ export function ReaderAnnotationHost({
   }
 
   async function onPickColour(colour: HighlightColour) {
-    if (!selectionRange) return
-    const quote = quoteFromRange(work.bodyJson, work.bodyText ?? '', selectionRange)
+    const activeRange = selectionRangeRef.current ?? selectionRange
+    if (!activeRange) return
+    const quote = quoteFromRange(work.bodyJson, work.bodyText ?? '', activeRange)
     if (!quote) return
     window.getSelection()?.removeAllRanges()
     setSelectionRange(null)
     if (online) {
       const created = await createHighlight({
         creationId: work.id,
-        ...selectionRange,
+        ...activeRange,
         quote,
         colour,
       })
@@ -178,7 +188,7 @@ export function ReaderAnnotationHost({
       tempId,
       payload: {
         creationId: work.id,
-        ...selectionRange,
+        ...activeRange,
         quote,
         colour,
         note: null,

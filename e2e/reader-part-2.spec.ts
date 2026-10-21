@@ -9,6 +9,7 @@ import {
   seedLibrarySave,
 } from './fixtures.ts'
 import { seedReaderBookmark, seedReaderHighlight } from './libraryReadingMocks.ts'
+import { selectWordInParagraph } from './reader-part-2-helpers.ts'
 
 const READER_BODY = {
   version: 1,
@@ -107,29 +108,126 @@ test.describe('Reader part 2', () => {
 
   test('looks up a selected word', async ({ page }) => {
     await page.goto(`/read/${SAMPLE_CREATION_ID}`)
-    await page.locator('[data-reader-paragraph-index="0"]').evaluate((el) => {
-      const text = el.textContent ?? ''
-      const start = text.indexOf('opening')
-      const end = start + 'opening'.length
-      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
-      let node: Node | null = walker.nextNode()
-      while (node) {
-        const content = node.textContent ?? ''
-        const idx = content.indexOf('opening')
-        if (idx >= 0) {
-          const range = document.createRange()
-          range.setStart(node, idx)
-          range.setEnd(node, idx + 'opening'.length)
-          const selection = window.getSelection()
-          selection?.removeAllRanges()
-          selection?.addRange(range)
-          document.dispatchEvent(new Event('selectionchange'))
-          return
-        }
-        node = walker.nextNode()
-      }
-    })
+    await selectWordInParagraph(page, 0, 'opening')
     await page.getByRole('button', { name: 'Look up' }).click()
     await expect(page.getByText('The beginning of something.')).toBeVisible()
+  })
+
+  test('creates a highlight and persists after reload and font size change', async ({ page }) => {
+    await page.goto(`/read/${SAMPLE_CREATION_ID}`)
+    await selectWordInParagraph(page, 0, 'Highlightable')
+    await expect(page.getByRole('toolbar', { name: 'Highlight actions' })).toBeVisible()
+    const createHighlight = page.waitForResponse(
+      (resp) => resp.url().includes('/rest/v1/reader_highlights') && resp.request().method() === 'POST',
+    )
+    await page.getByRole('button', { name: 'Highlight Yellow' }).click()
+    await createHighlight
+    await expect(page.locator('mark')).toContainText('Highlightable')
+    await page.reload()
+    await expect(page.locator('mark')).toContainText('Highlightable')
+    await page.getByRole('button', { name: 'Reading settings' }).click()
+    const slider = page.getByLabel('Text size')
+    await slider.evaluate((el) => {
+      ;(el as HTMLInputElement).value = '4'
+      el.dispatchEvent(new Event('input', { bubbles: true }))
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await page.getByRole('button', { name: 'Done' }).click()
+    await expect(page.locator('mark')).toContainText('Highlightable')
+  })
+
+  test('adds and edits a highlight note', async ({ page }) => {
+    seedReaderHighlight({ quote: 'Highlightable opening', colour: 'blue' })
+    await page.goto(`/read/${SAMPLE_CREATION_ID}`)
+    await page.locator('mark').click()
+    await page.getByLabel('Note').fill('My reading note')
+    const patch = page.waitForResponse(
+      (resp) => resp.url().includes('/rest/v1/reader_highlights') && resp.request().method() === 'PATCH',
+    )
+    await page.getByRole('button', { name: 'Save' }).click()
+    await patch
+    await page.reload()
+    await page.locator('mark').click()
+    await expect(page.getByLabel('Note')).toHaveValue('My reading note')
+  })
+
+  test('deletes a highlight', async ({ page }) => {
+    seedReaderHighlight({ quote: 'Highlightable opening', colour: 'pink' })
+    await page.goto(`/read/${SAMPLE_CREATION_ID}`)
+    await page.locator('mark').click()
+    const del = page.waitForResponse(
+      (resp) => resp.url().includes('/rest/v1/reader_highlights') && resp.request().method() === 'DELETE',
+    )
+    await page.getByRole('button', { name: 'Delete highlight' }).click()
+    await del
+    await expect(page.locator('mark')).toHaveCount(0)
+  })
+
+  test('jumps to a bookmark in scroll mode', async ({ page }) => {
+    seedReaderBookmark({ paragraph: 1 })
+    await page.goto(`/read/${SAMPLE_CREATION_ID}`)
+    await page.getByRole('button', { name: 'Reading settings' }).click()
+    await page.getByRole('button', { name: 'Paragraph 2' }).click()
+    await expect(page.locator('[data-reader-paragraph-index="1"]')).toBeInViewport()
+  })
+
+  test('jumps to a bookmark in page mode', async ({ page }) => {
+    seedReaderBookmark({ paragraph: 1 })
+    await page.goto(`/read/${SAMPLE_CREATION_ID}`)
+    await page.getByRole('button', { name: 'Reading settings' }).click()
+    await page.getByText('Page mode', { exact: true }).click()
+    await page.getByRole('button', { name: 'Done' }).click()
+    await page.getByRole('button', { name: 'Reading settings' }).click()
+    await page.getByRole('button', { name: 'Paragraph 2' }).click()
+    await expect(page.locator('[data-reader-paragraph-index="1"]')).toBeVisible()
+  })
+
+  test('Library Highlights tab filter search and open in reader', async ({ page }) => {
+    seedReaderHighlight({ quote: 'Unique filter phrase', colour: 'orange' })
+    seedReaderHighlight({ quote: 'Other quote', colour: 'yellow' })
+    await page.goto('/library?tab=highlights')
+    await page.getByLabel('Filter by colour').selectOption('orange')
+    await expect(page.getByText('Unique filter phrase')).toBeVisible()
+    await expect(page.getByText('Other quote')).toHaveCount(0)
+    await page.getByLabel('Search highlights').fill('Unique filter')
+    await expect.poll(async () => (await page.getByText('Unique filter phrase').count()) > 0).toBe(true)
+    await page.getByRole('link', { name: /Open in reader/i }).first().click()
+    await expect(page).toHaveURL(new RegExp(`/read/${SAMPLE_CREATION_ID}`))
+  })
+
+  test('look up not found shows fallback link', async ({ page }) => {
+    await page.route('https://api.dictionaryapi.dev/api/v2/entries/en/*', async (route) => {
+      await route.fulfill({ status: 404, body: '{}' })
+    })
+    await page.goto(`/read/${SAMPLE_CREATION_ID}`)
+    await selectWordInParagraph(page, 0, 'opening')
+    await page.getByRole('button', { name: 'Look up' }).click()
+    await expect(page.getByText(/No definition found/i)).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Search the web' })).toBeVisible()
+  })
+
+  test('look up offline shows offline message', async ({ page, context }) => {
+    await page.goto(`/read/${SAMPLE_CREATION_ID}`)
+    await selectWordInParagraph(page, 0, 'sentence')
+    await expect(page.getByRole('toolbar', { name: 'Highlight actions' })).toBeVisible()
+    await context.setOffline(true)
+    await page.getByRole('button', { name: 'Look up' }).click()
+    await expect(page.getByText(/You are offline/i)).toBeVisible()
+  })
+
+  test('save offline add highlight while offline and sync when online', async ({ page, context }) => {
+    await page.goto(`/read/${SAMPLE_CREATION_ID}`)
+    await page.getByRole('button', { name: 'Reading settings' }).click()
+    await page.getByLabel('Save offline on this device').click()
+    await expect.poll(() => page.getByLabel('Save offline on this device').isChecked()).toBe(true)
+    await page.getByRole('button', { name: 'Done' }).click()
+    await context.setOffline(true)
+    await selectWordInParagraph(page, 1, 'Second')
+    await page.getByRole('button', { name: 'Highlight Green' }).click()
+    await expect(page.locator('mark')).toContainText('Second')
+    await context.setOffline(false)
+    await page.waitForResponse(
+      (resp) => resp.url().includes('/rest/v1/reader_highlights') && resp.request().method() === 'POST',
+    )
   })
 })

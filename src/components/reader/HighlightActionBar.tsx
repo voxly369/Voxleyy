@@ -39,6 +39,7 @@ export function HighlightActionBar({
       aria-label="Highlight actions"
       className="fixed z-40 flex max-w-[min(100vw-1rem,22rem)] flex-wrap gap-1 rounded-xl border border-line bg-surface p-2 shadow-lg"
       style={{ top, left }}
+      onMouseDown={(event) => event.preventDefault()}
     >
       {HIGHLIGHT_COLOURS.map((colour) => (
         <button

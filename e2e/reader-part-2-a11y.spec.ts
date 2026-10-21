@@ -9,6 +9,7 @@ import {
   resetLibraryReadingMocks,
   seedLibrarySave,
 } from './fixtures.ts'
+import { selectWordInParagraph } from './reader-part-2-helpers.ts'
 
 const READER_BODY = {
   version: 1,
@@ -73,6 +74,36 @@ for (const width of [375, 1280]) {
       await page.goto('/library?tab=highlights')
       await expect(page.getByRole('tab', { name: 'Highlights' })).toHaveAttribute('aria-selected', 'true')
       await expectNoSeriousViolations(page, 'library highlights', 'main')
+    })
+
+    test('axe highlight edit panel', async ({ page }) => {
+      await page.goto(`/read/${SAMPLE_CREATION_ID}`)
+      await selectWordInParagraph(page, 0, 'Accessibility')
+      await page.getByRole('button', { name: 'Highlight Yellow' }).click()
+      await expect(page.locator('mark')).toBeVisible()
+      await page.locator('mark').click()
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await expectNoSeriousViolations(page, 'highlight panel', '[role="dialog"]')
+    })
+
+    test('axe look-up sheet', async ({ page }) => {
+      await page.route('https://api.dictionaryapi.dev/api/v2/entries/en/*', async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify([
+            {
+              word: 'Accessibility',
+              meanings: [{ partOfSpeech: 'noun', definitions: [{ definition: 'Quality of being accessible.' }] }],
+            },
+          ]),
+        })
+      })
+      await page.goto(`/read/${SAMPLE_CREATION_ID}`)
+      await selectWordInParagraph(page, 0, 'Accessibility')
+      await page.getByRole('button', { name: 'Look up' }).click()
+      await expect(page.getByRole('dialog')).toBeVisible()
+      await expectNoSeriousViolations(page, 'look-up sheet', '[role="dialog"]')
     })
   })
 }

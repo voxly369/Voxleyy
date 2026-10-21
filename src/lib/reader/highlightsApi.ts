@@ -3,6 +3,12 @@ import { providerFields } from '../supabaseFailure.ts'
 import type { HighlightColour, ReaderHighlight } from './highlightSchema.ts'
 import { highlightNoteSchema, highlightQuoteSchema, readerHighlightSchema } from './highlightSchema.ts'
 
+function rowFromSingle(data: unknown): Record<string, unknown> | null {
+  if (Array.isArray(data)) return (data[0] as Record<string, unknown> | undefined) ?? null
+  if (data && typeof data === 'object') return data as Record<string, unknown>
+  return null
+}
+
 function mapRow(row: Record<string, unknown>): ReaderHighlight | null {
   const parsed = readerHighlightSchema.safeParse({
     id: row.id,
@@ -72,7 +78,8 @@ export async function createHighlight(input: {
     .select('*')
     .single()
   if (error) return { ok: false, message: error.message || 'Could not save highlight.' }
-  const mapped = mapRow(data as Record<string, unknown>)
+  const row = rowFromSingle(data)
+  const mapped = row ? mapRow(row) : null
   if (!mapped) return { ok: false, message: 'Could not save highlight.' }
   return { ok: true, highlight: mapped }
 }
@@ -93,7 +100,8 @@ export async function updateHighlight(
   if (patch.note !== undefined) payload.note = patch.note
   const { data, error } = await supabase.from('reader_highlights').update(payload).eq('id', id).select('*').single()
   if (error) return { ok: false, message: error.message || 'Could not update highlight.' }
-  const mapped = mapRow(data as Record<string, unknown>)
+  const row = rowFromSingle(data)
+  const mapped = row ? mapRow(row) : null
   if (!mapped) return { ok: false, message: 'Could not update highlight.' }
   return { ok: true, highlight: mapped }
 }

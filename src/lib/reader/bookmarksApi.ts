@@ -2,6 +2,12 @@ import { supabase } from '../supabaseClient.ts'
 import { providerFields } from '../supabaseFailure.ts'
 import { bookmarkLabelSchema, readerBookmarkSchema, type ReaderBookmark } from './highlightSchema.ts'
 
+function rowFromSingle(data: unknown): Record<string, unknown> | null {
+  if (Array.isArray(data)) return (data[0] as Record<string, unknown> | undefined) ?? null
+  if (data && typeof data === 'object') return data as Record<string, unknown>
+  return null
+}
+
 function mapRow(row: Record<string, unknown>): ReaderBookmark | null {
   const parsed = readerBookmarkSchema.safeParse({
     id: row.id,
@@ -56,7 +62,8 @@ export async function createBookmark(input: {
     .select('*')
     .single()
   if (error) return { ok: false, message: error.message || 'Could not save bookmark.' }
-  const mapped = mapRow(data as Record<string, unknown>)
+  const row = rowFromSingle(data)
+  const mapped = row ? mapRow(row) : null
   if (!mapped) return { ok: false, message: 'Could not save bookmark.' }
   return { ok: true, bookmark: mapped }
 }

@@ -339,8 +339,21 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
   }
 
   if (url.includes('/rest/v1/library_highlights')) {
-    return highlightRows
-      .filter((row) => row.user_id === READER_ID)
+    let rows = highlightRows.filter((row) => row.user_id === READER_ID)
+    const colourMatch = url.match(/colour=eq\.([^&]+)/)
+    if (colourMatch?.[1]) {
+      rows = rows.filter((row) => row.colour === colourMatch[1])
+    }
+    const searchMatch = url.match(/quote\.ilike\.\%22([^%]+)\%22/)
+    if (searchMatch?.[1]) {
+      const needle = decodeURIComponent(searchMatch[1].replace(/\\"/g, '"')).toLowerCase()
+      rows = rows.filter(
+        (row) =>
+          row.quote.toLowerCase().includes(needle) ||
+          (row.note ?? '').toLowerCase().includes(needle),
+      )
+    }
+    return rows
       .map((row) => ({
         ...row,
         is_available: true,

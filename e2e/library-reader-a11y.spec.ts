@@ -87,7 +87,7 @@ for (const width of [375, 1280]) {
     test('axe reader page mode', async ({ page }) => {
       await page.goto(`/read/${SAMPLE_CREATION_ID}`)
       await page.getByRole('button', { name: 'Reading settings' }).click()
-      await page.getByRole('radio', { name: 'Page mode' }).check({ force: true })
+      await page.getByText('Page mode', { exact: true }).click()
       await page.getByRole('button', { name: 'Done' }).click()
       await expectNoSeriousViolations(page, 'reader page mode', '[data-reader-theme]')
     })

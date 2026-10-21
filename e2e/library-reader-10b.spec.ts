@@ -123,7 +123,7 @@ test.describe('Library and reader 10B', () => {
   test('page mode renders body once and turns pages by keyboard and tap', async ({ page }) => {
     await page.goto(`/read/${SAMPLE_CREATION_ID}`)
     await page.getByRole('button', { name: 'Reading settings' }).click()
-    await page.getByRole('radio', { name: 'Page mode' }).check({ force: true })
+    await page.getByText('Page mode', { exact: true }).click()
     await page.getByRole('button', { name: 'Done' }).click()
     await expect(page.locator('[data-reader-page-body]')).toHaveCount(1)
     const snippet = 'Opening paragraph.'
@@ -142,7 +142,7 @@ test.describe('Library and reader 10B', () => {
   test('page mode keeps the same paragraph after text size change', async ({ page }) => {
     await page.goto(`/read/${SAMPLE_CREATION_ID}`)
     await page.getByRole('button', { name: 'Reading settings' }).click()
-    await page.getByRole('radio', { name: 'Page mode' }).check({ force: true })
+    await page.getByText('Page mode', { exact: true }).click()
     await page.getByRole('button', { name: 'Done' }).click()
     await page.getByRole('button', { name: 'Contents' }).click()
     await page.getByRole('button', { name: 'Middle chapter' }).click()
@@ -175,7 +175,7 @@ test.describe('Library and reader 10B', () => {
   test('table of contents navigates in page mode', async ({ page }) => {
     await page.goto(`/read/${SAMPLE_CREATION_ID}`)
     await page.getByRole('button', { name: 'Reading settings' }).click()
-    await page.getByRole('radio', { name: 'Page mode' }).check({ force: true })
+    await page.getByText('Page mode', { exact: true }).click()
     await page.getByRole('button', { name: 'Done' }).click()
     await page.getByRole('button', { name: 'Contents' }).click()
     await page.getByRole('button', { name: 'Middle chapter' }).click()

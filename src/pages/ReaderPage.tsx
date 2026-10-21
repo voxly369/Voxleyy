@@ -87,6 +87,12 @@ export default function ReaderPage() {
   const [annotationBookmarks, setAnnotationBookmarks] = useState<ReaderBookmark[]>([])
   const [currentParagraph, setCurrentParagraph] = useState(0)
   const openHighlightRef = useRef<(id: string) => void>(() => {})
+  const workRef = useRef<CreationDetail | null>(null)
+  const lastLoadedIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    workRef.current = work
+  }, [work])
 
   const title = work?.title?.trim() || 'Reading'
   useDocumentTitle(title)
@@ -97,26 +103,41 @@ export default function ReaderPage() {
 
   useEffect(() => {
     let active = true
-    restoredOnce.current = false
-    pendingRestore.current = null
+    const idChanged = lastLoadedIdRef.current !== id
+    if (idChanged) {
+      restoredOnce.current = false
+      pendingRestore.current = null
+      lastLoadedIdRef.current = id
+    }
+
     void (async () => {
-      setProblem(null)
-      setWork(null)
-      const offlinePkg = !online ? await getOfflinePackage(id) : null
+      if (idChanged) {
+        setProblem(null)
+        setWork(null)
+      }
+
       if (!online) {
-        if (!offlinePkg) {
-          if (active) setProblem('You are offline and this post is not saved on this device.')
+        const offlinePkg = await getOfflinePackage(id)
+        if (offlinePkg) {
+          if (active) {
+            setWork(creationDetailFromOfflinePackage(offlinePkg))
+            setOfflineSaved(true)
+            if (offlinePkg.progress && !pendingRestore.current) {
+              pendingRestore.current = offlinePkg.progress
+              readingAnchor.current = offlinePkg.progress
+              setPercent(offlinePkg.progress.percent)
+            }
+          }
           return
         }
-        if (active) {
-          setWork(creationDetailFromOfflinePackage(offlinePkg))
-          setOfflineSaved(true)
-          if (offlinePkg.progress && !pendingRestore.current) {
-            pendingRestore.current = offlinePkg.progress
-            readingAnchor.current = offlinePkg.progress
-            setPercent(offlinePkg.progress.percent)
-          }
-        }
+        if (!idChanged && workRef.current?.id === id) return
+        if (active) setProblem('You are offline and this post is not saved on this device.')
+        return
+      }
+
+      if (!idChanged && workRef.current?.id === id) {
+        const savedOffline = await isCreationOfflineSaved(id)
+        if (active) setOfflineSaved(savedOffline)
         return
       }
 
@@ -567,7 +588,7 @@ export default function ReaderPage() {
                 tabIndex={0}
                 aria-label="Reading text"
                 onScroll={onScroll}
-                className={`mx-auto max-w-[65ch] overflow-y-auto py-6 text-inherit md:max-w-[65ch] ${typography}`}
+                className={`mx-auto max-w-[65ch] select-text overflow-y-auto py-6 text-inherit md:max-w-[65ch] ${typography}`}
                 style={{ maxHeight: 'calc(100dvh - 5rem)' }}
               >
                 <RichTextView
@@ -601,7 +622,7 @@ export default function ReaderPage() {
                   <div
                     ref={contentRef}
                     data-reader-page-body
-                    className={`h-full shrink-0 text-inherit ${typography}`}
+                    className={`h-full shrink-0 select-text text-inherit ${typography}`}
                     style={{
                       columnWidth: pageWidth > 0 ? `${pageWidth}px` : '100%',
                       columnGap: 0,
