@@ -16,6 +16,11 @@ import type { BookTocChapter } from '../lib/books/bookSchema.ts'
 import { userHasBookEntitlement } from '../lib/books/entitlementsApi.ts'
 import { bodyContentFromJson } from '../lib/creations/richDocument.ts'
 import { listHighlightsForChapter } from '../lib/reader/chapterHighlightsApi.ts'
+import {
+  createChapterBookmark,
+  deleteChapterBookmark,
+  listBookmarksForChapter,
+} from '../lib/reader/chapterBookmarksApi.ts'
 import { countWords, estimatedMinutesRemaining, formatMinutesLeft } from '../lib/reader/estimatedTime.ts'
 import {
   hydrateReaderPreferencesFromAccount,
@@ -50,6 +55,7 @@ export default function BookChapterReaderPage() {
   const [loading, setLoading] = useState(true)
   const [prefs, setPrefs] = useState<ReaderPreferences>(() => loadReaderPreferences())
   const [savedHighlights, setSavedHighlights] = useState<{ id: string; quote: string }[]>([])
+  const [bookmarkId, setBookmarkId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLElement | null>(null)
   const lastSaveAt = useRef<number | null>(null)
   const resumeApplied = useRef(false)
@@ -101,8 +107,14 @@ export default function BookChapterReaderPage() {
       setBodyText(chapter.bodyText ?? '')
       setBodyDoc(bodyContentFromJson(chapter.bodyJson as never, chapter.bodyText))
       if (tocResult.ok) setToc(tocResult.data)
-      const hl = await listHighlightsForChapter(chapterId)
-      if (active) setSavedHighlights(hl.map((h) => ({ id: h.id, quote: h.quote })))
+      const [hl, bookmarks] = await Promise.all([
+        listHighlightsForChapter(chapterId),
+        listBookmarksForChapter(chapterId),
+      ])
+      if (active) {
+        setSavedHighlights(hl.map((h) => ({ id: h.id, quote: h.quote })))
+        setBookmarkId(bookmarks[0]?.id ?? null)
+      }
       if (progress?.chapterId === chapterId && scrollRef.current && !resumeApplied.current) {
         resumeApplied.current = true
         scrollToReadingPosition(scrollRef.current, progress.position, progress.positionOffset)
@@ -261,6 +273,32 @@ export default function BookChapterReaderPage() {
             ) : (
               <span />
             )}
+            <button
+              type="button"
+              className={`min-h-11 text-sm ${focusRing}`}
+              aria-pressed={bookmarkId != null}
+              onClick={() => {
+                const el = scrollRef.current
+                if (!el) return
+                const measured = measureScrollReadingPosition(el)
+                if (!measured) return
+                void (async () => {
+                  if (bookmarkId) {
+                    await deleteChapterBookmark(bookmarkId)
+                    setBookmarkId(null)
+                    return
+                  }
+                  const created = await createChapterBookmark({
+                    chapterId,
+                    paragraph: measured.paragraphIndex,
+                    paragraphOffset: measured.positionOffset,
+                  })
+                  if (created.ok) setBookmarkId(created.bookmark.id)
+                })()
+              }}
+            >
+              Bookmark
+            </button>
             <button
               type="button"
               className={`min-h-11 text-sm ${focusRing}`}

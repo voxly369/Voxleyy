@@ -973,7 +973,8 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          creation_id: string
+          creation_id: string | null
+          chapter_id: string | null
           paragraph: number
           paragraph_offset: number
           label: string | null
@@ -982,7 +983,8 @@ export type Database = {
         Insert: {
           id?: string
           user_id: string
-          creation_id: string
+          creation_id?: string | null
+          chapter_id?: string | null
           paragraph: number
           paragraph_offset?: number
           label?: string | null
