@@ -19,19 +19,56 @@ export type E2eSaveRow = { user_id: string; creation_id: string; saved_at: strin
 export type E2eCollectionRow = { id: string; user_id: string; name: string; created_at: string; updated_at: string }
 export type E2eCollectionItemRow = { collection_id: string; creation_id: string; added_at: string }
 
+export type E2eHighlightRow = {
+  id: string
+  user_id: string
+  creation_id: string
+  start_paragraph: number
+  start_char: number
+  end_paragraph: number
+  end_char: number
+  quote: string
+  colour: string
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type E2eBookmarkRow = {
+  id: string
+  user_id: string
+  creation_id: string
+  paragraph: number
+  paragraph_offset: number
+  label: string | null
+  created_at: string
+}
+
 const progressRows: E2eProgressRow[] = []
 const saveRows: E2eSaveRow[] = []
 const collectionRows: E2eCollectionRow[] = []
 const collectionItemRows: E2eCollectionItemRow[] = []
+const highlightRows: E2eHighlightRow[] = []
+const bookmarkRows: E2eBookmarkRow[] = []
 
 let nextCollectionId = 1
+let nextHighlightId = 1
+let nextBookmarkId = 1
+
+function mockUuid(prefix: number): string {
+  return `550e8400-e29b-41d4-a716-${String(prefix).padStart(12, '0')}`
+}
 
 export function resetLibraryReadingMocks() {
   progressRows.length = 0
   saveRows.length = 0
   collectionRows.length = 0
   collectionItemRows.length = 0
+  highlightRows.length = 0
+  bookmarkRows.length = 0
   nextCollectionId = 1
+  nextHighlightId = 1
+  nextBookmarkId = 1
 }
 
 function libraryItemFields(creationId: string) {
@@ -205,6 +242,121 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
     return []
   }
 
+  if (url.includes('/rest/v1/reader_highlights')) {
+    if (method === 'GET') {
+      const creationMatch = url.match(/creation_id=eq\.([^&]+)/)
+      const creationId = creationMatch?.[1]
+      return highlightRows.filter(
+        (row) => row.user_id === READER_ID && (!creationId || row.creation_id === creationId),
+      )
+    }
+    if (method === 'POST') {
+      const record = (Array.isArray(postData) ? postData[0] : postData) as Record<string, unknown>
+      const now = new Date().toISOString()
+      const id = mockUuid(1000 + nextHighlightId++)
+      highlightRows.push({
+        id,
+        user_id: String(record.user_id ?? READER_ID),
+        creation_id: String(record.creation_id ?? DEFAULT_CREATION_ID),
+        start_paragraph: Number(record.start_paragraph ?? 0),
+        start_char: Number(record.start_char ?? 0),
+        end_paragraph: Number(record.end_paragraph ?? 0),
+        end_char: Number(record.end_char ?? 0),
+        quote: String(record.quote ?? ''),
+        colour: String(record.colour ?? 'yellow'),
+        note: record.note == null ? null : String(record.note),
+        created_at: now,
+        updated_at: now,
+      })
+      return highlightRows.filter((row) => row.id === id)
+    }
+    if (method === 'PATCH') {
+      const idMatch = url.match(/id=eq\.([^&]+)/)
+      const id = idMatch?.[1]
+      const record = (postData ?? {}) as Record<string, unknown>
+      const row = highlightRows.find((h) => h.id === id && h.user_id === READER_ID)
+      if (row) {
+        if (record.colour != null) row.colour = String(record.colour)
+        if (record.note !== undefined) row.note = record.note == null ? null : String(record.note)
+        row.updated_at = new Date().toISOString()
+      }
+      return row ? [row] : []
+    }
+    if (method === 'DELETE') {
+      const idMatch = url.match(/id=eq\.([^&]+)/)
+      const id = idMatch?.[1]
+      if (id) {
+        const idx = highlightRows.findIndex((h) => h.id === id && h.user_id === READER_ID)
+        if (idx >= 0) highlightRows.splice(idx, 1)
+      }
+      return []
+    }
+    return []
+  }
+
+  if (url.includes('/rest/v1/reader_bookmarks')) {
+    if (method === 'GET') {
+      const creationMatch = url.match(/creation_id=eq\.([^&]+)/)
+      const creationId = creationMatch?.[1]
+      return bookmarkRows.filter(
+        (row) => row.user_id === READER_ID && (!creationId || row.creation_id === creationId),
+      )
+    }
+    if (method === 'POST') {
+      const record = (Array.isArray(postData) ? postData[0] : postData) as Record<string, unknown>
+      const now = new Date().toISOString()
+      const id = mockUuid(2000 + nextBookmarkId++)
+      bookmarkRows.push({
+        id,
+        user_id: String(record.user_id ?? READER_ID),
+        creation_id: String(record.creation_id ?? DEFAULT_CREATION_ID),
+        paragraph: Number(record.paragraph ?? 0),
+        paragraph_offset: Number(record.paragraph_offset ?? 0),
+        label: record.label == null ? null : String(record.label),
+        created_at: now,
+      })
+      return bookmarkRows.filter((row) => row.id === id)
+    }
+    if (method === 'DELETE') {
+      const creationMatch = url.match(/creation_id=eq\.([^&]+)/)
+      const paragraphMatch = url.match(/paragraph=eq\.(\d+)/)
+      const idMatch = url.match(/id=eq\.([^&]+)/)
+      if (idMatch?.[1]) {
+        const idx = bookmarkRows.findIndex((b) => b.id === idMatch[1] && b.user_id === READER_ID)
+        if (idx >= 0) bookmarkRows.splice(idx, 1)
+      } else if (creationMatch?.[1] && paragraphMatch?.[1]) {
+        const idx = bookmarkRows.findIndex(
+          (b) =>
+            b.user_id === READER_ID &&
+            b.creation_id === creationMatch[1] &&
+            b.paragraph === Number(paragraphMatch[1]),
+        )
+        if (idx >= 0) bookmarkRows.splice(idx, 1)
+      }
+      return []
+    }
+    return []
+  }
+
+  if (url.includes('/rest/v1/library_highlights')) {
+    return highlightRows
+      .filter((row) => row.user_id === READER_ID)
+      .map((row) => ({
+        ...row,
+        is_available: true,
+        type: 'story',
+        title: 'Long story',
+        caption: null,
+        cover_url: null,
+        published_at: '2026-01-01T00:00:00Z',
+        author_id: OTHER_ID,
+        author_username: OTHER_USERNAME,
+        author_display_name: OTHER_DISPLAY,
+        author_avatar_url: null,
+        author_verified: false,
+      }))
+  }
+
   return undefined
 }
 
@@ -213,6 +365,42 @@ export function seedLibrarySave(creationId: string = DEFAULT_CREATION_ID) {
   if (!saveRows.some((row) => row.user_id === READER_ID && row.creation_id === creationId)) {
     saveRows.push({ user_id: READER_ID, creation_id: creationId, saved_at: new Date().toISOString() })
   }
+}
+
+export function seedReaderHighlight(input: {
+  creationId?: string
+  quote?: string
+  colour?: string
+  startParagraph?: number
+}) {
+  const now = new Date().toISOString()
+  highlightRows.push({
+    id: mockUuid(1000 + nextHighlightId++),
+    user_id: READER_ID,
+    creation_id: input.creationId ?? DEFAULT_CREATION_ID,
+    start_paragraph: input.startParagraph ?? 0,
+    start_char: 0,
+    end_paragraph: input.startParagraph ?? 0,
+    end_char: Math.min(100, (input.quote ?? 'Highlightable').length),
+    quote: input.quote ?? 'Highlightable',
+    colour: input.colour ?? 'yellow',
+    note: null,
+    created_at: now,
+    updated_at: now,
+  })
+}
+
+export function seedReaderBookmark(input: { creationId?: string; paragraph?: number }) {
+  const now = new Date().toISOString()
+  bookmarkRows.push({
+    id: mockUuid(2000 + nextBookmarkId++),
+    user_id: READER_ID,
+    creation_id: input.creationId ?? DEFAULT_CREATION_ID,
+    paragraph: input.paragraph ?? 0,
+    paragraph_offset: 0,
+    label: null,
+    created_at: now,
+  })
 }
 
 export function seedReadingProgress(input: {

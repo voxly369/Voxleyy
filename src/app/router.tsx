@@ -5,6 +5,7 @@ import { AppShell } from '../components/shell/AppShell.tsx'
 import { RouteErrorBoundary } from '../components/shell/RouteErrorBoundary.tsx'
 import { PageSkeleton } from '../components/states/Skeleton.tsx'
 import { ModalStackProvider } from '../lib/shell/modalStack.tsx'
+import { ToastProvider } from '../components/shell/ToastProvider.tsx'
 import { AuthProvider } from '../lib/auth/AuthProvider.tsx'
 import { RequireAuth, RequireFounder, RequireGuest } from './guards.tsx'
 
@@ -80,7 +81,9 @@ const router = createBrowserRouter(
             {
               element: (
                 <ModalStackProvider>
-                  <Outlet />
+                  <ToastProvider>
+                    <Outlet />
+                  </ToastProvider>
                 </ModalStackProvider>
               ),
               children: [{ path: '/read/:id', element: <ReaderPage /> }],

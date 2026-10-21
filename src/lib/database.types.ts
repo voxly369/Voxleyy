@@ -836,6 +836,73 @@ export type Database = {
         }
         Relationships: []
       }
+      reader_highlights: {
+        Row: {
+          id: string
+          user_id: string
+          creation_id: string
+          start_paragraph: number
+          start_char: number
+          end_paragraph: number
+          end_char: number
+          quote: string
+          colour: string
+          note: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          creation_id: string
+          start_paragraph: number
+          start_char: number
+          end_paragraph: number
+          end_char: number
+          quote: string
+          colour: string
+          note?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          start_paragraph?: number
+          start_char?: number
+          end_paragraph?: number
+          end_char?: number
+          quote?: string
+          colour?: string
+          note?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      reader_bookmarks: {
+        Row: {
+          id: string
+          user_id: string
+          creation_id: string
+          paragraph: number
+          paragraph_offset: number
+          label: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          creation_id: string
+          paragraph: number
+          paragraph_offset?: number
+          label?: string | null
+          created_at?: string
+        }
+        Update: {
+          paragraph?: number
+          paragraph_offset?: number
+          label?: string | null
+        }
+        Relationships: []
+      }
       reader_collections: {
         Row: {
           id: string
@@ -1079,6 +1146,36 @@ export type Database = {
       }
       library_continue_reading: {
         Row: Database['public']['Views']['library_reading_history']['Row']
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      library_highlights: {
+        Row: {
+          id: string
+          user_id: string
+          creation_id: string
+          start_paragraph: number
+          start_char: number
+          end_paragraph: number
+          end_char: number
+          quote: string
+          colour: string
+          note: string | null
+          created_at: string
+          updated_at: string
+          is_available: boolean | null
+          type: Database['public']['Enums']['creation_type'] | null
+          title: string | null
+          caption: string | null
+          cover_url: string | null
+          published_at: string | null
+          author_id: string | null
+          author_username: string | null
+          author_display_name: string | null
+          author_avatar_url: string | null
+          author_verified: boolean | null
+        }
         Insert: Record<string, never>
         Update: Record<string, never>
         Relationships: []

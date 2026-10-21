@@ -114,6 +114,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfileUserId(null)
     setIsFounder(false)
     setError(null)
+    const { clearAllOfflinePackages } = await import('../reader/offlineReadingStore.ts')
+    await clearAllOfflinePackages()
     const { error: signOutError } = await supabase.auth.signOut()
     if (signOutError) await supabase.auth.signOut({ scope: 'local' })
     navigate('/login', { replace: true })

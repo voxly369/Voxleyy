@@ -125,6 +125,8 @@ export async function removeSaved(creationId: string): Promise<{ ok: true } | Li
   if (typeof user !== 'string') return user
   const { error } = await supabase.from('saves').delete().eq('user_id', user).eq('creation_id', creationId)
   if (error) return fail('We could not remove this save.', error)
+  const { removeOfflinePackage } = await import('../reader/offlineReadingStore.ts')
+  await removeOfflinePackage(creationId)
   return { ok: true }
 }
 

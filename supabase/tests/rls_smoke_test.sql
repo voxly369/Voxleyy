@@ -2710,6 +2710,95 @@ begin
   perform set_config('request.jwt.claim.sub', v_a::text, true);
 end $library_reading$;
 
+do $reader_annotations$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_post uuid;
+  v_private uuid;
+  v_blocked_author uuid;
+  n integer;
+  h_id uuid;
+begin
+  select reader_a, reader_b into v_a, v_b from rls_ids;
+  select id into v_post from public.creations where status = 'published' and audience = 'public' limit 1;
+  select id into v_private from public.creations where audience = 'private' and status = 'published' limit 1;
+  select author_id into v_blocked_author from public.creations where id = v_post;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+
+  begin
+    execute 'set local role anon';
+    select count(*) into n from public.reader_highlights;
+    perform pg_temp.record('anon cannot read reader_highlights', false, 'rows=' || n);
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('anon cannot read reader_highlights', true, sqlerrm);
+    when others then
+      perform pg_temp.record('anon cannot read reader_highlights', true, sqlstate);
+  end;
+  execute 'set local role authenticated';
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  begin
+    insert into public.reader_highlights (
+      user_id, creation_id, start_paragraph, start_char, end_paragraph, end_char, quote, colour
+    ) values (v_a, v_post, 0, 0, 0, 4, 'test', 'yellow');
+    perform pg_temp.record('user B cannot insert reader_highlights for user A', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('user B cannot insert reader_highlights for user A', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    insert into public.reader_highlights (
+      user_id, creation_id, start_paragraph, start_char, end_paragraph, end_char, quote, colour
+    ) values (v_a, v_private, 0, 0, 0, 4, 'hidden', 'yellow');
+    perform pg_temp.record('highlight insert rejects non-feed-visible creation', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('highlight insert rejects non-feed-visible creation', true, sqlerrm);
+  end;
+
+  insert into public.reader_highlights (
+    user_id, creation_id, start_paragraph, start_char, end_paragraph, end_char, quote, colour
+  ) values (v_a, v_post, 0, 0, 0, 4, 'visible', 'yellow')
+  returning id into h_id;
+
+  select count(*) into n from public.library_highlights where id = h_id;
+  perform pg_temp.record('library_highlights shows visible highlight', n = 1, 'rows=' || n);
+
+  insert into public.blocks (blocker_id, blocked_id) values (v_a, v_blocked_author);
+  begin
+    insert into public.reader_highlights (
+      user_id, creation_id, start_paragraph, start_char, end_paragraph, end_char, quote, colour
+    ) values (v_a, v_post, 0, 1, 0, 5, 'blocked', 'blue');
+    perform pg_temp.record('highlight insert rejects blocked author work', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('highlight insert rejects blocked author work', true, sqlerrm);
+  end;
+  delete from public.blocks where blocker_id = v_a and blocked_id = v_blocked_author;
+
+  execute format('set local role %I', session_user);
+  update public.creations set audience = 'private' where id = v_post;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select count(*) into n from public.library_highlights where id = h_id;
+  perform pg_temp.record('library highlights hide when creation becomes private', n = 0, 'rows=' || n);
+  execute format('set local role %I', session_user);
+  update public.creations set audience = 'public' where id = v_post;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+
+  insert into public.reader_bookmarks (user_id, creation_id, paragraph, paragraph_offset)
+  values (v_a, v_post, 1, 0);
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select count(*) into n from public.reader_bookmarks where user_id = v_a;
+  perform pg_temp.record('user B cannot read user A bookmarks', n = 0, 'rows=' || n);
+end $reader_annotations$;
+
 do $$
 declare
   n integer;

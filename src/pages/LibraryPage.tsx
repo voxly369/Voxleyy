@@ -24,7 +24,15 @@ import type { LibraryItem, LibrarySavedCursor, ReaderCollection } from '../lib/l
 import { validateCollectionName } from '../lib/library/collectionName.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 
-const TABS = ['continue', 'saved', 'history', 'collections', 'purchased'] as const
+import { LibraryHighlightsTab } from '../components/library/LibraryHighlightsTab.tsx'
+import { getCreationById } from '../lib/creations/api.ts'
+import {
+  disableOfflineReadingForCreation,
+  enableOfflineReadingForWork,
+} from '../lib/reader/offlineReadingActions.ts'
+import { listOfflinePackages } from '../lib/reader/offlineReadingStore.ts'
+
+const TABS = ['continue', 'saved', 'history', 'highlights', 'collections', 'purchased'] as const
 type LibraryTab = (typeof TABS)[number]
 
 function parseTab(value: string | null): LibraryTab {
@@ -49,6 +57,8 @@ export default function LibraryPage() {
   const [confirmClearHistory, setConfirmClearHistory] = useState(false)
   const [newCollectionName, setNewCollectionName] = useState('')
   const [collectionError, setCollectionError] = useState<string | null>(null)
+  const [offlineIds, setOfflineIds] = useState<Set<string>>(() => new Set())
+  const [offlineBusyId, setOfflineBusyId] = useState<string | null>(null)
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -79,6 +89,7 @@ export default function LibraryPage() {
 
   useEffect(() => {
     void reload()
+    void listOfflinePackages().then((pkgs) => setOfflineIds(new Set(pkgs.map((p) => p.creationId))))
     return onLibrarySavesChanged(() => void reload())
   }, [reload])
 
@@ -111,6 +122,7 @@ export default function LibraryPage() {
             ['continue', 'Continue reading'],
             ['saved', 'Saved'],
             ['history', 'History'],
+            ['highlights', 'Highlights'],
             ['collections', 'Collections'],
             ['purchased', 'Purchased'],
           ] as const
@@ -154,7 +166,39 @@ export default function LibraryPage() {
               <LibraryItemCard
                 key={item.creationId}
                 item={item}
-                onRemove={() => void removeSaved(item.creationId).then(() => reload())}
+                showOfflineToggle
+                offlineSaved={offlineIds.has(item.creationId)}
+                offlineBusy={offlineBusyId === item.creationId}
+                onOfflineToggle={(enabled) => {
+                  void (async () => {
+                    setOfflineBusyId(item.creationId)
+                    if (enabled) {
+                      const detail = await getCreationById(item.creationId)
+                      if (detail.ok) {
+                        const result = await enableOfflineReadingForWork(detail.data, null)
+                        if (result.ok) setOfflineIds((prev) => new Set(prev).add(item.creationId))
+                      }
+                    } else {
+                      await disableOfflineReadingForCreation(item.creationId)
+                      setOfflineIds((prev) => {
+                        const next = new Set(prev)
+                        next.delete(item.creationId)
+                        return next
+                      })
+                    }
+                    setOfflineBusyId(null)
+                  })()
+                }}
+                onRemove={() =>
+                  void removeSaved(item.creationId).then(() => {
+                    setOfflineIds((prev) => {
+                      const next = new Set(prev)
+                      next.delete(item.creationId)
+                      return next
+                    })
+                    return reload()
+                  })
+                }
               />
             ))}
             {savedCursor ? (
@@ -202,6 +246,8 @@ export default function LibraryPage() {
           />
         </>
       ) : null}
+
+      {!loading && !error && tab === 'highlights' ? <LibraryHighlightsTab /> : null}
 
       {!loading && !error && tab === 'collections' ? (
         activeCollection ? (

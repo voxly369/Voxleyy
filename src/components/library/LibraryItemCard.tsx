@@ -10,9 +10,21 @@ type LibraryItemCardProps = {
   item: LibraryItem
   onRemove?: () => void
   progressLabel?: string
+  showOfflineToggle?: boolean
+  offlineSaved?: boolean
+  offlineBusy?: boolean
+  onOfflineToggle?: (enabled: boolean) => void
 }
 
-export function LibraryItemCard({ item, onRemove, progressLabel }: LibraryItemCardProps) {
+export function LibraryItemCard({
+  item,
+  onRemove,
+  progressLabel,
+  showOfflineToggle = false,
+  offlineSaved = false,
+  offlineBusy = false,
+  onOfflineToggle,
+}: LibraryItemCardProps) {
   if (!item.isAvailable) {
     return <UnavailableLibraryCard onRemove={() => onRemove?.()} />
   }
@@ -43,16 +55,29 @@ export function LibraryItemCard({ item, onRemove, progressLabel }: LibraryItemCa
             ) : null}
           </div>
         </Link>
-        {onRemove ? (
-          <button
-            type="button"
-            aria-label="Remove"
-            onClick={onRemove}
-            className={`min-h-11 shrink-0 self-start rounded-xl px-3 text-sm font-medium text-coral ${focusRing}`}
-          >
-            Remove
-          </button>
-        ) : null}
+        <div className="flex shrink-0 flex-col items-end gap-1 self-start">
+          {showOfflineToggle ? (
+            <label className="inline-flex min-h-11 items-center gap-2 text-xs text-muted">
+              <input
+                type="checkbox"
+                checked={offlineSaved}
+                disabled={offlineBusy}
+                onChange={(e) => onOfflineToggle?.(e.target.checked)}
+              />
+              Offline
+            </label>
+          ) : null}
+          {onRemove ? (
+            <button
+              type="button"
+              aria-label="Remove"
+              onClick={onRemove}
+              className={`min-h-11 rounded-xl px-3 text-sm font-medium text-coral ${focusRing}`}
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
       </div>
     </article>
   )

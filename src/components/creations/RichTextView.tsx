@@ -5,6 +5,9 @@ import { LiteraryBodyView } from './LiteraryBodyView.tsx'
 import type { Json } from '../../lib/database.types.ts'
 import { bodyContentFromJson, type RichBodyDocument } from '../../lib/creations/bodyDocument.ts'
 import type { RichInline } from '../../lib/creations/richDocument.ts'
+import type { AnchoredHighlight } from '../../lib/reader/highlightAnchoring.ts'
+import { paragraphPlainText } from '../../lib/reader/highlightOffsets.ts'
+import { highlightColourClasses, segmentsForParagraph } from '../../lib/reader/highlightSegments.ts'
 
 type RichTextViewProps = {
   bodyJson: Json | null | undefined
@@ -13,6 +16,9 @@ type RichTextViewProps = {
   className?: string
   /** Annotate headings and paragraphs for reader resume, TOC focus, and paging. */
   readerAnchors?: boolean
+  highlights?: readonly AnchoredHighlight[]
+  bookmarkParagraphs?: readonly number[]
+  onHighlightPress?: (highlightId: string) => void
 }
 
 function renderInline(inline: RichInline, key: number) {
@@ -30,6 +36,10 @@ function renderBlock(
   literary: boolean,
   readerAnchors: boolean,
   readerParagraphIndex: number | null,
+  bodyJson: Json | null | undefined,
+  bodyText: string | null,
+  highlights: readonly AnchoredHighlight[],
+  onHighlightPress?: (highlightId: string) => void,
 ) {
   const inlines = block.content ?? []
   const textClass = readerAnchors ? 'text-inherit' : 'text-ink'
@@ -51,13 +61,44 @@ function renderBlock(
     )
   }
   if (block.type === 'paragraph') {
+    const plain =
+      readerAnchors && readerParagraphIndex !== null
+        ? paragraphPlainText(bodyJson, bodyText, readerParagraphIndex)
+        : ''
+    const hasHighlights =
+      readerAnchors && readerParagraphIndex !== null && highlights.some((h) => !h.unmatched)
     return (
       <p
         key={index}
-        className={`text-lg leading-relaxed ${textClass} ${literary ? 'font-serif whitespace-pre-wrap' : ''}`}
+        className={`relative text-lg leading-relaxed ${textClass} ${literary ? 'font-serif whitespace-pre-wrap' : ''}`}
         {...anchorProps}
       >
-        {inlines.map((inline, i) => renderInline(inline, i))}
+        {hasHighlights ? (
+          segmentsForParagraph(readerParagraphIndex ?? 0, plain, highlights).map((segment, segIndex) =>
+            segment.highlightId ? (
+              <mark
+                key={segIndex}
+                data-highlight-id={segment.highlightId}
+                className={`cursor-pointer rounded-sm px-0.5 ${highlightColourClasses(segment.colour ?? 'yellow')}`}
+                onClick={() => onHighlightPress?.(segment.highlightId!)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    onHighlightPress?.(segment.highlightId!)
+                  }
+                }}
+                tabIndex={0}
+                aria-label={`Highlight: ${segment.text.slice(0, 80)}`}
+              >
+                {segment.text}
+              </mark>
+            ) : (
+              <span key={segIndex}>{segment.text}</span>
+            ),
+          )
+        ) : (
+          inlines.map((inline, i) => renderInline(inline, i))
+        )}
       </p>
     )
   }
@@ -74,6 +115,9 @@ export function RichTextView({
   creationType,
   className = '',
   readerAnchors = false,
+  highlights = [],
+  bookmarkParagraphs = [],
+  onHighlightPress,
 }: RichTextViewProps) {
   const literary = creationType ? usesLiterarySurface(creationType) : true
   if (usesPoemLineLayout(creationType)) {
@@ -101,7 +145,33 @@ export function RichTextView({
     <div className={`flex max-w-[65ch] flex-col gap-4 ${className}`}>
       {content.map((block, index) => {
         const paraIndex = readerIndexByBlock?.get(index) ?? null
-        return renderBlock(block, index, literary, readerAnchors, paraIndex)
+        const node = renderBlock(
+          block,
+          index,
+          literary,
+          readerAnchors,
+          paraIndex,
+          bodyJson,
+          bodyText,
+          highlights,
+          onHighlightPress,
+        )
+        const showRibbon =
+          readerAnchors &&
+          paraIndex != null &&
+          bookmarkParagraphs.includes(paraIndex) &&
+          block.type === 'paragraph'
+        if (!showRibbon) return node
+        return (
+          <div key={`wrap-${index}`} className="relative">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -left-3 top-0 h-6 w-2 rounded-sm bg-coral/80"
+              title="Bookmark"
+            />
+            {node}
+          </div>
+        )
       })}
     </div>
   )

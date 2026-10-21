@@ -3,6 +3,10 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import LibraryPage from '../../pages/LibraryPage.tsx'
 
+vi.mock('../../lib/reader/offlineReadingStore.ts', () => ({
+  listOfflinePackages: vi.fn(async () => []),
+}))
+
 vi.mock('../../lib/library/listLibrary.ts', () => ({
   listContinueReading: vi.fn(async () => ({ ok: true, items: [] })),
   listLibrarySaved: vi.fn(async () => ({ ok: true, items: [], nextCursor: null })),

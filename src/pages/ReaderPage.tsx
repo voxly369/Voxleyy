@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type TouchEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { RichTextView } from '../components/creations/RichTextView.tsx'
+import { ReaderAnnotationHost } from '../components/reader/ReaderAnnotationHost.tsx'
 import { ReaderSettingsSheet } from '../components/reader/ReaderSettingsSheet.tsx'
 import { ReaderTableOfContents } from '../components/reader/ReaderTableOfContents.tsx'
 import { getCreationById } from '../lib/creations/api.ts'
@@ -38,6 +39,18 @@ import { focusRing } from '../components/shell/navItems.ts'
 import { ErrorState } from '../components/states/ErrorState.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
+import type { ReaderBookmark } from '../lib/reader/highlightSchema.ts'
+import type { AnchoredHighlight } from '../lib/reader/highlightAnchoring.ts'
+import {
+  creationDetailFromOfflinePackage,
+  disableOfflineReadingForCreation,
+  enableOfflineReadingForWork,
+  isCreationOfflineSaved,
+  updateOfflineReadingProgress,
+} from '../lib/reader/offlineReadingActions.ts'
+import { getOfflinePackage } from '../lib/reader/offlineReadingStore.ts'
+import { useOnlineStatus } from '../lib/reader/useOnlineStatus.ts'
+import { useToast } from '../lib/shell/useToast.ts'
 
 const SWIPE_THRESHOLD_PX = 48
 
@@ -66,6 +79,14 @@ export default function ReaderPage() {
   const readingAnchor = useRef<StoredReadingPosition>({ paragraphIndex: 0, positionOffset: 0, percent: 0 })
   const touchStartX = useRef<number | null>(null)
   const restoredOnce = useRef(false)
+  const online = useOnlineStatus()
+  const { showToast } = useToast()
+  const [offlineSaved, setOfflineSaved] = useState(false)
+  const [offlineBusy, setOfflineBusy] = useState(false)
+  const [annotationHighlights, setAnnotationHighlights] = useState<AnchoredHighlight[]>([])
+  const [annotationBookmarks, setAnnotationBookmarks] = useState<ReaderBookmark[]>([])
+  const [currentParagraph, setCurrentParagraph] = useState(0)
+  const openHighlightRef = useRef<(id: string) => void>(() => {})
 
   const title = work?.title?.trim() || 'Reading'
   useDocumentTitle(title)
@@ -79,6 +100,26 @@ export default function ReaderPage() {
     restoredOnce.current = false
     pendingRestore.current = null
     void (async () => {
+      setProblem(null)
+      setWork(null)
+      const offlinePkg = !online ? await getOfflinePackage(id) : null
+      if (!online) {
+        if (!offlinePkg) {
+          if (active) setProblem('You are offline and this post is not saved on this device.')
+          return
+        }
+        if (active) {
+          setWork(creationDetailFromOfflinePackage(offlinePkg))
+          setOfflineSaved(true)
+          if (offlinePkg.progress && !pendingRestore.current) {
+            pendingRestore.current = offlinePkg.progress
+            readingAnchor.current = offlinePkg.progress
+            setPercent(offlinePkg.progress.percent)
+          }
+        }
+        return
+      }
+
       const result = await getCreationById(id)
       if (!active) return
       if (!result.ok) {
@@ -100,11 +141,13 @@ export default function ReaderPage() {
         readingAnchor.current = pendingRestore.current
         setPercent(saved.percent)
       }
+      const savedOffline = await isCreationOfflineSaved(id)
+      if (active) setOfflineSaved(savedOffline)
     })()
     return () => {
       active = false
     }
-  }, [id])
+  }, [id, online])
 
   const persistProgress = useCallback(
     (position: StoredReadingPosition) => {
@@ -112,6 +155,7 @@ export default function ReaderPage() {
       if (!shouldSaveProgress(lastSaveAt.current, now)) return
       lastSaveAt.current = now
       readingAnchor.current = position
+      setCurrentParagraph(position.paragraphIndex)
       setPercent(position.percent)
       void upsertPostProgress({
         creationId: id,
@@ -119,8 +163,9 @@ export default function ReaderPage() {
         position: position.paragraphIndex,
         positionOffset: position.positionOffset,
       })
+      if (offlineSaved) void updateOfflineReadingProgress(id, position)
     },
-    [id],
+    [id, offlineSaved],
   )
 
   const flushProgress = useCallback(() => {
@@ -170,6 +215,7 @@ export default function ReaderPage() {
     const measured = measureScrollReadingPosition(el)
     if (!measured) return
     setPercent(measured.percent)
+    setCurrentParagraph(measured.paragraphIndex)
     persistProgress(measured)
   }
 
@@ -283,6 +329,7 @@ export default function ReaderPage() {
       positionOffset,
       percent: nextPercent,
     }
+    setCurrentParagraph(paragraphIndex)
     setPercent(nextPercent)
     persistProgress(readingAnchor.current)
   }, [pageIndex, pageWidth, prefs.mode, persistProgress])
@@ -326,6 +373,38 @@ export default function ReaderPage() {
     if (Math.abs(delta) < SWIPE_THRESHOLD_PX) return
     turnPage(delta < 0 ? 1 : -1)
   }
+
+  const jumpToBookmark = useCallback(
+    (paragraphIndex: number, positionOffset: number) => {
+      const totalParas = work ? paragraphCount(work.bodyJson, work.bodyText ?? '') : 0
+      const nextPercent =
+        totalParas > 0 ? Math.round(((paragraphIndex + 1) / totalParas) * 100) : readingAnchor.current.percent
+      readingAnchor.current = {
+        paragraphIndex,
+        positionOffset,
+        percent: nextPercent,
+      }
+      setCurrentParagraph(paragraphIndex)
+      setPercent(nextPercent)
+      if (prefs.mode === 'scroll') {
+        requestAnimationFrame(() => {
+          const el = scrollRef.current
+          if (el) scrollToReadingPosition(el, paragraphIndex, positionOffset)
+        })
+        return
+      }
+      requestAnimationFrame(() => {
+        recomputePageLayout()
+        const content = contentRef.current
+        if (!content || pageWidth <= 0) return
+        const paragraph = paragraphElement(content, paragraphIndex)
+        if (!paragraph) return
+        const page = pageIndexForParagraph(paragraph, pageWidth, positionOffset)
+        setPageIndex(clampPageIndex(page, totalPages))
+      })
+    },
+    [prefs.mode, pageWidth, totalPages, recomputePageLayout, work],
+  )
 
   function navigateToToc(blockIndex: number) {
     if (!work) return
@@ -387,135 +466,209 @@ export default function ReaderPage() {
       ? `Page ${pageIndex + 1} of ${totalPages} · ${pagesRemaining(pageIndex + 1, totalPages)} pages left`
       : minutesLeft
 
+  const bodyRootRef = prefs.mode === 'scroll' ? scrollRef : contentRef
+
   return (
-    <div
-      data-reader-theme={prefs.theme}
-      data-reader-mode={prefs.mode}
-      className={`min-h-dvh ${surface} ${font}`}
-      style={{
-        filter: `brightness(${prefs.brightness})`,
-        ['--reader-line-height' as string]: readerLineHeightValue(prefs.lineSpacing),
-      }}
+    <ReaderAnnotationHost
+      work={work}
+      bodyRootRef={bodyRootRef}
+      offlineEnabled={offlineSaved}
+      getCurrentPosition={() => readingAnchor.current}
+      onHighlightsChange={setAnnotationHighlights}
+      onBookmarksChange={setAnnotationBookmarks}
+      onJumpToParagraph={jumpToBookmark}
     >
-      <header
-        className={`sticky top-0 z-20 border-b border-black/10 bg-inherit/90 backdrop-blur transition-transform motion-reduce:transition-none ${
-          toolbarVisible ? 'translate-y-0' : '-translate-y-full'
-        }`}
-      >
-        <div className="mx-auto flex max-w-[65ch] items-center justify-between gap-2 px-3 py-2 md:px-4">
-          <button type="button" aria-label="Back" onClick={() => navigate(-1)} className={`min-h-11 min-w-11 rounded-full ${focusRing}`}>
-            ←
-          </button>
-          <p className="truncate text-sm font-medium">{title}</p>
-          <div className="flex items-center gap-1">
-            {toc.length > 0 ? (
-              <button type="button" onClick={() => setTocOpen((v) => !v)} className={`min-h-11 rounded-full px-3 text-sm ${focusRing}`}>
-                Contents
-              </button>
-            ) : null}
-            <button
-              ref={settingsButtonRef}
-              type="button"
-              aria-label="Reading settings"
-              onClick={() => setSettingsOpen(true)}
-              className={`min-h-11 rounded-full px-3 text-sm ${focusRing}`}
-            >
-              Aa
-            </button>
-          </div>
-        </div>
-        <p className="mx-auto max-w-[65ch] px-4 pb-2 text-xs text-inherit" aria-live="polite">
-          {percent}% · {pageLabel}
-        </p>
-      </header>
+      {({
+        highlights,
+        bookmarkParagraphs,
+        onHighlightPress,
+        offlineBanner,
+        toggleBookmark,
+        jumpToBookmark: jumpFromSettings,
+      }) => {
+        openHighlightRef.current = onHighlightPress
+        const bookmarkAtCurrent = annotationBookmarks.some((b) => b.paragraph === currentParagraph)
 
-      {tocOpen && toc.length > 0 ? (
-        <div className="mx-auto max-w-[65ch] p-4">
-          <ReaderTableOfContents
-            entries={toc}
-            onPick={navigateToToc}
-            onClose={() => setTocOpen(false)}
-          />
-        </div>
-      ) : null}
-
-      {prefs.mode === 'scroll' ? (
-        <article
-          ref={scrollRef}
-          data-reader-scroll
-          tabIndex={0}
-          aria-label="Reading text"
-          onScroll={onScroll}
-          className={`mx-auto max-w-[65ch] overflow-y-auto py-6 text-inherit md:max-w-[65ch] ${typography}`}
-          style={{ maxHeight: 'calc(100dvh - 5rem)' }}
-        >
-          <RichTextView
-            readerAnchors
-            bodyJson={work.bodyJson}
-            bodyText={work.bodyText ?? ''}
-            creationType={work.type}
-          />
-        </article>
-      ) : (
-        <div
-          ref={pageViewportRef}
-          data-reader-page-viewport
-          tabIndex={0}
-          aria-label="Paged reading"
-          className="relative mx-auto h-[calc(100dvh-5.5rem)] max-w-[65ch] overflow-hidden"
-          onClick={onPageTap}
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
-        >
+        return (
           <div
-            ref={pageTrackRef}
-            className="flex h-full transition-transform duration-300 motion-reduce:transition-none motion-reduce:duration-0"
+            data-reader-theme={prefs.theme}
+            data-reader-mode={prefs.mode}
+            className={`min-h-dvh ${surface} ${font}`}
             style={{
-              transform: `translateX(-${pageIndex * Math.max(pageWidth, 1)}px)`,
+              filter: `brightness(${prefs.brightness})`,
+              ['--reader-line-height' as string]: readerLineHeightValue(prefs.lineSpacing),
             }}
           >
-            <div
-              ref={contentRef}
-              data-reader-page-body
-              className={`h-full shrink-0 text-inherit ${typography}`}
-              style={{
-                columnWidth: pageWidth > 0 ? `${pageWidth}px` : '100%',
-                columnGap: 0,
-                columnFill: 'auto',
-                width: pageWidth > 0 ? `${pageWidth}px` : '100%',
-                height: '100%',
-              }}
+            {offlineBanner ? (
+              <p className="bg-coral/20 px-4 py-2 text-center text-xs text-inherit" role="status">
+                You are reading offline. Changes sync when you reconnect.
+              </p>
+            ) : null}
+            <header
+              className={`sticky top-0 z-20 border-b border-black/10 bg-inherit/90 backdrop-blur transition-transform motion-reduce:transition-none ${
+                toolbarVisible ? 'translate-y-0' : '-translate-y-full'
+              }`}
             >
-              <RichTextView
-                readerAnchors
-                bodyJson={work.bodyJson}
-                bodyText={work.bodyText ?? ''}
-                creationType={work.type}
-                className="max-w-none gap-4 px-0"
-              />
-            </div>
-          </div>
-          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-4">
-            <p className="rounded-full bg-black/20 px-3 py-1 text-xs">
-              Page {pageIndex + 1} of {totalPages}
+              <div className="mx-auto flex max-w-[65ch] items-center justify-between gap-2 px-3 py-2 md:px-4">
+                <button
+                  type="button"
+                  aria-label="Back"
+                  onClick={() => navigate(-1)}
+                  className={`min-h-11 min-w-11 rounded-full ${focusRing}`}
+                >
+                  ←
+                </button>
+                <p className="truncate text-sm font-medium">{title}</p>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label={bookmarkAtCurrent ? 'Remove bookmark' : 'Bookmark this spot'}
+                    aria-pressed={bookmarkAtCurrent}
+                    onClick={toggleBookmark}
+                    className={`min-h-11 rounded-full px-3 text-sm ${focusRing}`}
+                  >
+                    {bookmarkAtCurrent ? '★' : '☆'}
+                  </button>
+                  {toc.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setTocOpen((v) => !v)}
+                      className={`min-h-11 rounded-full px-3 text-sm ${focusRing}`}
+                    >
+                      Contents
+                    </button>
+                  ) : null}
+                  <button
+                    ref={settingsButtonRef}
+                    type="button"
+                    aria-label="Reading settings"
+                    onClick={() => setSettingsOpen(true)}
+                    className={`min-h-11 rounded-full px-3 text-sm ${focusRing}`}
+                  >
+                    Aa
+                  </button>
+                </div>
+              </div>
+              <p className="mx-auto max-w-[65ch] px-4 pb-2 text-xs text-inherit" aria-live="polite">
+                {percent}% · {pageLabel}
+              </p>
+            </header>
+
+            {tocOpen && toc.length > 0 ? (
+              <div className="mx-auto max-w-[65ch] p-4">
+                <ReaderTableOfContents entries={toc} onPick={navigateToToc} onClose={() => setTocOpen(false)} />
+              </div>
+            ) : null}
+
+            {prefs.mode === 'scroll' ? (
+              <article
+                ref={scrollRef}
+                data-reader-scroll
+                tabIndex={0}
+                aria-label="Reading text"
+                onScroll={onScroll}
+                className={`mx-auto max-w-[65ch] overflow-y-auto py-6 text-inherit md:max-w-[65ch] ${typography}`}
+                style={{ maxHeight: 'calc(100dvh - 5rem)' }}
+              >
+                <RichTextView
+                  readerAnchors
+                  bodyJson={work.bodyJson}
+                  bodyText={work.bodyText ?? ''}
+                  creationType={work.type}
+                  highlights={highlights}
+                  bookmarkParagraphs={bookmarkParagraphs}
+                  onHighlightPress={onHighlightPress}
+                />
+              </article>
+            ) : (
+              <div
+                ref={pageViewportRef}
+                data-reader-page-viewport
+                tabIndex={0}
+                aria-label="Paged reading"
+                className="relative mx-auto h-[calc(100dvh-5.5rem)] max-w-[65ch] overflow-hidden"
+                onClick={onPageTap}
+                onTouchStart={onTouchStart}
+                onTouchEnd={onTouchEnd}
+              >
+                <div
+                  ref={pageTrackRef}
+                  className="flex h-full transition-transform duration-300 motion-reduce:transition-none motion-reduce:duration-0"
+                  style={{
+                    transform: `translateX(-${pageIndex * Math.max(pageWidth, 1)}px)`,
+                  }}
+                >
+                  <div
+                    ref={contentRef}
+                    data-reader-page-body
+                    className={`h-full shrink-0 text-inherit ${typography}`}
+                    style={{
+                      columnWidth: pageWidth > 0 ? `${pageWidth}px` : '100%',
+                      columnGap: 0,
+                      columnFill: 'auto',
+                      width: pageWidth > 0 ? `${pageWidth}px` : '100%',
+                      height: '100%',
+                    }}
+                  >
+                    <RichTextView
+                      readerAnchors
+                      bodyJson={work.bodyJson}
+                      bodyText={work.bodyText ?? ''}
+                      creationType={work.type}
+                      className="max-w-none gap-4 px-0"
+                      highlights={highlights}
+                      bookmarkParagraphs={bookmarkParagraphs}
+                      onHighlightPress={onHighlightPress}
+                    />
+                  </div>
+                </div>
+                <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-4">
+                  <p className="rounded-full bg-black/20 px-3 py-1 text-xs">
+                    Page {pageIndex + 1} of {totalPages}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <ReaderSettingsSheet
+              open={settingsOpen}
+              prefs={prefs}
+              onChange={onPrefsChange}
+              offlineSaved={offlineSaved}
+              offlineBusy={offlineBusy}
+              highlights={annotationHighlights}
+              bookmarks={annotationBookmarks}
+              onJumpToBookmark={(paragraph, offset) => {
+                jumpFromSettings(paragraph, offset)
+                jumpToBookmark(paragraph, offset)
+              }}
+              onOpenHighlight={(highlightId) => openHighlightRef.current(highlightId)}
+              onOfflineSavedChange={(enabled) => {
+                void (async () => {
+                  setOfflineBusy(true)
+                  if (enabled) {
+                    const result = await enableOfflineReadingForWork(work, readingAnchor.current)
+                    if (!result.ok) showToast(result.message)
+                    else setOfflineSaved(true)
+                  } else {
+                    await disableOfflineReadingForCreation(work.id)
+                    setOfflineSaved(false)
+                  }
+                  setOfflineBusy(false)
+                })()
+              }}
+              onClose={() => {
+                setSettingsOpen(false)
+                settingsButtonRef.current?.focus()
+              }}
+            />
+
+            <p className="sr-only">
+              <Link to={`/c/${id}`}>Post details</Link>
             </p>
           </div>
-        </div>
-      )}
-
-      <ReaderSettingsSheet
-        open={settingsOpen}
-        prefs={prefs}
-        onChange={onPrefsChange}
-        onClose={() => {
-          setSettingsOpen(false)
-          settingsButtonRef.current?.focus()
-        }}
-      />
-
-      <p className="sr-only">
-        <Link to={`/c/${id}`}>Post details</Link>
-      </p>
-    </div>
+        )
+      }}
+    </ReaderAnnotationHost>
   )
 }
