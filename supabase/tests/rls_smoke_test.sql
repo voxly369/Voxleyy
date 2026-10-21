@@ -2561,6 +2561,33 @@ begin
   select count(*) into n from public.founder_featured_writers_public where writer_id = v_b;
   perform pg_temp.record('founder can feature active writer', n = 1, 'rows=' || n);
 
+  begin
+    execute 'set local role anon';
+    select count(*) into n from public.founder_featured_writers_public;
+    perform pg_temp.record('anon cannot read founder_featured_writers_public', false, 'rows=' || n);
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('anon cannot read founder_featured_writers_public', true, sqlerrm);
+    when others then
+      perform pg_temp.record('anon cannot read founder_featured_writers_public', true, sqlstate);
+  end;
+  execute 'set local role authenticated';
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  insert into public.blocks (blocker_id, blocked_id) values (v_a, v_b);
+  select count(*) into n from public.founder_featured_writers_public where writer_id = v_b;
+  perform pg_temp.record('featured writer hidden when blocked by caller', n = 0, 'rows=' || n);
+  delete from public.blocks where blocker_id = v_a and blocked_id = v_b;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_b, 'suspended', 'featured smoke', now() + interval '1 day');
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select count(*) into n from public.founder_featured_writers_public where writer_id = v_b;
+  perform pg_temp.record('featured writer view excludes suspended users', n = 0, 'rows=' || n);
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_set_user_status(v_b, 'active', 'restore featured', null);
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+
   execute format('set local role %I', session_user);
   alter table public.creations disable trigger creations_rate_limit;
   insert into public.creations (author_id, type, title, audience, status, body_text)

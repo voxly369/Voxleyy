@@ -6,6 +6,8 @@ import { focusRing } from '../components/shell/navItems.ts'
 import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { ConfirmDialog } from '../components/states/ConfirmDialog.tsx'
 import { ErrorState } from '../components/states/ErrorState.tsx'
+import { CoverFrame } from '../components/creations/CoverFrame.tsx'
+import { Modal } from '../components/shell/Modal.tsx'
 import { ImageWithFallback } from '../components/states/ImageWithFallback.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
 import { useAuth } from '../lib/auth/auth-context.ts'
@@ -52,6 +54,7 @@ export default function CreationPage() {
   const [liked, setLiked] = useState(false)
   const [saved, setSaved] = useState(false)
   const [commentsOpen, setCommentsOpen] = useState(false)
+  const [coverOpen, setCoverOpen] = useState(false)
   const navFlash = location.state as LocationState | null
   const publishedNotice = navFlash?.published ? 'Published' : null
   const writerNotice = Boolean(navFlash?.writerPromoted)
@@ -206,8 +209,24 @@ export default function CreationPage() {
       />
     ) : null
 
+  function onBack() {
+    if (window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+    navigate('/')
+  }
+
   return (
     <PageContainer variant="reading" className="py-8">
+    <button
+      type="button"
+      aria-label="Back"
+      onClick={onBack}
+      className={`mb-4 inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-line bg-surface text-lg text-ink md:hidden ${focusRing}`}
+    >
+      ←
+    </button>
     <article className="flex flex-col gap-6 xl:grid xl:grid-cols-[minmax(0,65ch)_auto] xl:items-start xl:gap-8">
       {publishedNotice ? (
         <p className="rounded-2xl border border-line bg-raised px-4 py-2 text-sm font-medium text-ink" aria-live="polite">
@@ -220,12 +239,14 @@ export default function CreationPage() {
         </p>
       ) : null}
       {work.coverUrl ? (
-        <ImageWithFallback
-          src={work.coverUrl}
-          alt=""
-          label={title.charAt(0)}
-          className="aspect-[3/2] w-full max-w-xl rounded-lg"
-        />
+        <button
+          type="button"
+          onClick={() => setCoverOpen(true)}
+          className={`max-w-xl text-left ${focusRing}`}
+          aria-label="View cover image full size"
+        >
+          <CoverFrame src={work.coverUrl} label={title.charAt(0)} />
+        </button>
       ) : null}
       <div className="flex min-w-0 flex-col gap-6 xl:col-start-1">
       <header className="flex flex-col gap-3">
@@ -351,6 +372,28 @@ export default function CreationPage() {
         onCancel={() => setConfirmDelete(false)}
       />
     </article>
+      <Modal
+        open={coverOpen}
+        onClose={() => setCoverOpen(false)}
+        labelledBy="cover-full-heading"
+        containerClassName="fixed inset-0 flex items-center justify-center p-4"
+        className="flex max-h-[90dvh] max-w-3xl flex-col gap-4 overflow-hidden rounded-2xl border border-line bg-surface p-4"
+        backdropLabel="Close cover image"
+      >
+        <h2 id="cover-full-heading" className="sr-only">
+          Cover image
+        </h2>
+        {work.coverUrl ? (
+          <img src={work.coverUrl} alt="" className="max-h-[70dvh] w-full object-contain object-center" />
+        ) : null}
+        <button
+          type="button"
+          onClick={() => setCoverOpen(false)}
+          className={`min-h-11 self-end rounded-2xl border border-line px-4 font-medium text-ink ${focusRing}`}
+        >
+          Close
+        </button>
+      </Modal>
     </PageContainer>
   )
 }

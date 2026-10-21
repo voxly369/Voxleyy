@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { CoverFrame } from '../creations/CoverFrame.tsx'
 import { LiteraryBodyView } from '../creations/LiteraryBodyView.tsx'
 import { bodyExcerpt } from '../../lib/creations/excerpt.ts'
-import { wholeLineExcerpt } from '../../lib/creations/wholeLineExcerpt.ts'
+import { literaryPreviewExcerpt } from '../../lib/creations/literaryDisplay.ts'
 import { quoteStyleFromJson } from '../../lib/creations/bodyDocument.ts'
 import { QuoteCardView } from '../creations/QuoteCardView.tsx'
 import { creationTypeLabel } from '../../lib/creations/creationTypeLabel.ts'
@@ -47,9 +48,11 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
 
   const previewSource = post.bodyExcerpt ?? ''
   const { excerpt, truncated: excerptTruncated } = bodyExcerpt(previewSource)
-  const showReadMore = post.bodyTruncated || excerptTruncated
   const isQuote = post.type === 'quote_card'
-  const isPoem = post.type === 'poem'
+  const isPoem = post.type === 'poem' || post.type === 'lyric' || post.type === 'script'
+  const poemPreview = isPoem ? literaryPreviewExcerpt(null, previewSource, 8) : null
+  const showReadMore =
+    post.bodyTruncated || excerptTruncated || (poemPreview?.truncated ?? false)
   const quoteText = (previewSource || post.caption || post.title || '').trim() || 'Quote'
 
   return (
@@ -93,19 +96,13 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
           </>
         ) : (
           <>
-            {post.coverUrl ? (
-              <ImageWithFallback src={post.coverUrl} alt="" label="Cover" className="mb-3 max-h-80 w-full rounded-xl object-cover" />
-            ) : null}
+            {post.coverUrl ? <CoverFrame src={post.coverUrl} className="mb-3" /> : null}
             {post.title?.trim() ? <h2 className="font-serif text-xl text-ink">{post.title.trim()}</h2> : null}
             {post.caption?.trim() ? <p className="mt-1 text-sm text-muted">{post.caption.trim()}</p> : null}
-            {isPoem ? (
-              <div className="mt-1">
-                <LiteraryBodyView
-                  bodyJson={null}
-                  bodyText={wholeLineExcerpt(previewSource, 8).text}
-                  className="text-base"
-                />
-                {showReadMore ? <span className="mt-1 block text-coral">Read more</span> : null}
+            {isPoem && poemPreview ? (
+              <div className="mt-1 flex flex-col gap-1">
+                <LiteraryBodyView lines={poemPreview.lines} className="text-base" />
+                {showReadMore ? <span className="text-coral">Read more</span> : null}
               </div>
             ) : excerpt ? (
               <p className="mt-3 text-base text-ink">

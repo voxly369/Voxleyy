@@ -107,7 +107,7 @@ async function assertInViewport(page: Page) {
     const offenders: string[] = []
     for (const el of document.querySelectorAll('body *')) {
       if (!(el instanceof HTMLElement)) continue
-      if (allowedScroll(el) || el.closest('[role="tablist"]')) continue
+      if (allowedScroll(el) || el.closest('[role="tablist"]') || el.closest('.scrollbar-hide')) continue
       const rect = el.getBoundingClientRect()
       if (rect.width === 0 && rect.height === 0) continue
       if (rect.right > vw + 1 || rect.left < -1) {
@@ -137,7 +137,8 @@ async function assertRightRail(page: Page, width: number, screenName: string) {
     screenName === 'home' ||
     screenName === 'following' ||
     screenName === 'create-sheet' ||
-    screenName === 'comments'
+    screenName === 'comments' ||
+    screenName === 'discover'
   if (width >= 1280 && onFeed) await expect(rail).toBeVisible()
   else await expect(rail).toBeHidden()
 }

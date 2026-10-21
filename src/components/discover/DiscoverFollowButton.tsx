@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FollowButton } from '../profile/FollowButton.tsx'
+import { FollowOrYouLabel } from '../profile/FollowOrYouLabel.tsx'
 import { isFollowing } from '../../lib/profiles/api.ts'
 
 type DiscoverFollowButtonProps = {
@@ -25,5 +25,12 @@ export function DiscoverFollowButton({ userId, username }: DiscoverFollowButtonP
 
   if (!ready) return null
 
-  return <FollowButton userId={userId} username={username} following={following} onChange={setFollowing} />
+  return (
+    <FollowOrYouLabel
+      userId={userId}
+      username={username}
+      following={following}
+      onFollowingChange={setFollowing}
+    />
+  )
 }

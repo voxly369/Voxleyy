@@ -28,12 +28,74 @@ export function trimLiteraryLines(lines: readonly string[]): string[] {
   return copy
 }
 
+const SHORT_POETRY_LINE_MAX = 55
+
+function isShortPoetryLine(block: string): boolean {
+  const trimmed = block.trim()
+  return trimmed.length > 0 && trimmed.length <= SHORT_POETRY_LINE_MAX && !trimmed.includes('\n')
+}
+
+/** Double-newline blocks are stanza breaks for line-based poems, not for prose paragraphs. */
+function plainBlocksUseStanzaBreaks(blocks: readonly string[]): boolean {
+  const nonEmpty = blocks.map((block) => block.trim()).filter(Boolean)
+  if (nonEmpty.length <= 1) return false
+  const shortLines = nonEmpty.filter(isShortPoetryLine).length
+  return shortLines >= nonEmpty.length * 0.6
+}
+
+/** Plain text for cards when body_json is unavailable (feed excerpts). */
+export function literaryLinesFromPlainText(text: string): string[] {
+  const unified = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+  const blocks = unified.split(/\n\n+/)
+  if (blocks.length === 1) {
+    return trimLiteraryLines(unified.split('\n'))
+  }
+  const hasMultilineBlock = blocks.some((block) => block.includes('\n'))
+  const useStanzaBreaks = hasMultilineBlock || plainBlocksUseStanzaBreaks(blocks)
+  if (!useStanzaBreaks) {
+    const lines: string[] = []
+    for (const block of blocks) {
+      const trimmed = block.trim()
+      if (!trimmed) continue
+      lines.push(...trimmed.split('\n'))
+    }
+    return trimLiteraryLines(lines)
+  }
+  const lines: string[] = []
+  blocks.forEach((block, index) => {
+    lines.push(...block.split('\n'))
+    if (index < blocks.length - 1) lines.push('')
+  })
+  return trimLiteraryLines(lines)
+}
+
 export function literaryLinesFromBody(bodyJson: Json | null | undefined, bodyText: string | null): string[] {
   const rich = parseRichDocument(bodyJson)
   if (rich) return trimLiteraryLines(literaryLinesFromRich(rich))
   const text = bodyText ?? bodyTextFromJson(bodyJson, bodyText)
-  const unified = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n')
-  return trimLiteraryLines(unified.split('\n'))
+  return literaryLinesFromPlainText(text)
+}
+
+export function collapseConsecutiveBlankLiteraryLines(lines: readonly string[]): string[] {
+  const out: string[] = []
+  for (const line of lines) {
+    if (line.trim() === '') {
+      if (out.length > 0 && out[out.length - 1] !== '') out.push('')
+      continue
+    }
+    out.push(line)
+  }
+  return trimLiteraryLines(out)
+}
+
+export function literaryPreviewExcerpt(
+  bodyJson: Json | null | undefined,
+  bodyText: string | null,
+  maxLines: number,
+): { lines: string[]; truncated: boolean } {
+  const lines = collapseConsecutiveBlankLiteraryLines(literaryLinesFromBody(bodyJson, bodyText))
+  if (lines.length <= maxLines) return { lines, truncated: false }
+  return { lines: lines.slice(0, maxLines), truncated: true }
 }
 
 export function literaryStanzasFromLines(lines: readonly string[]): string[][] {

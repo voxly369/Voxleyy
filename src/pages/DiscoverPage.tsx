@@ -26,7 +26,7 @@ export default function DiscoverPage() {
       <PageContainer variant="wide" className="flex flex-col gap-6 py-6 md:py-8">
         <PageHeader title="Discover" />
         <DiscoverSearchField className="w-full" />
-        <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Discover sections">
+        <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Discover sections">
           {TABS.map((item) => (
             <button
               key={item.id}
@@ -34,7 +34,7 @@ export default function DiscoverPage() {
               role="tab"
               aria-selected={tab === item.id}
               onClick={() => setTab(item.id)}
-              className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium ${
+              className={`inline-flex min-h-11 shrink-0 items-center rounded-full px-4 py-2 text-sm font-medium ${
                 tab === item.id ? 'bg-coral text-white' : 'bg-surface text-muted border border-line'
               } ${focusRing}`}
             >

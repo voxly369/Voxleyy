@@ -78,14 +78,14 @@ export function EngagementBar({
   }
 
   return (
-    <div className={`flex items-center gap-2 border-t border-line pt-3 ${className}`.trim()}>
+    <div className={`flex flex-nowrap items-center justify-between gap-1 border-t border-line pt-3 sm:justify-start sm:gap-2 ${className}`.trim()}>
       <button
         type="button"
         aria-label={liked ? 'Unlike' : 'Like'}
         aria-pressed={liked}
         disabled={busy === 'like'}
         onClick={() => void onLike()}
-        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-2xl px-3 text-sm font-medium transition motion-reduce:transition-none ${
+        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-2xl px-2 text-sm font-medium transition motion-reduce:transition-none sm:min-w-11 sm:px-3 ${
           liked ? 'text-coral' : 'text-muted'
         } ${likePulse ? 'scale-95 motion-reduce:scale-100' : ''} ${focusRing}`}
       >
@@ -96,7 +96,7 @@ export function EngagementBar({
         type="button"
         aria-label="Comments"
         onClick={onCommentClick}
-        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-2xl px-3 text-sm font-medium text-muted ${focusRing}`}
+        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-2xl px-2 text-sm font-medium text-muted sm:min-w-11 sm:px-3 ${focusRing}`}
       >
         <span aria-hidden>💬</span>
         <span>{formatCountLabel(commentCount, 'comment')}</span>
@@ -107,7 +107,7 @@ export function EngagementBar({
         aria-pressed={saved}
         disabled={busy === 'save'}
         onClick={() => void onSave()}
-        className={`inline-flex min-h-11 min-w-11 items-center justify-center gap-1 rounded-2xl px-3 text-sm font-medium transition motion-reduce:transition-none ${
+        className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-2xl px-2 text-sm font-medium transition motion-reduce:transition-none sm:min-w-11 sm:px-3 ${
           saved ? 'text-coral' : 'text-muted'
         } ${savePulse ? 'scale-95 motion-reduce:scale-100' : ''} ${focusRing}`}
       >

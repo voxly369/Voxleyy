@@ -157,14 +157,20 @@ export function DiscoverExploreTab() {
       <SectionShell title="Trending" testId="discover-trending">
         {trending.length === 0 ? <Skeleton variant="text-lines" lines={3} /> : null}
         <DiscoverPostStrip posts={trending} onPostUpdate={onPostUpdate} />
-        <Link to="/discover/browse?sort=trending" className={`text-sm font-medium text-coral ${focusRing}`}>
+        <Link
+          to="/discover/browse?sort=trending"
+          className={`inline-flex min-h-11 items-center text-sm font-medium text-coral ${focusRing}`}
+        >
           See all trending
         </Link>
       </SectionShell>
 
       <SectionShell title="New" testId="discover-new">
         <DiscoverPostStrip posts={fresh} onPostUpdate={onPostUpdate} />
-        <Link to="/discover/browse?sort=new" className={`text-sm font-medium text-coral ${focusRing}`}>
+        <Link
+          to="/discover/browse?sort=new"
+          className={`inline-flex min-h-11 items-center text-sm font-medium text-coral ${focusRing}`}
+        >
           See all new work
         </Link>
       </SectionShell>
