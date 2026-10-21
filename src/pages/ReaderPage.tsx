@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type TouchEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { RichTextView } from '../components/creations/RichTextView.tsx'
 import { ReaderSettingsSheet } from '../components/reader/ReaderSettingsSheet.tsx'
@@ -22,14 +22,24 @@ import {
   readerSurfaceClass,
   readerTypographyClasses,
 } from '../lib/reader/readerThemeStyles.ts'
-import { scrollPercentFromElement } from '../lib/reader/scrollPercent.ts'
 import { tableOfContentsFromBody } from '../lib/reader/toc.ts'
 import { shouldSaveProgress } from '../lib/reader/throttleProgress.ts'
-import { pageCount, pagesRemaining, clampPageIndex } from '../lib/reader/pagingMath.ts'
+import { clampPageIndex, columnPageCount, pagesRemaining } from '../lib/reader/pagingMath.ts'
+import { paragraphCount, readerParagraphIndexFromBlockIndex } from '../lib/reader/paragraphIndex.ts'
+import {
+  focusReaderHeading,
+  measureScrollReadingPosition,
+  pageIndexForParagraph,
+  paragraphElement,
+  scrollToReadingPosition,
+  type StoredReadingPosition,
+} from '../lib/reader/readingPosition.ts'
 import { focusRing } from '../components/shell/navItems.ts'
 import { ErrorState } from '../components/states/ErrorState.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
+
+const SWIPE_THRESHOLD_PX = 48
 
 export default function ReaderPage() {
   const { id = '' } = useParams()
@@ -38,16 +48,24 @@ export default function ReaderPage() {
   const [problem, setProblem] = useState<string | null>(null)
   const [prefs, setPrefs] = useState<ReaderPreferences>(() => loadReaderPreferences())
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const settingsButtonRef = useRef<HTMLButtonElement | null>(null)
   const [tocOpen, setTocOpen] = useState(false)
   const [toolbarVisible, setToolbarVisible] = useState(true)
   const [percent, setPercent] = useState(0)
   const [pageIndex, setPageIndex] = useState(0)
   const [totalPages, setTotalPages] = useState(1)
+  const [pageWidth, setPageWidth] = useState(0)
+  const [layoutTick, setLayoutTick] = useState(0)
   const lastScrollY = useRef(0)
   const lastSaveAt = useRef<number | null>(null)
   const scrollRef = useRef<HTMLElement | null>(null)
   const pageViewportRef = useRef<HTMLDivElement | null>(null)
+  const pageTrackRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
+  const pendingRestore = useRef<StoredReadingPosition | null>(null)
+  const readingAnchor = useRef<StoredReadingPosition>({ paragraphIndex: 0, positionOffset: 0, percent: 0 })
+  const touchStartX = useRef<number | null>(null)
+  const restoredOnce = useRef(false)
 
   const title = work?.title?.trim() || 'Reading'
   useDocumentTitle(title)
@@ -58,6 +76,8 @@ export default function ReaderPage() {
 
   useEffect(() => {
     let active = true
+    restoredOnce.current = false
+    pendingRestore.current = null
     void (async () => {
       const result = await getCreationById(id)
       if (!active) return
@@ -72,14 +92,13 @@ export default function ReaderPage() {
       setWork(result.data)
       const saved = await fetchPostProgress(id)
       if (saved && !saved.completed) {
+        pendingRestore.current = {
+          paragraphIndex: saved.position,
+          positionOffset: saved.positionOffset,
+          percent: saved.percent,
+        }
+        readingAnchor.current = pendingRestore.current
         setPercent(saved.percent)
-        requestAnimationFrame(() => {
-          const el = scrollRef.current
-          if (el && saved.percent > 0) {
-            const max = el.scrollHeight - el.clientHeight
-            el.scrollTop = (saved.percent / 100) * max
-          }
-        })
       }
     })()
     return () => {
@@ -88,22 +107,45 @@ export default function ReaderPage() {
   }, [id])
 
   const persistProgress = useCallback(
-    (nextPercent: number, position: number) => {
+    (position: StoredReadingPosition) => {
       const now = Date.now()
       if (!shouldSaveProgress(lastSaveAt.current, now)) return
       lastSaveAt.current = now
-      void upsertPostProgress({ creationId: id, percent: nextPercent, position })
+      readingAnchor.current = position
+      setPercent(position.percent)
+      void upsertPostProgress({
+        creationId: id,
+        percent: position.percent,
+        position: position.paragraphIndex,
+        positionOffset: position.positionOffset,
+      })
     },
     [id],
   )
 
   const flushProgress = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const nextPercent = scrollPercentFromElement(el)
-    setPercent(nextPercent)
-    void upsertPostProgress({ creationId: id, percent: nextPercent, position: 0 })
-  }, [id])
+    if (prefs.mode === 'scroll') {
+      const el = scrollRef.current
+      if (!el) return
+      const measured = measureScrollReadingPosition(el)
+      if (!measured) return
+      void upsertPostProgress({
+        creationId: id,
+        percent: measured.percent,
+        position: measured.paragraphIndex,
+        positionOffset: measured.positionOffset,
+      })
+      readingAnchor.current = measured
+      setPercent(measured.percent)
+      return
+    }
+    void upsertPostProgress({
+      creationId: id,
+      percent: readingAnchor.current.percent,
+      position: readingAnchor.current.paragraphIndex,
+      positionOffset: readingAnchor.current.positionOffset,
+    })
+  }, [id, prefs.mode])
 
   useEffect(() => {
     document.addEventListener('visibilitychange', flushProgress)
@@ -125,29 +167,197 @@ export default function ReaderPage() {
     const y = el.scrollTop
     setToolbarVisible(y < lastScrollY.current || y < 24)
     lastScrollY.current = y
-    const nextPercent = scrollPercentFromElement(el)
-    setPercent(nextPercent)
-    persistProgress(nextPercent, 0)
+    const measured = measureScrollReadingPosition(el)
+    if (!measured) return
+    setPercent(measured.percent)
+    persistProgress(measured)
+  }
+
+  const recomputePageLayout = useCallback(() => {
+    const viewport = pageViewportRef.current
+    const content = contentRef.current
+    if (!viewport || !content) return
+    const width = viewport.clientWidth
+    setPageWidth(width)
+    const pages = columnPageCount(content.scrollWidth, width)
+    setTotalPages(pages)
+    const anchor = readingAnchor.current
+    const paragraph = paragraphElement(content, anchor.paragraphIndex)
+    const nextPage = paragraph ? pageIndexForParagraph(paragraph, width, anchor.positionOffset) : 0
+    setPageIndex(clampPageIndex(nextPage, pages))
+    setLayoutTick((n) => n + 1)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (prefs.mode !== 'page' || !work) return
+    void document.fonts.ready.then(() => {
+      recomputePageLayout()
+    })
+  }, [
+    prefs.mode,
+    work,
+    prefs.textSizeStep,
+    prefs.lineSpacing,
+    prefs.marginStep,
+    prefs.font,
+    prefs.justify,
+    recomputePageLayout,
+  ])
+
+  useEffect(() => {
+    if (prefs.mode !== 'page') return
+    const viewport = pageViewportRef.current
+    if (!viewport) return
+    const observer = new ResizeObserver(() => recomputePageLayout())
+    observer.observe(viewport)
+    const onOrientation = () => recomputePageLayout()
+    window.addEventListener('orientationchange', onOrientation)
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('orientationchange', onOrientation)
+    }
+  }, [prefs.mode, recomputePageLayout])
+
+  const applyPendingRestore = useCallback(() => {
+    if (restoredOnce.current || !pendingRestore.current) return
+    const target = pendingRestore.current
+    if (prefs.mode === 'scroll') {
+      const el = scrollRef.current
+      if (!el) return
+      scrollToReadingPosition(el, target.paragraphIndex, target.positionOffset)
+      restoredOnce.current = true
+      pendingRestore.current = null
+      const measured = measureScrollReadingPosition(el)
+      if (measured) setPercent(measured.percent)
+      return
+    }
+    const content = contentRef.current
+    const viewport = pageViewportRef.current
+    if (!content || !viewport || pageWidth <= 0) return
+    const paragraph = paragraphElement(content, target.paragraphIndex)
+    if (!paragraph) return
+    const page = pageIndexForParagraph(paragraph, pageWidth, target.positionOffset)
+    setPageIndex(clampPageIndex(page, totalPages))
+    restoredOnce.current = true
+    pendingRestore.current = null
+  }, [prefs.mode, pageWidth, totalPages])
+
+  useLayoutEffect(() => {
+    applyPendingRestore()
+  }, [applyPendingRestore, layoutTick, work, prefs.mode])
+
+  function turnPage(delta: number) {
+    setPageIndex((prev) => {
+      const next = clampPageIndex(prev + delta, totalPages)
+      readingAnchor.current = { ...readingAnchor.current, percent }
+      return next
+    })
   }
 
   useEffect(() => {
-    if (prefs.mode !== 'page' || !pageViewportRef.current || !contentRef.current) return
-    setTotalPages(pageCount(contentRef.current.scrollHeight, pageViewportRef.current.clientHeight))
-  }, [prefs.mode, work, prefs.textSizeStep, prefs.lineSpacing, prefs.marginStep])
-
-  function turnPage(delta: number) {
-    setPageIndex((prev) => clampPageIndex(prev + delta, totalPages))
-  }
+    if (prefs.mode !== 'page') return
+    const content = contentRef.current
+    if (!content || pageWidth <= 0) return
+    const paragraphs = content.querySelectorAll('[data-reader-paragraph-index]')
+    if (paragraphs.length === 0) return
+    let best: HTMLElement | null = null
+    let bestOverlap = 0
+    const pageLeft = pageIndex * pageWidth
+    const pageRight = pageLeft + pageWidth
+    for (const node of paragraphs) {
+      if (!(node instanceof HTMLElement)) continue
+      const left = node.offsetLeft
+      const right = left + node.offsetWidth
+      const overlap = Math.min(right, pageRight) - Math.max(left, pageLeft)
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap
+        best = node
+      }
+    }
+    if (!best) return
+    const paragraphIndex = Number(best.dataset.readerParagraphIndex ?? 0)
+    const positionOffset = readingAnchor.current.positionOffset
+    const nextPercent = Math.round(((paragraphIndex + 1) / paragraphs.length) * 100)
+    readingAnchor.current = {
+      paragraphIndex,
+      positionOffset,
+      percent: nextPercent,
+    }
+    setPercent(nextPercent)
+    persistProgress(readingAnchor.current)
+  }, [pageIndex, pageWidth, prefs.mode, persistProgress])
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      if (prefs.mode !== 'page') return
-      if (event.key === 'ArrowRight') turnPage(1)
-      if (event.key === 'ArrowLeft') turnPage(-1)
+      if (settingsOpen || tocOpen) return
+      if (prefs.mode === 'page') {
+        if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+          event.preventDefault()
+          turnPage(1)
+        }
+        if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+          event.preventDefault()
+          turnPage(-1)
+        }
+        return
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   })
+
+  function onPageTap(event: MouseEvent<HTMLDivElement>) {
+    const bounds = event.currentTarget.getBoundingClientRect()
+    const x = event.clientX - bounds.left
+    if (x < bounds.width * 0.3) turnPage(-1)
+    else if (x > bounds.width * 0.7) turnPage(1)
+  }
+
+  function onTouchStart(event: TouchEvent<HTMLDivElement>) {
+    touchStartX.current = event.changedTouches[0]?.clientX ?? null
+  }
+
+  function onTouchEnd(event: TouchEvent<HTMLDivElement>) {
+    const start = touchStartX.current
+    const end = event.changedTouches[0]?.clientX
+    touchStartX.current = null
+    if (start == null || end == null) return
+    const delta = end - start
+    if (Math.abs(delta) < SWIPE_THRESHOLD_PX) return
+    turnPage(delta < 0 ? 1 : -1)
+  }
+
+  function navigateToToc(blockIndex: number) {
+    if (!work) return
+    const paragraphIndex = readerParagraphIndexFromBlockIndex(blockIndex, work.bodyJson, work.bodyText ?? '')
+    readingAnchor.current = {
+      paragraphIndex,
+      positionOffset: 0,
+      percent: readingAnchor.current.percent,
+    }
+    setTocOpen(false)
+    if (prefs.mode === 'scroll') {
+      requestAnimationFrame(() => {
+        const el = scrollRef.current
+        if (el) scrollToReadingPosition(el, paragraphIndex, 0)
+        const root = el ?? document
+        focusReaderHeading(blockIndex, root)
+      })
+      return
+    }
+    const totalParas = paragraphCount(work.bodyJson, work.bodyText ?? '')
+    readingAnchor.current = {
+      paragraphIndex,
+      positionOffset: 0,
+      percent: Math.round(((paragraphIndex + 1) / Math.max(1, totalParas)) * 100),
+    }
+    requestAnimationFrame(() => {
+      recomputePageLayout()
+      const content = contentRef.current
+      const root = content ?? document
+      focusReaderHeading(blockIndex, root)
+    })
+  }
 
   if (problem) {
     return (
@@ -172,10 +382,15 @@ export default function ReaderPage() {
   const surface = readerSurfaceClass(prefs.theme)
   const typography = readerTypographyClasses(prefs)
   const font = readerFontFamily(prefs.font)
+  const pageLabel =
+    prefs.mode === 'page'
+      ? `Page ${pageIndex + 1} of ${totalPages} · ${pagesRemaining(pageIndex + 1, totalPages)} pages left`
+      : minutesLeft
 
   return (
     <div
       data-reader-theme={prefs.theme}
+      data-reader-mode={prefs.mode}
       className={`min-h-dvh ${surface} ${font}`}
       style={{
         filter: `brightness(${prefs.brightness})`,
@@ -198,13 +413,19 @@ export default function ReaderPage() {
                 Contents
               </button>
             ) : null}
-            <button type="button" onClick={() => setSettingsOpen(true)} className={`min-h-11 rounded-full px-3 text-sm ${focusRing}`}>
+            <button
+              ref={settingsButtonRef}
+              type="button"
+              aria-label="Reading settings"
+              onClick={() => setSettingsOpen(true)}
+              className={`min-h-11 rounded-full px-3 text-sm ${focusRing}`}
+            >
               Aa
             </button>
           </div>
         </div>
-        <p className="mx-auto max-w-[65ch] px-4 pb-2 text-xs opacity-70">
-          {percent}% · {prefs.mode === 'page' ? `${pagesRemaining(pageIndex + 1, totalPages)} pages left` : minutesLeft}
+        <p className="mx-auto max-w-[65ch] px-4 pb-2 text-xs text-inherit" aria-live="polite">
+          {percent}% · {pageLabel}
         </p>
       </header>
 
@@ -212,7 +433,7 @@ export default function ReaderPage() {
         <div className="mx-auto max-w-[65ch] p-4">
           <ReaderTableOfContents
             entries={toc}
-            onPick={() => setTocOpen(false)}
+            onPick={navigateToToc}
             onClose={() => setTocOpen(false)}
           />
         </div>
@@ -221,37 +442,76 @@ export default function ReaderPage() {
       {prefs.mode === 'scroll' ? (
         <article
           ref={scrollRef}
+          data-reader-scroll
+          tabIndex={0}
+          aria-label="Reading text"
           onScroll={onScroll}
-          className={`mx-auto max-w-[65ch] overflow-y-auto py-6 md:max-w-[65ch] ${typography}`}
+          className={`mx-auto max-w-[65ch] overflow-y-auto py-6 text-inherit md:max-w-[65ch] ${typography}`}
           style={{ maxHeight: 'calc(100dvh - 5rem)' }}
         >
-          <RichTextView bodyJson={work.bodyJson} bodyText={work.bodyText ?? ''} creationType={work.type} />
+          <RichTextView
+            readerAnchors
+            bodyJson={work.bodyJson}
+            bodyText={work.bodyText ?? ''}
+            creationType={work.type}
+          />
         </article>
       ) : (
-        <div ref={pageViewportRef} className="relative mx-auto h-[calc(100dvh-5.5rem)] max-w-[65ch] overflow-hidden">
+        <div
+          ref={pageViewportRef}
+          data-reader-page-viewport
+          tabIndex={0}
+          aria-label="Paged reading"
+          className="relative mx-auto h-[calc(100dvh-5.5rem)] max-w-[65ch] overflow-hidden"
+          onClick={onPageTap}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
           <div
-            ref={contentRef}
-            className={`flex h-full transition-transform duration-300 motion-reduce:transition-none motion-reduce:transform-none ${typography}`}
-            style={{ width: `${totalPages * 100}%`, transform: `translateX(-${(pageIndex / totalPages) * 100}%)` }}
+            ref={pageTrackRef}
+            className="flex h-full transition-transform duration-300 motion-reduce:transition-none motion-reduce:duration-0"
+            style={{
+              transform: `translateX(-${pageIndex * Math.max(pageWidth, 1)}px)`,
+            }}
           >
-            {Array.from({ length: totalPages }, (_, page) => (
-              <div key={page} className="h-full w-full shrink-0 overflow-hidden px-4" onClick={() => turnPage(1)}>
-                <RichTextView bodyJson={work.bodyJson} bodyText={work.bodyText ?? ''} creationType={work.type} />
-              </div>
-            ))}
+            <div
+              ref={contentRef}
+              data-reader-page-body
+              className={`h-full shrink-0 text-inherit ${typography}`}
+              style={{
+                columnWidth: pageWidth > 0 ? `${pageWidth}px` : '100%',
+                columnGap: 0,
+                columnFill: 'auto',
+                width: pageWidth > 0 ? `${pageWidth}px` : '100%',
+                height: '100%',
+              }}
+            >
+              <RichTextView
+                readerAnchors
+                bodyJson={work.bodyJson}
+                bodyText={work.bodyText ?? ''}
+                creationType={work.type}
+                className="max-w-none gap-4 px-0"
+              />
+            </div>
           </div>
-          <div className="absolute inset-x-0 bottom-4 flex justify-between px-4">
-            <button type="button" aria-label="Previous page" onClick={() => turnPage(-1)} className={`min-h-11 min-w-11 rounded-full bg-black/20 ${focusRing}`}>
-              ‹
-            </button>
-            <button type="button" aria-label="Next page" onClick={() => turnPage(1)} className={`min-h-11 min-w-11 rounded-full bg-black/20 ${focusRing}`}>
-              ›
-            </button>
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-4">
+            <p className="rounded-full bg-black/20 px-3 py-1 text-xs">
+              Page {pageIndex + 1} of {totalPages}
+            </p>
           </div>
         </div>
       )}
 
-      <ReaderSettingsSheet open={settingsOpen} prefs={prefs} onChange={onPrefsChange} onClose={() => setSettingsOpen(false)} />
+      <ReaderSettingsSheet
+        open={settingsOpen}
+        prefs={prefs}
+        onChange={onPrefsChange}
+        onClose={() => {
+          setSettingsOpen(false)
+          settingsButtonRef.current?.focus()
+        }}
+      />
 
       <p className="sr-only">
         <Link to={`/c/${id}`}>Post details</Link>

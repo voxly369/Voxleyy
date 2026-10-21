@@ -812,6 +812,7 @@ export type Database = {
           creation_id: string
           percent: number
           position: number
+          position_offset: number
           completed: boolean
           first_read_at: string
           updated_at: string
@@ -821,6 +822,7 @@ export type Database = {
           creation_id: string
           percent?: number
           position?: number
+          position_offset?: number
           completed?: boolean
           first_read_at?: string
           updated_at?: string
@@ -828,6 +830,7 @@ export type Database = {
         Update: {
           percent?: number
           position?: number
+          position_offset?: number
           completed?: boolean
           updated_at?: string
         }

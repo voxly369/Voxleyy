@@ -18,6 +18,24 @@ export function percentFromParagraphIndex(index: number, totalParagraphs: number
   return Math.round(((clamped + 1) / totalParagraphs) * 100)
 }
 
+/** Map a full-document block index to reader paragraph index (headings + paragraphs only). */
+export function readerParagraphIndexFromBlockIndex(
+  blockIndex: number,
+  bodyJson: Json | null | undefined,
+  bodyText: string | null,
+): number {
+  const doc = bodyContentFromJson(bodyJson, bodyText ?? '')
+  let readerIndex = 0
+  for (let i = 0; i < doc.content.length && i <= blockIndex; i += 1) {
+    const block = doc.content[i]
+    if (block.type === 'paragraph' || block.type === 'heading') {
+      if (i === blockIndex) return readerIndex
+      readerIndex += 1
+    }
+  }
+  return Math.max(0, readerIndex)
+}
+
 export function paragraphIndexFromScroll(
   blockOffsets: readonly number[],
   scrollTop: number,

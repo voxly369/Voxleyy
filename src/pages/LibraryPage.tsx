@@ -122,7 +122,7 @@ export default function LibraryPage() {
             aria-selected={tab === id}
             onClick={() => setTab(id)}
             className={`inline-flex min-h-11 shrink-0 items-center rounded-full px-4 py-2 text-sm font-medium ${
-              tab === id ? 'bg-coral text-white' : 'border border-line bg-surface text-muted'
+              tab === id ? 'bg-coral font-semibold text-[#1a100a]' : 'border border-line bg-surface text-ink'
             } ${focusRing}`}
           >
             {label}
@@ -252,7 +252,7 @@ export default function LibraryPage() {
                     }
                   })
                 }}
-                className={`min-h-11 rounded-xl bg-coral px-4 font-semibold text-white ${focusRing}`}
+                className={`min-h-11 rounded-xl bg-coral px-4 font-semibold text-[#1a100a] ${focusRing}`}
               >
                 Create
               </button>
