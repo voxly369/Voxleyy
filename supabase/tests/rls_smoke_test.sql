@@ -2648,6 +2648,68 @@ begin
   end;
 end $discover_search$;
 
+do $library_reading$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_post uuid;
+  v_private uuid;
+  n integer;
+begin
+  select reader_a, reader_b into v_a, v_b from rls_ids;
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+
+  begin
+    execute 'set local role anon';
+    select count(*) into n from public.post_reading_progress;
+    perform pg_temp.record('anon cannot read post_reading_progress', false, 'rows=' || n);
+  exception
+    when insufficient_privilege then
+      perform pg_temp.record('anon cannot read post_reading_progress', true, sqlerrm);
+    when others then
+      perform pg_temp.record('anon cannot read post_reading_progress', true, sqlstate);
+  end;
+  execute 'set local role authenticated';
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  begin
+    insert into public.reader_collections (user_id, name) values (v_a, 'stolen');
+    perform pg_temp.record('user B cannot insert reader_collections for user A', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('user B cannot insert reader_collections for user A', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select id into v_post from public.creations where status = 'published' and audience = 'public' limit 1;
+  select id into v_private from public.creations where audience = 'private' and status = 'published' limit 1;
+
+  begin
+    insert into public.post_reading_progress (user_id, creation_id, percent, position)
+    values (v_a, v_private, 10, 0);
+    perform pg_temp.record('progress insert rejects non-feed-visible creation', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('progress insert rejects non-feed-visible creation', true, sqlerrm);
+  end;
+
+  insert into public.post_reading_progress (user_id, creation_id, percent, position)
+  values (v_a, v_post, 12, 1);
+  select count(*) into n from public.library_reading_history where creation_id = v_post;
+  perform pg_temp.record('library_reading_history shows visible progress', n = 1, 'rows=' || n);
+
+  execute format('set local role %I', session_user);
+  update public.creations set audience = 'private' where id = v_post;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select count(*) into n from public.library_reading_history where creation_id = v_post;
+  perform pg_temp.record('library history hides when creation becomes private', n = 0, 'rows=' || n);
+  execute format('set local role %I', session_user);
+  update public.creations set audience = 'public' where id = v_post;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+end $library_reading$;
+
 do $$
 declare
   n integer;

@@ -31,6 +31,8 @@ export default {
       fontFamily: {
         sans: ['"Inter Variable"', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         serif: ['"Fraunces Variable"', 'Fraunces', 'Georgia', 'ui-serif', 'serif'],
+        lora: ['Lora', 'Georgia', 'ui-serif', 'serif'],
+        opendyslexic: ['OpenDyslexic', 'ui-sans-serif', 'sans-serif'],
       },
       borderRadius: { '2xl': '1rem', '3xl': '1.5rem' },
       keyframes: { shimmer: { '100%': { transform: 'translateX(100%)' } } },
