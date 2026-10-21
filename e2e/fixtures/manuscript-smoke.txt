@@ -1,0 +1,7 @@
+Chapter 1
+
+Opening paragraph with enough words to satisfy merge thresholds for smoke import tests in the book builder flow.
+
+Chapter 2
+
+Second chapter body continues the manuscript with additional words for detection heuristics validation.

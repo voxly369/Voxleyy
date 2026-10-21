@@ -24,6 +24,7 @@ export type LibraryItem = {
   position?: number
   completed?: boolean
   updatedAt?: string
+  resumeChapterId?: string | null
 }
 
 export type LibrarySavedCursor = { savedAt: string; creationId: string }

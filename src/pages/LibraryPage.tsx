@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { ContinueReadingRow } from '../components/library/ContinueReadingRow.tsx'
 import { LibraryItemCard } from '../components/library/LibraryItemCard.tsx'
 import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
@@ -157,11 +158,7 @@ export default function LibraryPage() {
         continueItems.length === 0 ? (
           <EmptyState title="Nothing in progress" message="Open a long-form post and tap Read to start." />
         ) : (
-          <div className="flex flex-col gap-3">
-            {continueItems.map((item) => (
-              <LibraryItemCard key={item.creationId} item={item} progressLabel={`${item.percent ?? 0}% read`} />
-            ))}
-          </div>
+          <ContinueReadingRow items={continueItems} />
         )
       ) : null}
 

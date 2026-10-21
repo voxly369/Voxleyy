@@ -5,6 +5,7 @@ import { ChapterManager } from '../components/books/ChapterManager.tsx'
 import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
+import { ConfirmDialog } from '../components/states/ConfirmDialog.tsx'
 import { ErrorState } from '../components/states/ErrorState.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
 import { useAuth } from '../lib/auth/auth-context.ts'
@@ -24,11 +25,13 @@ import {
   publishChapter,
   reorderChapters,
   saveChapter,
+  unpublishChapter,
 } from '../lib/books/chaptersApi.ts'
 import type { ChapterDetail } from '../lib/books/chapterContentSchema.ts'
 import { plainTextToChapterJson } from '../lib/books/booksApi.ts'
 import { ManuscriptImportFlow } from './ManuscriptImportFlow.tsx'
 import type { ImportedChapter } from '../lib/books/importManuscript.ts'
+import { deleteCreation } from '../lib/creations/api.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 import { useToast } from '../lib/shell/useToast.ts'
 
@@ -44,6 +47,7 @@ export default function BookBuilderPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [confirmDeleteBook, setConfirmDeleteBook] = useState(false)
 
   useDocumentTitle(book?.title ? `Builder · ${book.title}` : 'Book builder')
 
@@ -134,17 +138,9 @@ export default function BookBuilderPage() {
     showToast('Manuscript imported')
   }
 
-  async function onMove(chapterId: string, direction: 'up' | 'down') {
-    const index = chapters.findIndex((c) => c.id === chapterId)
-    if (index < 0) return
-    const target = direction === 'up' ? index - 1 : index + 1
-    if (target < 0 || target >= chapters.length) return
-    const next = [...chapters]
-    const tmp = next[index]!
-    next[index] = next[target]!
-    next[target] = tmp
+  async function onReorder(orderedIds: string[]) {
     setBusy(true)
-    const result = await reorderChapters(id, next.map((c) => c.id))
+    const result = await reorderChapters(id, orderedIds)
     setBusy(false)
     if (!result.ok) showToast(result.error.message)
     else await reload()
@@ -201,7 +197,7 @@ export default function BookBuilderPage() {
             else await reload()
           })
         }}
-        onMove={(chapterId, direction) => void onMove(chapterId, direction)}
+        onReorder={(orderedIds) => void onReorder(orderedIds)}
         onToggleSample={(chapterId, isSample) => {
           const chapter = chapters.find((c) => c.id === chapterId)
           if (!chapter) return
@@ -217,9 +213,9 @@ export default function BookBuilderPage() {
             else await reload()
           })
         }}
-        onPublish={(chapterId) => {
+        onTogglePublish={(chapterId, publish) => {
           setBusy(true)
-          void publishChapter(chapterId).then(async (result) => {
+          void (publish ? publishChapter(chapterId) : unpublishChapter(chapterId)).then(async (result) => {
             setBusy(false)
             if (!result.ok) showToast(result.error.message)
             else await reload()
@@ -273,7 +269,39 @@ export default function BookBuilderPage() {
         </div>
       </section>
 
+      <section className="flex flex-col gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => setConfirmDeleteBook(true)}
+          className={`min-h-11 self-start text-sm font-medium text-coral ${focusRing}`}
+        >
+          Delete book
+        </button>
+      </section>
+
       <ManuscriptImportFlow open={importOpen} busy={busy} onClose={() => setImportOpen(false)} onImport={onImport} />
+
+      <ConfirmDialog
+        open={confirmDeleteBook}
+        title="Delete this book?"
+        message="This removes the book and all chapters. It cannot be undone."
+        confirmLabel="Delete book"
+        cancelLabel="Cancel"
+        onCancel={() => setConfirmDeleteBook(false)}
+        onConfirm={() => {
+          setConfirmDeleteBook(false)
+          setBusy(true)
+          void deleteCreation(id).then((result) => {
+            setBusy(false)
+            if (!result.ok) showToast(result.error.message)
+            else {
+              showToast('Book deleted')
+              navigate('/profile')
+            }
+          })
+        }}
+      />
     </PageContainer>
   )
 }

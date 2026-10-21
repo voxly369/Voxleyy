@@ -2909,6 +2909,65 @@ begin
   alter table public.creations enable trigger creations_rate_limit;
 end $book_builder$;
 
+-- Book builder (11B): reorder_book_chapters RPC
+do $book_builder_11b$
+declare
+  v_author uuid;
+  v_book uuid;
+  v_c1 uuid;
+  v_c2 uuid;
+  pos1 integer;
+  pos2 integer;
+begin
+  select reader_a into v_author from rls_ids;
+  execute format('set local role %I', session_user);
+  alter table public.creations disable trigger creations_rate_limit;
+  insert into public.creations (id, author_id, type, title, language, audience, status, body_text)
+  values (
+    'bb000000-0000-0000-0000-000000000003',
+    v_author,
+    'book',
+    'Reorder book',
+    'en',
+    'private',
+    'draft',
+    ''
+  );
+  insert into public.books (id, author_id, description, sale_model, price_cents)
+  values ('bb000000-0000-0000-0000-000000000003', v_author, 'Reorder', 'free', 0);
+  insert into public.chapters (id, book_id, position, title, body_text, status)
+  values (
+    'cc000000-0000-0000-0000-000000000101',
+    'bb000000-0000-0000-0000-000000000003',
+    1,
+    'First',
+    'A',
+    'draft'
+  )
+  returning id into v_c1;
+  insert into public.chapters (id, book_id, position, title, body_text, status)
+  values (
+    'cc000000-0000-0000-0000-000000000102',
+    'bb000000-0000-0000-0000-000000000003',
+    2,
+    'Second',
+    'B',
+    'draft'
+  )
+  returning id into v_c2;
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_author::text, true);
+  perform public.reorder_book_chapters(
+    'bb000000-0000-0000-0000-000000000003',
+    array[v_c2, v_c1]::uuid[]
+  );
+  select position into pos1 from public.chapters where id = v_c2;
+  select position into pos2 from public.chapters where id = v_c1;
+  perform pg_temp.record('reorder_book_chapters swaps positions', pos1 = 1 and pos2 = 2, 'pos=' || pos1 || ',' || pos2);
+  alter table public.creations enable trigger creations_rate_limit;
+end $book_builder_11b$;
+
 do $$
 declare
   n integer;

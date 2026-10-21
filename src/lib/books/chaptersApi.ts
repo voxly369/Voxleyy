@@ -111,13 +111,23 @@ export async function deleteChapter(chapterId: string): Promise<BookApiResult<tr
 }
 
 export async function reorderChapters(bookId: string, orderedIds: string[]): Promise<BookApiResult<true>> {
-  for (let i = 0; i < orderedIds.length; i += 1) {
-    const id = orderedIds[i]
-    if (!id) continue
-    const { error } = await supabase.from('chapters').update({ position: i + 1 }).eq('id', id).eq('book_id', bookId)
-    if (error) return fail('unavailable', 'We could not reorder chapters.', error)
-  }
+  const { error } = await supabase.rpc('reorder_book_chapters', {
+    p_book_id: bookId,
+    p_chapter_ids: orderedIds,
+  })
+  if (error) return fail('unavailable', error.message || 'We could not reorder chapters.', error)
   return { ok: true, data: true }
+}
+
+export async function unpublishChapter(chapterId: string): Promise<BookApiResult<ChapterDetail>> {
+  const { data, error } = await supabase
+    .from('chapters')
+    .update({ status: 'draft', published_at: null })
+    .eq('id', chapterId)
+    .select(CHAPTER_COLUMNS)
+    .single()
+  if (error || !data) return fail('unavailable', 'We could not update this chapter.', error ?? undefined)
+  return { ok: true, data: parseChapter(data as Record<string, unknown>) }
 }
 
 export async function publishChapter(chapterId: string): Promise<BookApiResult<ChapterDetail>> {

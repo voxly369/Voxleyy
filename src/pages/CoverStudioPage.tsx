@@ -17,17 +17,21 @@ import {
   type CoverLayoutPresetId,
 } from '../lib/books/coverStudioLayout.ts'
 import { averageImageRgb, parseHexColor, suggestCoverTextColor } from '../lib/books/coverStudioContrast.ts'
+import { COVER_EXPORT_HEIGHT, COVER_EXPORT_WIDTH, renderBookCoverPng } from '../lib/books/coverExport.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
+import { useToast } from '../lib/shell/useToast.ts'
 
 export default function CoverStudioPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
   const { profile } = useAuth()
+  const { showToast } = useToast()
   const [book, setBook] = useState<BookRecord | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [layoutId, setLayoutId] = useState<CoverLayoutPresetId>('classic_center')
   const [textColor, setTextColor] = useState<'#ffffff' | '#1a100a'>('#ffffff')
   const [uploadBusy, setUploadBusy] = useState(false)
+  const [exportBusy, setExportBusy] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
   useDocumentTitle(book?.title ? `Cover · ${book.title}` : 'Cover studio')
@@ -154,6 +158,37 @@ export default function CoverStudioPage() {
           <Link to={`/books/${book.id}`} className={`text-sm text-coral ${focusRing}`}>
             Preview book page
           </Link>
+          <button
+            type="button"
+            disabled={exportBusy || uploadBusy}
+            data-testid="cover-export-png"
+            onClick={() => {
+              setExportBusy(true)
+              void renderBookCoverPng({
+                book,
+                authorName,
+                coverUrl: book.coverUrl,
+                layoutId,
+                textColor,
+                fallbackRgb: fallbackBg,
+              })
+                .then(async (blob) => {
+                  const file = new File([blob], `book-${book.id}-cover.png`, { type: 'image/png' })
+                  if (!profile?.id) return
+                  const uploaded = await uploadCreationCover(profile.id, book.id, file, file.name)
+                  if (!uploaded.ok) showToast(uploaded.error.message)
+                  else {
+                    setBook({ ...book, coverUrl: uploaded.data })
+                    showToast('Cover exported and uploaded')
+                  }
+                })
+                .catch(() => showToast('Could not export cover.'))
+                .finally(() => setExportBusy(false))
+            }}
+            className={`min-h-11 self-start rounded-xl bg-coral px-4 text-sm font-semibold text-[#1a100a] disabled:opacity-50 ${focusRing}`}
+          >
+            Export {COVER_EXPORT_WIDTH}×{COVER_EXPORT_HEIGHT} PNG
+          </button>
           <button
             type="button"
             disabled={uploadBusy}

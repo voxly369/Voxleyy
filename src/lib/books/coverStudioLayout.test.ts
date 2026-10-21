@@ -7,6 +7,10 @@ describe('coverStudioLayout', () => {
     expect(coverLayoutPreset('missing' as never).id).toBe('classic_center')
   })
 
+  it('includes at least eight presets', () => {
+    expect(COVER_LAYOUT_PRESETS.length).toBeGreaterThanOrEqual(8)
+  })
+
   it('maps box coordinates to CSS', () => {
     const box = COVER_LAYOUT_PRESETS[0]!.boxes[0]!
     const style = coverBoxStyle(box)

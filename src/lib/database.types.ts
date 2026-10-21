@@ -930,7 +930,8 @@ export type Database = {
         Row: {
           id: string
           user_id: string
-          creation_id: string
+          creation_id: string | null
+          chapter_id: string | null
           start_paragraph: number
           start_char: number
           end_paragraph: number
@@ -944,7 +945,8 @@ export type Database = {
         Insert: {
           id?: string
           user_id: string
-          creation_id: string
+          creation_id?: string | null
+          chapter_id?: string | null
           start_paragraph: number
           start_char: number
           end_paragraph: number
@@ -1229,6 +1231,7 @@ export type Database = {
           completed: boolean
           first_read_at: string
           updated_at: string
+          resume_chapter_id?: string | null
         }
         Insert: Record<string, never>
         Update: Record<string, never>
@@ -1245,6 +1248,8 @@ export type Database = {
           id: string
           user_id: string
           creation_id: string
+          chapter_id: string | null
+          chapter_title: string | null
           start_paragraph: number
           start_char: number
           end_paragraph: number
@@ -1428,6 +1433,7 @@ export type Database = {
       payments_enabled: { Args: Record<string, never>; Returns: boolean }
       user_has_book_entitlement: { Args: { p_user: string; p_book: string }; Returns: boolean }
       can_read_book_chapter: { Args: { p_chapter_id: string }; Returns: boolean }
+      reorder_book_chapters: { Args: { p_book_id: string; p_chapter_ids: string[] }; Returns: undefined }
     }
     Enums: {
       book_entitlement_kind: "free" | "purchase" | "rental" | "subscription" | "author"

@@ -4,6 +4,8 @@ import type { HighlightColour } from '../reader/highlightSchema.ts'
 export type LibraryHighlightRow = {
   id: string
   creationId: string
+  chapterId: string | null
+  chapterTitle: string | null
   quote: string
   colour: HighlightColour
   note: string | null
@@ -62,6 +64,8 @@ export async function listLibraryHighlights(input: {
   const mapped: LibraryHighlightRow[] = page.map((row) => ({
     id: String(row.id),
     creationId: String(row.creation_id),
+    chapterId: row.chapter_id ? String(row.chapter_id) : null,
+    chapterTitle: row.chapter_title ? String(row.chapter_title) : null,
     quote: String(row.quote),
     colour: row.colour as HighlightColour,
     note: row.note ? String(row.note) : null,

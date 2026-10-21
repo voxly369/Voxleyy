@@ -38,5 +38,6 @@ export function mapLibraryItemRow(row: Record<string, unknown>): LibraryItem | n
     position: typeof row.position === 'number' ? row.position : undefined,
     completed: row.completed === true,
     updatedAt: text(row.updated_at) ?? undefined,
+    resumeChapterId: text(row.resume_chapter_id),
   }
 }

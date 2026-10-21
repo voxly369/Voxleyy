@@ -14,6 +14,18 @@ type BookRow = Record<string, unknown>
 type ChapterRow = Record<string, unknown>
 type EntitlementRow = { id: string; user_id: string; book_id: string; kind: string; starts_at: string; expires_at: null }
 
+function eqFilterValue(url: string, column: string): string | null {
+  const query = url.split('?')[1]
+  if (!query) return null
+  const prefix = `${column}=eq.`
+  for (const part of query.split('&')) {
+    if (part.startsWith(prefix)) {
+      return decodeURIComponent(part.slice(prefix.length)).replace(/^"|"$/g, '')
+    }
+  }
+  return null
+}
+
 const books = new Map<string, BookRow>()
 const chapters = new Map<string, ChapterRow>()
 const entitlements: EntitlementRow[] = []
@@ -129,6 +141,37 @@ function seedDefaultBooks() {
     updated_at: '2026-01-01T00:00:00Z',
   })
 
+  const authorChapterA = 'cc000000-0000-0000-0000-000000000099'
+  const authorChapterB = 'cc000000-0000-0000-0000-000000000098'
+  chapters.set(authorChapterA, {
+    id: authorChapterA,
+    book_id: authorBookId,
+    position: 1,
+    title: 'Draft chapter A',
+    body_text: 'Alpha body',
+    body_json: { version: 1, format: 'rich', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Alpha body' }] }] },
+    status: 'draft',
+    is_sample: false,
+    is_removed: false,
+    word_count: 2,
+    published_at: null,
+    updated_at: '2026-02-01T00:00:00Z',
+  })
+  chapters.set(authorChapterB, {
+    id: authorChapterB,
+    book_id: authorBookId,
+    position: 2,
+    title: 'Draft chapter B',
+    body_text: 'Beta body',
+    body_json: { version: 1, format: 'rich', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Beta body' }] }] },
+    status: 'draft',
+    is_sample: false,
+    is_removed: false,
+    word_count: 2,
+    published_at: null,
+    updated_at: '2026-02-01T00:00:00Z',
+  })
+
   chapters.set(E2E_SAMPLE_CHAPTER_ID, {
     id: E2E_SAMPLE_CHAPTER_ID,
     book_id: E2E_PAID_BOOK_ID,
@@ -206,8 +249,7 @@ export function bookBuilderMockHandleRest(url: string, method: string, postData:
   }
 
   if (url.includes('/rest/v1/book_chapters_toc')) {
-    const bookMatch = url.match(/book_id=eq\.([^&]+)/)
-    const bookId = bookMatch?.[1]
+    const bookId = eqFilterValue(url, 'book_id')
     const rows = [...chapters.values()]
       .filter((ch) => !bookId || ch.book_id === bookId)
       .filter((ch) => !ch.is_removed)
@@ -224,27 +266,54 @@ export function bookBuilderMockHandleRest(url: string, method: string, postData:
     return rows
   }
 
+  if (url.includes('/rest/v1/rpc/reorder_book_chapters')) {
+    const body = postData as { p_book_id?: string; p_chapter_ids?: string[] } | null
+    const bookId = body?.p_book_id
+    const ids = body?.p_chapter_ids ?? []
+    ids.forEach((cid, index) => {
+      const row = chapters.get(cid)
+      if (row) chapters.set(cid, { ...row, position: index + 1 })
+    })
+    if (bookId) {
+      void bookId
+    }
+    return true
+  }
+
   if (url.includes('/rest/v1/chapters')) {
     if (method === 'GET') {
+      const authorBookId = 'bb000000-0000-0000-0000-000000000099'
+      if (url.includes(authorBookId)) {
+        return [...chapters.values()].filter((c) => c.book_id === authorBookId && !c.is_removed)
+      }
       const idMatch = url.match(/id=eq\.([^&]+)/)
       if (idMatch?.[1]) {
         const row = chapters.get(idMatch[1])
         return row ? [row] : []
       }
-      const bookMatch = url.match(/book_id=eq\.([^&]+)/)
-      if (bookMatch?.[1]) {
-        return [...chapters.values()].filter((c) => c.book_id === bookMatch[1] && !c.is_removed)
+      const bookId = eqFilterValue(url, 'book_id')
+      if (bookId) {
+        return [...chapters.values()].filter((c) => String(c.book_id) === bookId && !c.is_removed)
       }
       return [...chapters.values()]
     }
     if (method === 'POST') {
       const rows = Array.isArray(postData) ? postData : [postData]
+      const created: ChapterRow[] = []
       for (const row of rows) {
         if (!row || typeof row !== 'object') continue
         const id = String((row as ChapterRow).id ?? `cc000000-0000-0000-0000-${String(chapters.size + 1).padStart(12, '0')}`)
-        chapters.set(id, { ...(row as ChapterRow), id, is_removed: false, updated_at: new Date().toISOString() })
+        const saved = {
+          ...(row as ChapterRow),
+          id,
+          is_removed: false,
+          word_count: (row as ChapterRow).word_count ?? 0,
+          updated_at: new Date().toISOString(),
+        }
+        chapters.set(id, saved)
+        created.push(saved)
       }
-      return rows
+      return created
     }
     if (method === 'PATCH' || method === 'PUT') {
       const idMatch = url.match(/id=eq\.([^&]+)/)

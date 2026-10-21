@@ -32,9 +32,9 @@ describe('ChapterManager', () => {
           chapters={sample}
           onCreate={onCreate}
           onDelete={vi.fn()}
-          onMove={vi.fn()}
+          onReorder={vi.fn()}
           onToggleSample={vi.fn()}
-          onPublish={vi.fn()}
+          onTogglePublish={vi.fn()}
         />
       </MemoryRouter>,
     )

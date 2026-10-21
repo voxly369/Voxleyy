@@ -9,6 +9,7 @@ import { deleteCreation, listMyDraftsPage } from '../../lib/creations/api.ts'
 import type { DraftListRow } from '../../lib/creations/types.ts'
 import type { DraftsCursor } from '../../lib/creations/draftsCursor.ts'
 import { CREATION_TYPE_CARDS } from '../../lib/creations/creationTypes.ts'
+import { DraftsBooksGroup } from './DraftsBooksGroup.tsx'
 
 function sectionRows(rows: DraftListRow[]) {
   const drafts = rows.filter((r) => !r.removed && r.status === 'draft')
@@ -109,7 +110,8 @@ export function ProfileDraftsPanel() {
 
   return (
     <div className="flex flex-col gap-8">
-      <DraftSection title="Drafts" rows={sections.drafts} onDelete={setPendingDelete} />
+      <DraftsBooksGroup rows={rows} onDelete={setPendingDelete} />
+      <DraftSection title="Drafts" rows={sections.drafts.filter((r) => r.type !== 'book')} onDelete={setPendingDelete} />
       <DraftSection title="Journal and private entries" rows={sections.journalPrivate} onDelete={setPendingDelete} />
       <DraftSection title="Unlisted" rows={sections.unlisted} onDelete={setPendingDelete} />
       {nextCursor ? (

@@ -21,4 +21,30 @@ test.describe('Book builder accessibility', () => {
     await page.goto('/library?tab=books')
     await expect(page.getByRole('tab', { name: 'Books' })).toHaveAttribute('aria-selected', 'true')
   })
+
+  for (const width of [375, 1280] as const) {
+    test(`book builder surfaces axe at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto('/books/bb000000-0000-0000-0000-000000000099/builder')
+      await expect(page.getByRole('heading', { name: 'Book builder' })).toBeVisible()
+      const results = await new AxeBuilder({ page }).disableRules(['color-contrast']).analyze()
+      expect(results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual([])
+    })
+
+    test(`cover studio axe at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto('/books/bb000000-0000-0000-0000-000000000099/cover')
+      await expect(page.getByRole('heading', { name: 'Cover studio' })).toBeVisible()
+      const results = await new AxeBuilder({ page }).disableRules(['color-contrast']).analyze()
+      expect(results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual([])
+    })
+
+    test(`book preview axe at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto('/books/bb000000-0000-0000-0000-000000000099/preview')
+      await expect(page.getByTestId('book-preview-page')).toBeVisible()
+      const results = await new AxeBuilder({ page }).disableRules(['color-contrast']).analyze()
+      expect(results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual([])
+    })
+  }
 })

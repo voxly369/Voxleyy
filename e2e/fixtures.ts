@@ -197,6 +197,15 @@ function publishedWorksForAuthor(authorId: string, username: string, display_nam
 function draftRows() {
   return [
     {
+      id: 'bb000000-0000-0000-0000-000000000099',
+      type: 'book',
+      title: 'Reader draft book',
+      status: 'draft',
+      audience: 'private',
+      updated_at: '2026-02-02T00:00:00Z',
+      is_removed: false,
+    },
+    {
       id: DRAFT_ID,
       type: 'poem',
       title: 'Draft poem',

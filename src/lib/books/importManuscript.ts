@@ -1,5 +1,6 @@
 import { detectChapterBreaks, mergeShortChapters } from './chapterBreakDetection.ts'
 import { plainTextToChapterJson } from './booksApi.ts'
+import { enforceManuscriptLimits, sanitizeManuscriptText } from './manuscriptSanitize.ts'
 
 export type ImportedChapter = {
   title: string
@@ -20,6 +21,7 @@ export async function importPdfFile(file: File): Promise<ImportedChapter[]> {
   const data = new Uint8Array(await file.arrayBuffer())
   const doc = await pdfjs.getDocument({ data }).promise
   const parts: string[] = []
+  if (doc.numPages === 0) throw new Error('No text found in this file.')
   for (let page = 1; page <= doc.numPages; page += 1) {
     const pageDoc = await doc.getPage(page)
     const content = await pageDoc.getTextContent()
@@ -33,7 +35,10 @@ export async function importPdfFile(file: File): Promise<ImportedChapter[]> {
 }
 
 export function chaptersFromPlainText(text: string): ImportedChapter[] {
-  const detected = mergeShortChapters(detectChapterBreaks(text))
+  const clean = sanitizeManuscriptText(text)
+  const detected = mergeShortChapters(detectChapterBreaks(clean))
+  const limitError = enforceManuscriptLimits(clean, detected.length)
+  if (limitError) throw new Error(limitError)
   return detected.map((chapter, index) => ({
     title: chapter.title.trim() || `Chapter ${index + 1}`,
     bodyText: chapter.body,

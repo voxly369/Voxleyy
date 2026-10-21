@@ -30,7 +30,11 @@ export function LibraryItemCard({
   }
 
   const href =
-    item.type && isReaderEligibleType(item.type) ? `/read/${item.creationId}` : `/c/${item.creationId}`
+    item.type === 'book' && item.resumeChapterId
+      ? `/read/book/${item.creationId}/${item.resumeChapterId}`
+      : item.type && isReaderEligibleType(item.type)
+        ? `/read/${item.creationId}`
+        : `/c/${item.creationId}`
   const title = item.title?.trim() || item.caption?.trim() || 'Untitled'
 
   return (

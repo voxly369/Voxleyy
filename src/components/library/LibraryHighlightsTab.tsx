@@ -108,12 +108,17 @@ export function LibraryHighlightsTab({ onOpenHighlight }: LibraryHighlightsTabPr
               {row.note ? <p className="mt-2 text-sm text-muted line-clamp-2">{row.note}</p> : null}
               <p className="mt-2 text-sm text-muted">
                 {row.title?.trim() || 'Untitled'}
+                {row.chapterTitle ? ` · ${row.chapterTitle}` : ''}
                 {row.authorUsername ? ` · @${row.authorUsername}` : ''}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {row.isAvailable ? (
                   <Link
-                    to={`/read/${row.creationId}`}
+                    to={
+                      row.chapterId
+                        ? `/read/book/${row.creationId}/${row.chapterId}`
+                        : `/read/${row.creationId}`
+                    }
                     className={`inline-flex min-h-11 items-center text-sm font-medium text-coral ${focusRing}`}
                     onClick={() => onOpenHighlight?.(row)}
                   >
