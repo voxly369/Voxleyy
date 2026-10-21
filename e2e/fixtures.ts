@@ -6,7 +6,7 @@ import {
   seedLibrarySave,
   seedReadingProgress,
 } from './libraryReadingMocks.ts'
-import { bookBuilderMockHandleRest, resetBookBuilderMocks } from './bookBuilderMocks.ts'
+import { bookBuilderMockHandleRest, resetBookBuilderMocks, softDeleteBookInMock } from './bookBuilderMocks.ts'
 import { Buffer } from 'node:buffer'
 
 export const PROJECT_REF = 'ktgxdqplvggeyrnuqljx'
@@ -194,7 +194,26 @@ function publishedWorksForAuthor(authorId: string, username: string, display_nam
   }))
 }
 
+let authorDraftBookRemoved = false
+
+export function resetAuthorDraftBookRemoved() {
+  authorDraftBookRemoved = false
+}
+
 function draftRows() {
+  if (authorDraftBookRemoved) {
+    return [
+      {
+        id: DRAFT_ID,
+        type: 'poem',
+        title: 'Draft poem',
+        status: 'draft',
+        audience: 'private',
+        updated_at: '2026-02-01T00:00:00Z',
+        is_removed: false,
+      },
+    ]
+  }
   return [
     {
       id: 'bb000000-0000-0000-0000-000000000099',
@@ -360,6 +379,17 @@ function handleRest(url: string, method: string, postData: unknown): unknown[] {
 
   if (url.includes('/rest/v1/notifications') || url.includes('/rest/v1/mentions')) return []
 
+  if (url.includes('/rest/v1/creations') && method === 'DELETE') {
+    const idMatch = url.match(/id=eq\.([^&]+)/)
+    const id = idMatch?.[1]
+    if (id === 'bb000000-0000-0000-0000-000000000099') {
+      softDeleteBookInMock(id)
+      authorDraftBookRemoved = true
+      return [{ id }]
+    }
+    return []
+  }
+
   if (url.includes('/rest/v1/creations') && method === 'GET') {
     const idMatch = url.match(/id=eq\.([^&]+)/)
     const id = idMatch?.[1]
@@ -455,4 +485,18 @@ export async function seedSignedInSession(page: Page) {
   }, { key: AUTH_STORAGE_KEY, value: session })
 }
 
-export { SAMPLE_CREATION_ID, DRAFT_ID, resetLibraryReadingMocks, resetBookBuilderMocks, seedLibrarySave, seedReadingProgress }
+export {
+  SAMPLE_CREATION_ID,
+  DRAFT_ID,
+  resetLibraryReadingMocks,
+  resetBookBuilderMocks,
+  seedLibrarySave,
+  seedReadingProgress,
+}
+export {
+  seedBookReadingProgress,
+  seedBookEntitlement,
+  seedRentalEntitlement,
+  E2E_LOCKED_CHAPTER_ID,
+} from './bookBuilderMocks.ts'
+export { seedChapterHighlight } from './libraryReadingMocks.ts'

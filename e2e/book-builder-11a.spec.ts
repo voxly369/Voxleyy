@@ -3,7 +3,6 @@ import {
   installSupabaseMocks,
   seedSignedInSession,
   resetBookBuilderMocks,
-  READER,
 } from './fixtures.ts'
 import {
   E2E_FREE_BOOK_ID,

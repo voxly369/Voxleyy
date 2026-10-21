@@ -1,6 +1,7 @@
 import { detectChapterBreaks, mergeShortChapters } from './chapterBreakDetection.ts'
 import { plainTextToChapterJson } from './booksApi.ts'
 import { enforceManuscriptLimits, sanitizeManuscriptText } from './manuscriptSanitize.ts'
+import { extractPlainTextFromPdfDocument, mapPdfLoadError } from './pdfImport.ts'
 
 export type ImportedChapter = {
   title: string
@@ -19,19 +20,13 @@ export async function importPdfFile(file: File): Promise<ImportedChapter[]> {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
   pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/legacy/build/pdf.worker.mjs', import.meta.url).toString()
   const data = new Uint8Array(await file.arrayBuffer())
-  const doc = await pdfjs.getDocument({ data }).promise
-  const parts: string[] = []
-  if (doc.numPages === 0) throw new Error('No text found in this file.')
-  for (let page = 1; page <= doc.numPages; page += 1) {
-    const pageDoc = await doc.getPage(page)
-    const content = await pageDoc.getTextContent()
-    const line = content.items
-      .map((item) => ('str' in item ? item.str : ''))
-      .join(' ')
-      .trim()
-    if (line) parts.push(line)
+  try {
+    const doc = await pdfjs.getDocument({ data }).promise
+    const plain = await extractPlainTextFromPdfDocument(doc as import('./pdfImport.ts').PdfDocumentLike)
+    return chaptersFromPlainText(plain)
+  } catch (error) {
+    throw mapPdfLoadError(error)
   }
-  return chaptersFromPlainText(parts.join('\n\n'))
 }
 
 export function chaptersFromPlainText(text: string): ImportedChapter[] {

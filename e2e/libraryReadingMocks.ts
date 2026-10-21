@@ -1,3 +1,5 @@
+import { e2eBookContinueReadingRows } from './bookBuilderMocks.ts'
+
 const READER_ID = '11111111-1111-1111-1111-111111111111'
 const OTHER_ID = '22222222-2222-2222-2222-222222222222'
 const OTHER_USERNAME = 'writertwo'
@@ -22,7 +24,8 @@ export type E2eCollectionItemRow = { collection_id: string; creation_id: string;
 export type E2eHighlightRow = {
   id: string
   user_id: string
-  creation_id: string
+  creation_id: string | null
+  chapter_id: string | null
   start_paragraph: number
   start_char: number
   end_paragraph: number
@@ -37,7 +40,8 @@ export type E2eHighlightRow = {
 export type E2eBookmarkRow = {
   id: string
   user_id: string
-  creation_id: string
+  creation_id: string | null
+  chapter_id: string | null
   paragraph: number
   paragraph_offset: number
   label: string | null
@@ -155,7 +159,7 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
   }
 
   if (url.includes('/rest/v1/library_continue_reading')) {
-    return continueRows(READER_ID).map((row) => ({
+    const posts = continueRows(READER_ID).map((row) => ({
       ...libraryItemFields(row.creation_id),
       user_id: row.user_id,
       percent: row.percent,
@@ -163,7 +167,11 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
       completed: row.completed,
       first_read_at: row.first_read_at,
       updated_at: row.updated_at,
+      resume_chapter_id: null,
     }))
+    return [...posts, ...e2eBookContinueReadingRows()].sort(
+      (a, b) => new Date(String(b.updated_at)).getTime() - new Date(String(a.updated_at)).getTime(),
+    )
   }
 
   if (url.includes('/rest/v1/library_reading_history')) {
@@ -245,10 +253,15 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
   if (url.includes('/rest/v1/reader_highlights')) {
     if (method === 'GET') {
       const creationMatch = url.match(/creation_id=eq\.([^&]+)/)
+      const chapterMatch = url.match(/chapter_id=eq\.([^&]+)/)
       const creationId = creationMatch?.[1]
-      return highlightRows.filter(
-        (row) => row.user_id === READER_ID && (!creationId || row.creation_id === creationId),
-      )
+      const chapterId = chapterMatch?.[1]
+      return highlightRows.filter((row) => {
+        if (row.user_id !== READER_ID) return false
+        if (chapterId) return row.chapter_id === chapterId
+        if (creationId) return row.creation_id === creationId
+        return true
+      })
     }
     if (method === 'POST') {
       const record = (Array.isArray(postData) ? postData[0] : postData) as Record<string, unknown>
@@ -257,7 +270,8 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
       highlightRows.push({
         id,
         user_id: String(record.user_id ?? READER_ID),
-        creation_id: String(record.creation_id ?? DEFAULT_CREATION_ID),
+        creation_id: record.chapter_id ? null : String(record.creation_id ?? DEFAULT_CREATION_ID),
+        chapter_id: record.chapter_id ? String(record.chapter_id) : null,
         start_paragraph: Number(record.start_paragraph ?? 0),
         start_char: Number(record.start_char ?? 0),
         end_paragraph: Number(record.end_paragraph ?? 0),
@@ -297,10 +311,15 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
   if (url.includes('/rest/v1/reader_bookmarks')) {
     if (method === 'GET') {
       const creationMatch = url.match(/creation_id=eq\.([^&]+)/)
+      const chapterMatch = url.match(/chapter_id=eq\.([^&]+)/)
       const creationId = creationMatch?.[1]
-      return bookmarkRows.filter(
-        (row) => row.user_id === READER_ID && (!creationId || row.creation_id === creationId),
-      )
+      const chapterId = chapterMatch?.[1]
+      return bookmarkRows.filter((row) => {
+        if (row.user_id !== READER_ID) return false
+        if (chapterId) return row.chapter_id === chapterId
+        if (creationId) return row.creation_id === creationId
+        return true
+      })
     }
     if (method === 'POST') {
       const record = (Array.isArray(postData) ? postData[0] : postData) as Record<string, unknown>
@@ -309,7 +328,8 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
       bookmarkRows.push({
         id,
         user_id: String(record.user_id ?? READER_ID),
-        creation_id: String(record.creation_id ?? DEFAULT_CREATION_ID),
+        creation_id: record.chapter_id ? null : String(record.creation_id ?? DEFAULT_CREATION_ID),
+        chapter_id: record.chapter_id ? String(record.chapter_id) : null,
         paragraph: Number(record.paragraph ?? 0),
         paragraph_offset: Number(record.paragraph_offset ?? 0),
         label: record.label == null ? null : String(record.label),
@@ -353,8 +373,25 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
           (row.note ?? '').toLowerCase().includes(needle),
       )
     }
-    return rows
-      .map((row) => ({
+    return rows.map((row) => {
+      if (row.chapter_id) {
+        return {
+          ...row,
+          is_available: true,
+          type: 'book',
+          title: 'Free smoke book',
+          chapter_title: 'First chapter',
+          caption: null,
+          cover_url: 'https://example.com/free-cover.jpg',
+          published_at: '2026-01-02T00:00:00Z',
+          author_id: OTHER_ID,
+          author_username: OTHER_USERNAME,
+          author_display_name: OTHER_DISPLAY,
+          author_avatar_url: null,
+          author_verified: false,
+        }
+      }
+      return {
         ...row,
         is_available: true,
         type: 'story',
@@ -367,7 +404,8 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
         author_display_name: OTHER_DISPLAY,
         author_avatar_url: null,
         author_verified: false,
-      }))
+      }
+    })
   }
 
   return undefined
@@ -391,6 +429,7 @@ export function seedReaderHighlight(input: {
     id: mockUuid(1000 + nextHighlightId++),
     user_id: READER_ID,
     creation_id: input.creationId ?? DEFAULT_CREATION_ID,
+    chapter_id: null,
     start_paragraph: input.startParagraph ?? 0,
     start_char: 0,
     end_paragraph: input.startParagraph ?? 0,
@@ -403,12 +442,32 @@ export function seedReaderHighlight(input: {
   })
 }
 
+export function seedChapterHighlight(input: { chapterId: string; quote?: string; bookId?: string }) {
+  const now = new Date().toISOString()
+  highlightRows.push({
+    id: mockUuid(1000 + nextHighlightId++),
+    user_id: READER_ID,
+    creation_id: input.bookId ?? 'bb000000-0000-0000-0000-000000000002',
+    chapter_id: input.chapterId,
+    start_paragraph: 0,
+    start_char: 0,
+    end_paragraph: 0,
+    end_char: Math.min(100, (input.quote ?? 'Chapter highlight').length),
+    quote: input.quote ?? 'Chapter highlight',
+    colour: 'yellow',
+    note: null,
+    created_at: now,
+    updated_at: now,
+  })
+}
+
 export function seedReaderBookmark(input: { creationId?: string; paragraph?: number }) {
   const now = new Date().toISOString()
   bookmarkRows.push({
     id: mockUuid(2000 + nextBookmarkId++),
     user_id: READER_ID,
     creation_id: input.creationId ?? DEFAULT_CREATION_ID,
+    chapter_id: null,
     paragraph: input.paragraph ?? 0,
     paragraph_offset: 0,
     label: null,
@@ -421,8 +480,9 @@ export function seedReadingProgress(input: {
   percent: number
   position?: number
   positionOffset?: number
+  updatedAt?: string
 }) {
-  const now = new Date().toISOString()
+  const now = input.updatedAt ?? new Date().toISOString()
   progressRows.push({
     user_id: READER_ID,
     creation_id: input.creationId ?? DEFAULT_CREATION_ID,

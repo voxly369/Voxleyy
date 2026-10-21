@@ -50,9 +50,9 @@ export async function createChapterBookmark(input: {
       label: null,
     })
     .select('*')
-    .single()
   if (error) return { ok: false, message: error.message || 'Could not save bookmark.' }
-  const mapped = data ? mapRow(data as Record<string, unknown>) : null
+  const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null
+  const mapped = row ? mapRow(row) : null
   if (!mapped) return { ok: false, message: 'Could not save bookmark.' }
   return { ok: true, bookmark: mapped }
 }
