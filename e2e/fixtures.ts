@@ -1,5 +1,11 @@
 import type { Page, Route } from '@playwright/test'
 import { audienceMockHandleRest } from './publishAudienceState.ts'
+import {
+  libraryReadingMockHandleRest,
+  resetLibraryReadingMocks,
+  seedLibrarySave,
+  seedReadingProgress,
+} from './libraryReadingMocks.ts'
 import { Buffer } from 'node:buffer'
 
 export const PROJECT_REF = 'ktgxdqplvggeyrnuqljx'
@@ -277,6 +283,8 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
 function handleRest(url: string, method: string, postData: unknown): unknown[] {
   const audienceResult = audienceMockHandleRest(url, method, postData)
   if (audienceResult !== undefined) return audienceResult
+  const libraryResult = libraryReadingMockHandleRest(url, method, postData)
+  if (libraryResult !== undefined) return libraryResult
 
   const posts = e2eFeedOverride ?? feedPosts()
 
@@ -360,16 +368,6 @@ function handleRest(url: string, method: string, postData: unknown): unknown[] {
     return posts
   }
 
-  if (
-    url.includes('/rest/v1/post_reading_progress') ||
-    url.includes('/rest/v1/reader_preferences') ||
-    url.includes('/rest/v1/library_') ||
-    url.includes('/rest/v1/reader_collections') ||
-    url.includes('/rest/v1/reader_collection_items')
-  ) {
-    return []
-  }
-
   if (url.includes('/rest/v1/creation_tags')) {
     if (url.includes('tag=eq.poetry')) {
       return posts.slice(0, 3).map((p) => ({ creation_id: p.id, tag: 'poetry' }))
@@ -445,4 +443,4 @@ export async function seedSignedInSession(page: Page) {
   }, { key: AUTH_STORAGE_KEY, value: session })
 }
 
-export { SAMPLE_CREATION_ID, DRAFT_ID }
+export { SAMPLE_CREATION_ID, DRAFT_ID, resetLibraryReadingMocks, seedLibrarySave, seedReadingProgress }

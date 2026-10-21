@@ -14,6 +14,7 @@ type AddToCollectionModalProps = {
 
 export function AddToCollectionModal({ open, creationId, onClose }: AddToCollectionModalProps) {
   const nameId = useId()
+  const titleId = useId()
   const [collections, setCollections] = useState<ReaderCollection[]>([])
   const [newName, setNewName] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -60,9 +61,20 @@ export function AddToCollectionModal({ open, creationId, onClose }: AddToCollect
   }
 
   return (
-    <Modal open={open} onClose={onClose} className="w-full max-w-md rounded-2xl border border-line bg-surface p-4 shadow-lg">
-      <h2 className="font-serif text-xl text-ink">Add to collection</h2>
-      {error ? <p className="mt-2 text-sm text-coral">{error}</p> : null}
+    <Modal
+      open={open}
+      onClose={onClose}
+      labelledBy={titleId}
+      className="w-full max-w-md rounded-2xl border border-line bg-surface p-4 shadow-lg"
+    >
+      <h2 id={titleId} className="font-serif text-xl text-ink">
+        Add to collection
+      </h2>
+      {error ? (
+        <p className="mt-2 text-sm font-medium text-ink" role="alert">
+          {error}
+        </p>
+      ) : null}
       <ul className="mt-4 flex max-h-60 flex-col gap-2 overflow-y-auto">
         {collections.map((collection) => (
           <li key={collection.id}>
@@ -92,7 +104,7 @@ export function AddToCollectionModal({ open, creationId, onClose }: AddToCollect
           type="button"
           disabled={busy}
           onClick={() => void onCreateAndAdd()}
-          className={`min-h-11 rounded-xl bg-coral px-4 font-semibold text-white ${focusRing}`}
+          className={`min-h-11 rounded-xl bg-coral px-4 font-semibold text-[#1a100a] ${focusRing}`}
         >
           Create and add
         </button>

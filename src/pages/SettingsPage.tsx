@@ -100,6 +100,15 @@ export default function SettingsPage() {
         </div>
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">About</h2>
+        <Link
+          to="/licences"
+          className={`mt-4 inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+        >
+          Font licences
+        </Link>
+      </section>
+      <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 id="theme-label" className="text-xs font-semibold uppercase tracking-wide text-muted">
           Dark or light mode
         </h2>

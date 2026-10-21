@@ -11,7 +11,12 @@ type ReaderSettingsSheetProps = {
 
 export function ReaderSettingsSheet({ open, prefs, onChange, onClose }: ReaderSettingsSheetProps) {
   return (
-    <Modal open={open} onClose={onClose} labelledBy="reader-settings-title" className="w-full max-w-md rounded-t-2xl border border-line bg-surface p-4 sm:rounded-2xl">
+    <Modal
+      open={open}
+      onClose={onClose}
+      labelledBy="reader-settings-title"
+      className="max-h-[min(85dvh,720px)] w-full max-w-md overflow-y-auto rounded-t-2xl border border-line bg-surface p-4 sm:rounded-2xl"
+    >
       <h2 id="reader-settings-title" className="font-serif text-xl text-ink">
         Reading settings
       </h2>
@@ -132,7 +137,7 @@ export function ReaderSettingsSheet({ open, prefs, onChange, onClose }: ReaderSe
           </label>
         </fieldset>
       </div>
-      <button type="button" onClick={onClose} className={`mt-4 min-h-11 w-full rounded-xl bg-coral font-semibold text-white ${focusRing}`}>
+      <button type="button" onClick={onClose} className={`mt-4 min-h-11 w-full rounded-xl bg-coral font-semibold text-[#1a100a] ${focusRing}`}>
         Done
       </button>
     </Modal>

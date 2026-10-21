@@ -36,6 +36,7 @@ const CheckEmailPage = lazy(() => import('../pages/auth/CheckEmailPage.tsx'))
 const AuthCallbackPage = lazy(() => import('../pages/auth/AuthCallbackPage.tsx'))
 const TermsPage = lazy(() => import('../pages/auth/TermsPage.tsx'))
 const PrivacyPage = lazy(() => import('../pages/auth/PrivacyPage.tsx'))
+const LicencesPage = lazy(() => import('../pages/LicencesPage.tsx'))
 
 function RootLayout() {
   return (
@@ -70,6 +71,7 @@ const router = createBrowserRouter(
             { path: '/auth/callback', element: <AuthCallbackPage /> },
             { path: '/terms', element: <TermsPage /> },
             { path: '/privacy', element: <PrivacyPage /> },
+            { path: '/licences', element: <LicencesPage /> },
           ],
         },
         {

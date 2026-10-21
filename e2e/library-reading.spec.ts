@@ -53,8 +53,8 @@ test.describe('Library and reader', () => {
     await page.goto(`/c/${SAMPLE_CREATION_ID}`)
     await page.getByRole('link', { name: 'Read' }).click()
     await expect(page).toHaveURL(new RegExp(`/read/${SAMPLE_CREATION_ID}`))
-    await expect(page.getByRole('button', { name: 'Aa' })).toBeVisible()
-    await page.getByRole('button', { name: 'Aa' }).click()
+    await expect(page.getByRole('button', { name: 'Reading settings' })).toBeVisible()
+    await page.getByRole('button', { name: 'Reading settings' }).click()
     await page.getByRole('radio', { name: 'Black' }).check()
     await expect
       .poll(async () => {
