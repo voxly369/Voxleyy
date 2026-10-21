@@ -46,5 +46,14 @@ test.describe('Book builder accessibility', () => {
       const results = await new AxeBuilder({ page }).disableRules(['color-contrast']).analyze()
       expect(results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual([])
     })
+
+    test(`manuscript import dialog axe at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto('/books/bb000000-0000-0000-0000-000000000099/builder')
+      await page.getByRole('button', { name: 'Import manuscript' }).click()
+      await expect(page.getByRole('heading', { name: 'Import manuscript' })).toBeVisible()
+      const results = await new AxeBuilder({ page }).disableRules(['color-contrast']).analyze()
+      expect(results.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')).toEqual([])
+    })
   }
 })

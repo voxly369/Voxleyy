@@ -455,4 +455,13 @@ export async function seedSignedInSession(page: Page) {
   }, { key: AUTH_STORAGE_KEY, value: session })
 }
 
-export { SAMPLE_CREATION_ID, DRAFT_ID, resetLibraryReadingMocks, resetBookBuilderMocks, seedLibrarySave, seedReadingProgress }
+export {
+  SAMPLE_CREATION_ID,
+  DRAFT_ID,
+  resetLibraryReadingMocks,
+  resetBookBuilderMocks,
+  seedLibrarySave,
+  seedReadingProgress,
+}
+export { seedBookReadingProgress, seedBookEntitlement, E2E_LOCKED_CHAPTER_ID } from './bookBuilderMocks.ts'
+export { seedChapterHighlight } from './libraryReadingMocks.ts'

@@ -9,10 +9,29 @@ export const E2E_FREE_BOOK_ID = 'bb000000-0000-0000-0000-000000000002'
 export const E2E_PAID_BOOK_ID = 'bb000000-0000-0000-0000-000000000001'
 export const E2E_FREE_CHAPTER_ID = 'cc000000-0000-0000-0000-000000000010'
 export const E2E_SAMPLE_CHAPTER_ID = 'cc000000-0000-0000-0000-000000000002'
+export const E2E_LOCKED_CHAPTER_ID = 'cc000000-0000-0000-0000-000000000003'
 
 type BookRow = Record<string, unknown>
 type ChapterRow = Record<string, unknown>
-type EntitlementRow = { id: string; user_id: string; book_id: string; kind: string; starts_at: string; expires_at: null }
+type EntitlementRow = {
+  id: string
+  user_id: string
+  book_id: string
+  kind: string
+  starts_at: string
+  expires_at: string | null
+}
+type BookReadingProgressRow = {
+  user_id: string
+  book_id: string
+  chapter_id: string
+  percent: number
+  position: number
+  position_offset: number
+  completed: boolean
+  first_read_at: string
+  updated_at: string
+}
 
 function eqFilterValue(url: string, column: string): string | null {
   const query = url.split('?')[1]
@@ -29,12 +48,34 @@ function eqFilterValue(url: string, column: string): string | null {
 const books = new Map<string, BookRow>()
 const chapters = new Map<string, ChapterRow>()
 const entitlements: EntitlementRow[] = []
+const bookReadingProgress: BookReadingProgressRow[] = []
 let paymentsEnabled = false
+
+function entitlementActive(row: EntitlementRow): boolean {
+  if (!row.expires_at) return true
+  return new Date(row.expires_at).getTime() > Date.now()
+}
+
+function readerHasBookAccess(bookId: string): boolean {
+  return entitlements.some((e) => e.user_id === READER_ID && e.book_id === bookId && entitlementActive(e))
+}
+
+function readerCanLoadChapterBody(chapterId: string): boolean {
+  const row = chapters.get(chapterId)
+  if (!row || row.is_removed) return false
+  const bookId = String(row.book_id)
+  const book = books.get(bookId)
+  if (book?.author_id === READER_ID) return true
+  if (row.is_sample) return true
+  if (book?.sale_model === 'free' && row.status === 'published') return true
+  return readerHasBookAccess(bookId)
+}
 
 function seedDefaultBooks() {
   books.clear()
   chapters.clear()
   entitlements.length = 0
+  bookReadingProgress.length = 0
   paymentsEnabled = false
 
   books.set(E2E_PAID_BOOK_ID, {
@@ -127,11 +168,11 @@ function seedDefaultBooks() {
     book_id: E2E_FREE_BOOK_ID,
     position: 1,
     title: 'First chapter',
-    body_text: 'Chapter body for reading. '.repeat(30),
+    body_text: 'Chapter body for reading. '.repeat(120),
     body_json: {
       version: 1,
       format: 'rich',
-      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Chapter body for reading. '.repeat(30) }] }],
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Chapter body for reading. '.repeat(120) }] }],
     },
     status: 'published',
     is_sample: false,
@@ -190,6 +231,101 @@ function seedDefaultBooks() {
     published_at: '2026-01-01T00:00:00Z',
     updated_at: '2026-01-01T00:00:00Z',
   })
+
+  chapters.set(E2E_LOCKED_CHAPTER_ID, {
+    id: E2E_LOCKED_CHAPTER_ID,
+    book_id: E2E_PAID_BOOK_ID,
+    position: 2,
+    title: 'Locked chapter',
+    body_text: 'Paid-only chapter body. '.repeat(40),
+    body_json: {
+      version: 1,
+      format: 'rich',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Paid-only chapter body. '.repeat(40) }] }],
+    },
+    status: 'published',
+    is_sample: false,
+    is_removed: false,
+    word_count: 80,
+    published_at: '2026-01-02T00:00:00Z',
+    updated_at: '2026-01-02T00:00:00Z',
+  })
+}
+
+export function seedBookEntitlement(input: {
+  bookId?: string
+  kind?: string
+  expiresAt?: string | null
+}) {
+  const bookId = input.bookId ?? E2E_PAID_BOOK_ID
+  if (entitlements.some((e) => e.user_id === READER_ID && e.book_id === bookId)) return
+  entitlements.push({
+    id: `ent-${bookId.slice(-4)}`,
+    user_id: READER_ID,
+    book_id: bookId,
+    kind: input.kind ?? 'purchase',
+    starts_at: new Date().toISOString(),
+    expires_at: input.expiresAt ?? null,
+  })
+}
+
+export function seedBookReadingProgress(input: {
+  bookId?: string
+  chapterId?: string
+  percent: number
+  position?: number
+  positionOffset?: number
+}) {
+  const bookId = input.bookId ?? E2E_FREE_BOOK_ID
+  const chapterId = input.chapterId ?? E2E_FREE_CHAPTER_ID
+  const now = new Date().toISOString()
+  const existing = bookReadingProgress.find((r) => r.user_id === READER_ID && r.book_id === bookId)
+  const row: BookReadingProgressRow = {
+    user_id: READER_ID,
+    book_id: bookId,
+    chapter_id: chapterId,
+    percent: input.percent,
+    position: input.position ?? 0,
+    position_offset: input.positionOffset ?? 0,
+    completed: false,
+    first_read_at: existing?.first_read_at ?? now,
+    updated_at: now,
+  }
+  if (existing) Object.assign(existing, row)
+  else bookReadingProgress.push(row)
+}
+
+export function e2eBookContinueReadingRows(): Record<string, unknown>[] {
+  return bookReadingProgress
+    .filter((r) => r.user_id === READER_ID && !r.completed && r.percent > 0)
+    .map((r) => {
+      const book = books.get(r.book_id)
+      const creation = (book?.creation ?? {}) as Record<string, unknown>
+      const chapter = chapters.get(r.chapter_id)
+      return {
+        user_id: r.user_id,
+        creation_id: r.book_id,
+        percent: r.percent,
+        position: r.position,
+        completed: r.completed,
+        first_read_at: r.first_read_at,
+        updated_at: r.updated_at,
+        is_available: true,
+        type: 'book',
+        title: creation.title ?? 'Book',
+        caption: null,
+        body_excerpt: chapter?.title ?? 'Chapter',
+        body_truncated: false,
+        cover_url: creation.cover_url ?? null,
+        published_at: creation.published_at ?? null,
+        author_id: creation.author_id,
+        author_username: OTHER_USERNAME,
+        author_display_name: OTHER_DISPLAY,
+        author_avatar_url: null,
+        author_verified: false,
+        resume_chapter_id: r.chapter_id,
+      }
+    })
 }
 
 seedDefaultBooks()
@@ -212,7 +348,7 @@ export function bookBuilderMockHandleRest(url: string, method: string, postData:
     const body = postData as { p_user?: string; p_book?: string } | null
     const bookId = body?.p_book
     const userId = body?.p_user ?? READER_ID
-    return entitlements.some((e) => e.user_id === userId && e.book_id === bookId)
+    return entitlements.some((e) => e.user_id === userId && e.book_id === bookId && entitlementActive(e))
   }
 
   if (url.includes('/rest/v1/books')) {
@@ -289,7 +425,9 @@ export function bookBuilderMockHandleRest(url: string, method: string, postData:
       const idMatch = url.match(/id=eq\.([^&]+)/)
       if (idMatch?.[1]) {
         const row = chapters.get(idMatch[1])
-        return row ? [row] : []
+        if (!row) return []
+        if (!readerCanLoadChapterBody(idMatch[1])) return []
+        return [row]
       }
       const bookId = eqFilterValue(url, 'book_id')
       if (bookId) {
@@ -353,8 +491,29 @@ export function bookBuilderMockHandleRest(url: string, method: string, postData:
   if (url.includes('/rest/v1/book_entitlements')) return entitlements.filter((e) => e.user_id === READER_ID)
 
   if (url.includes('/rest/v1/reading_progress')) {
-    if (method === 'GET') return []
-    if (method === 'POST') return []
+    if (method === 'GET') {
+      const bookMatch = url.match(/book_id=eq\.([^&]+)/)
+      const userMatch = url.match(/user_id=eq\.([^&]+)/)
+      const bookId = bookMatch?.[1]
+      const userId = userMatch?.[1] ?? READER_ID
+      return bookReadingProgress.filter((r) => r.user_id === userId && (!bookId || r.book_id === bookId))
+    }
+    if (method === 'POST' || method === 'PATCH') {
+      const rows = Array.isArray(postData) ? postData : [postData]
+      for (const row of rows) {
+        if (!row || typeof row !== 'object') continue
+        const record = row as Record<string, unknown>
+        seedBookReadingProgress({
+          bookId: String(record.book_id ?? E2E_FREE_BOOK_ID),
+          chapterId: String(record.chapter_id ?? E2E_FREE_CHAPTER_ID),
+          percent: Number(record.percent ?? 0),
+          position: Number(record.position ?? 0),
+          positionOffset: Number(record.position_offset ?? 0),
+        })
+      }
+      return []
+    }
+    return []
   }
 
   if (url.includes('/rest/v1/creations') && method === 'POST') {

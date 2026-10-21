@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { RichTextView } from '../components/creations/RichTextView.tsx'
 import { BookChapterAnnotationHost } from '../components/reader/BookChapterAnnotationHost.tsx'
@@ -35,6 +35,7 @@ import {
   readerTypographyClasses,
 } from '../lib/reader/readerThemeStyles.ts'
 import { shouldSaveProgress } from '../lib/reader/throttleProgress.ts'
+import { clampPageIndex, columnPageCount, pagesRemaining } from '../lib/reader/pagingMath.ts'
 import { measureScrollReadingPosition, scrollToReadingPosition } from '../lib/reader/readingPosition.ts'
 import { useAuth } from '../lib/auth/auth-context.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
@@ -57,8 +58,15 @@ export default function BookChapterReaderPage() {
   const [savedHighlights, setSavedHighlights] = useState<{ id: string; quote: string }[]>([])
   const [bookmarkId, setBookmarkId] = useState<string | null>(null)
   const scrollRef = useRef<HTMLElement | null>(null)
+  const pageViewportRef = useRef<HTMLDivElement | null>(null)
+  const pageTrackRef = useRef<HTMLDivElement | null>(null)
+  const contentRef = useRef<HTMLDivElement | null>(null)
   const lastSaveAt = useRef<number | null>(null)
   const resumeApplied = useRef(false)
+  const [pageIndex, setPageIndex] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [pageWidth, setPageWidth] = useState(0)
+  const [layoutTick, setLayoutTick] = useState(0)
 
   useDocumentTitle(title)
 
@@ -73,13 +81,34 @@ export default function BookChapterReaderPage() {
       setLoading(true)
       setProblem(null)
       setUnentitled(false)
-      const [bookResult, chapterResult, tocResult, entitled, progress] = await Promise.all([
+      setBodyText('')
+      const [bookResult, tocResult, entitled, progress] = await Promise.all([
         fetchBookById(bookId),
-        fetchChapterById(chapterId),
         fetchBookToc(bookId),
         userHasBookEntitlement(bookId),
         fetchBookReadingProgress(bookId),
       ])
+      if (!active) return
+      if (!bookResult.ok) {
+        setLoading(false)
+        setProblem(bookResult.error.message)
+        return
+      }
+      const book = bookResult.data
+      const isAuthor = profile?.id === book.authorId
+      const tocChapters = tocResult.ok ? tocResult.data : []
+      const chapterMeta = tocChapters.find((c) => c.id === chapterId)
+      const canReadWithoutBody =
+        isAuthor ||
+        entitled ||
+        chapterMeta?.isSample === true ||
+        (book.saleModel === 'free' && chapterMeta?.status === 'published')
+      if (!canReadWithoutBody) {
+        setLoading(false)
+        setUnentitled(true)
+        return
+      }
+      const chapterResult = await fetchChapterById(chapterId)
       if (!active) return
       setLoading(false)
       if (!chapterResult.ok) {
@@ -87,26 +116,21 @@ export default function BookChapterReaderPage() {
         else setProblem(chapterResult.error.message)
         return
       }
-      if (!bookResult.ok) {
-        setProblem(bookResult.error.message)
-        return
-      }
-      const isAuthor = profile?.id === bookResult.data.authorId
       const chapter = chapterResult.data
       const canRead =
         isAuthor ||
         entitled ||
         chapter.isSample ||
-        (bookResult.data.saleModel === 'free' && chapter.status === 'published')
+        (book.saleModel === 'free' && chapter.status === 'published')
       if (!canRead) {
         setUnentitled(true)
         return
       }
-      setBookTitle(bookResult.data.title)
+      setBookTitle(book.title)
       setTitle(chapter.title)
       setBodyText(chapter.bodyText ?? '')
       setBodyDoc(bodyContentFromJson(chapter.bodyJson as never, chapter.bodyText))
-      if (tocResult.ok) setToc(tocResult.data)
+      setToc(tocChapters)
       const [hl, bookmarks] = await Promise.all([
         listHighlightsForChapter(chapterId),
         listBookmarksForChapter(chapterId),
@@ -124,6 +148,38 @@ export default function BookChapterReaderPage() {
       active = false
     }
   }, [bookId, chapterId, profile?.id])
+
+  const recomputePageLayout = useCallback(() => {
+    const viewport = pageViewportRef.current
+    const content = contentRef.current
+    if (!viewport || !content) return
+    const width = viewport.clientWidth
+    setPageWidth(width)
+    const pages = columnPageCount(content.scrollWidth, width)
+    setTotalPages(pages)
+    setPageIndex((prev) => clampPageIndex(prev, pages))
+    setLayoutTick((n) => n + 1)
+  }, [])
+
+  useLayoutEffect(() => {
+    if (prefs.mode !== 'page' || loading) return
+    void document.fonts.ready.then(() => recomputePageLayout())
+  }, [prefs.mode, loading, bodyDoc, prefs.textSizeStep, prefs.lineSpacing, prefs.font, recomputePageLayout])
+
+  useEffect(() => {
+    if (prefs.mode !== 'page') return
+    const viewport = pageViewportRef.current
+    if (!viewport) return
+    const observer = new ResizeObserver(() => recomputePageLayout())
+    observer.observe(viewport)
+    return () => observer.disconnect()
+  }, [prefs.mode, recomputePageLayout, layoutTick])
+
+  useEffect(() => {
+    if (prefs.mode !== 'page' || loading) return
+    const id = requestAnimationFrame(() => recomputePageLayout())
+    return () => cancelAnimationFrame(id)
+  }, [bodyText, loading, prefs.mode, recomputePageLayout])
 
   useEffect(() => {
     if (loading || !scrollRef.current) return
@@ -168,11 +224,7 @@ export default function BookChapterReaderPage() {
   if (unentitled) {
     return (
       <div className={`min-h-dvh ${readerSurfaceClass(prefs.theme)} px-4 py-8`} data-testid="book-reader-unentitled">
-        <ErrorState
-          title="Chapter locked"
-          message="Add this book to your library or read the sample chapter from the book page."
-          onRetry={() => navigate(`/books/${bookId}`)}
-        />
+        <ErrorState title="Chapter locked" message="Not available to read" onRetry={() => navigate(`/books/${bookId}`)} />
       </div>
     )
   }
@@ -182,7 +234,10 @@ export default function BookChapterReaderPage() {
   }
 
   const plain = bodyText || bodyDoc.content.map((b) => ('content' in b ? b.content?.map((i) => ('text' in i ? i.text : '')).join('') : '')).join('\n')
-  const minutes = formatMinutesLeft(estimatedMinutesRemaining(countWords(plain), 0))
+  const minutes = formatMinutesLeft(
+    estimatedMinutesRemaining(countWords(plain), prefs.mode === 'page' ? pagesRemaining(totalPages, pageIndex) : 0),
+  )
+  const pageLabel = prefs.mode === 'page' ? `Page ${pageIndex + 1} of ${totalPages}` : null
 
   const index = toc.findIndex((c) => c.id === chapterId)
   const prev = index > 0 ? toc[index - 1] : null
@@ -207,7 +262,12 @@ export default function BookChapterReaderPage() {
             <Link to={`/books/${bookId}`} className={`text-sm text-coral ${focusRing}`}>
               ← {bookTitle}
             </Link>
-            <span className="text-sm text-muted">{minutes} left</span>
+            <span className="text-sm text-muted">{pageLabel ?? `${minutes} left`}</span>
+            {pageLabel ? (
+              <span className="sr-only" aria-live="polite">
+                {pageLabel}
+              </span>
+            ) : null}
           </header>
           <div className="flex gap-2 border-b border-line/30 px-4 py-2" role="tablist" aria-label="Reader panels">
             {(['read', 'highlights'] as const).map((tab) => (
@@ -238,6 +298,52 @@ export default function BookChapterReaderPage() {
                   ))}
                 </ul>
               )}
+            </div>
+          ) : prefs.mode === 'page' ? (
+            <div
+              ref={pageViewportRef}
+              data-reader-page-viewport
+              tabIndex={0}
+              aria-label="Paged reading"
+              className="relative mx-auto h-[calc(100dvh-8rem)] w-full max-w-3xl flex-1 overflow-hidden px-4"
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowRight') setPageIndex((p) => clampPageIndex(p + 1, totalPages))
+                if (e.key === 'ArrowLeft') setPageIndex((p) => clampPageIndex(p - 1, totalPages))
+              }}
+            >
+              <p className="absolute bottom-2 left-0 right-0 text-center text-xs text-muted" data-testid="book-reader-page-indicator">
+                {pageLabel}
+              </p>
+              <div
+                ref={pageTrackRef}
+                className="flex h-full transition-transform duration-300 motion-reduce:transition-none"
+                style={{ transform: `translateX(-${pageIndex * Math.max(pageWidth, 1)}px)` }}
+              >
+                <div
+                  ref={contentRef}
+                  data-reader-page-body
+                  className={`h-full shrink-0 select-text ${readerTypographyClasses(prefs)}`}
+                  style={{
+                    columnWidth: pageWidth > 0 ? `${pageWidth}px` : '100%',
+                    columnGap: 0,
+                    columnFill: 'auto',
+                    width: pageWidth > 0 ? `${pageWidth}px` : '100%',
+                    height: '100%',
+                    fontFamily: readerFontFamily(prefs.font),
+                    lineHeight: readerLineHeightValue(prefs.lineSpacing),
+                  }}
+                >
+                  <h1 className="mb-6 font-serif text-3xl text-ink">{title}</h1>
+                  <RichTextView
+                    bodyJson={bodyDoc as never}
+                    bodyText={plain}
+                    creationType="story"
+                    readerAnchors
+                    highlights={highlights}
+                    onHighlightPress={onHighlightPress}
+                  />
+                </div>
+              </div>
             </div>
           ) : (
             <article
@@ -327,6 +433,19 @@ export default function BookChapterReaderPage() {
                 Next chapter
               </button>
             ) : null}
+            <button
+              type="button"
+              className={`min-h-11 text-sm ${focusRing}`}
+              aria-pressed={prefs.mode === 'page'}
+              onClick={() => {
+                const nextMode = prefs.mode === 'page' ? 'scroll' : 'page'
+                saveReaderPreferencesLocal({ ...prefs, mode: nextMode })
+                setPrefs(loadReaderPreferences())
+                setPageIndex(0)
+              }}
+            >
+              {prefs.mode === 'page' ? 'Scroll mode' : 'Page mode'}
+            </button>
             <button
               type="button"
               className={`min-h-11 text-sm ${focusRing}`}

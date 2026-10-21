@@ -27,16 +27,22 @@ export function ChapterManager({
 }: ChapterManagerProps) {
   const [confirmId, setConfirmId] = useState<string | null>(null)
   const [dragId, setDragId] = useState<string | null>(null)
+  const [keyboardGrabIndex, setKeyboardGrabIndex] = useState<number | null>(null)
   const [focusIndex, setFocusIndex] = useState(0)
+  const [liveMessage, setLiveMessage] = useState('')
 
   const reorderByIndex = useCallback(
-    (from: number, to: number) => {
+    (from: number, to: number, announce = true) => {
       if (from === to || from < 0 || to < 0 || from >= chapters.length || to >= chapters.length) return
       const next = [...chapters]
       const [moved] = next.splice(from, 1)
       if (!moved) return
       next.splice(to, 0, moved)
       onReorder(next.map((c) => c.id))
+      if (announce) {
+        setLiveMessage(`${moved.title} moved to position ${to + 1} of ${chapters.length}`)
+      }
+      setFocusIndex(to)
     },
     [chapters, onReorder],
   )
@@ -45,17 +51,56 @@ export function ChapterManager({
     if (event.key === 'ArrowUp' && event.altKey) {
       event.preventDefault()
       reorderByIndex(index, index - 1)
-      setFocusIndex(Math.max(0, index - 1))
     }
     if (event.key === 'ArrowDown' && event.altKey) {
       event.preventDefault()
       reorderByIndex(index, index + 1)
-      setFocusIndex(Math.min(chapters.length - 1, index + 1))
+    }
+  }
+
+  function onDragHandleKeyDown(index: number, event: KeyboardEvent<HTMLButtonElement>) {
+    const chapter = chapters[index]
+    if (!chapter) return
+    if (event.key === ' ' || event.key === 'Spacebar') {
+      event.preventDefault()
+      if (keyboardGrabIndex === null) {
+        setKeyboardGrabIndex(index)
+        setLiveMessage(`Picked up ${chapter.title}. Use arrow keys to move, Space to drop.`)
+      } else if (keyboardGrabIndex === index) {
+        setKeyboardGrabIndex(null)
+        setLiveMessage(`Dropped ${chapter.title} at position ${index + 1}`)
+      } else {
+        reorderByIndex(keyboardGrabIndex, index)
+        setKeyboardGrabIndex(null)
+      }
+      return
+    }
+    if (keyboardGrabIndex === index) {
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        reorderByIndex(index, index - 1, false)
+        setKeyboardGrabIndex(Math.max(0, index - 1))
+        setLiveMessage(`${chapter.title} at position ${Math.max(0, index - 1) + 1}`)
+      }
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        reorderByIndex(index, index + 1, false)
+        setKeyboardGrabIndex(Math.min(chapters.length - 1, index + 1))
+        setLiveMessage(`${chapter.title} at position ${Math.min(chapters.length - 1, index + 1) + 1}`)
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setKeyboardGrabIndex(null)
+        setLiveMessage('Reorder cancelled')
+      }
     }
   }
 
   return (
     <section aria-labelledby="chapter-manager-heading" className="flex flex-col gap-3">
+      <p className="sr-only" aria-live="polite" aria-atomic="true">
+        {liveMessage}
+      </p>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id="chapter-manager-heading" className="font-serif text-xl text-ink">
           Chapters
@@ -86,14 +131,13 @@ export function ChapterManager({
           {chapters.map((chapter, index) => {
             const words = chapter.wordCount || countWordsInPlainText(chapter.bodyText ?? '')
             const published = chapter.status === 'published'
+            const grabbed = dragId === chapter.id || keyboardGrabIndex === index
             return (
               <li
                 key={chapter.id}
                 tabIndex={focusIndex === index ? 0 : -1}
-                draggable={!busy}
                 onKeyDown={(e) => onKeyDown(index, e)}
                 onFocus={() => setFocusIndex(index)}
-                onDragStart={() => setDragId(chapter.id)}
                 onDragOver={(e) => {
                   if (!dragId) return
                   e.preventDefault()
@@ -106,27 +150,38 @@ export function ChapterManager({
                   setDragId(null)
                   reorderByIndex(from, to)
                 }}
-                onDragEnd={() => setDragId(null)}
-                className={`rounded-2xl border border-line bg-surface p-4 ${dragId === chapter.id ? 'opacity-70' : ''}`}
+                className={`rounded-2xl border border-line bg-surface p-4 ${grabbed ? 'ring-2 ring-coral/60' : ''}`}
                 data-testid={`chapter-row-${chapter.id}`}
-                aria-grabbed={dragId === chapter.id}
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs font-medium uppercase tracking-wide text-muted">
-                      Chapter {chapter.position}
-                      <span className="hidden md:inline"> · drag handle</span>
-                    </span>
-                    <Link
-                      to={`/books/${bookId}/builder/chapter/${chapter.id}`}
-                      className={`font-serif text-lg text-ink ${focusRing}`}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      data-testid="drag-handle"
+                      aria-label={`Reorder ${chapter.title}`}
+                      aria-grabbed={grabbed}
+                      disabled={busy}
+                      draggable={!busy}
+                      onDragStart={() => setDragId(chapter.id)}
+                      onDragEnd={() => setDragId(null)}
+                      onKeyDown={(e) => onDragHandleKeyDown(index, e)}
+                      className={`mt-1 min-h-11 min-w-11 shrink-0 cursor-grab rounded-lg border border-line text-muted active:cursor-grabbing ${focusRing}`}
                     >
-                      {chapter.title}
-                    </Link>
-                    <p className="text-sm text-muted">
-                      {words} words · {chapter.status}
-                      {chapter.isSample ? ' · Sample' : ''}
-                    </p>
+                      ⋮⋮
+                    </button>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted">Chapter {chapter.position}</span>
+                      <Link
+                        to={`/books/${bookId}/builder/chapter/${chapter.id}`}
+                        className={`font-serif text-lg text-ink ${focusRing}`}
+                      >
+                        {chapter.title}
+                      </Link>
+                      <p className="text-sm text-muted">
+                        {words} words · {chapter.status}
+                        {chapter.isSample ? ' · Sample' : ''}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button

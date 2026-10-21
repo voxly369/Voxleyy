@@ -1,6 +1,8 @@
 import { useRef, useState } from 'react'
 import { focusRing } from '../components/shell/navItems.ts'
+import { ManuscriptImportConfirm } from '../components/books/ManuscriptImportConfirm.tsx'
 import { importDocxFile, importPdfFile, importPlainTextFile, type ImportedChapter } from '../lib/books/importManuscript.ts'
+import { assertManuscriptFileSize, MANUSCRIPT_FILE_TOO_LARGE } from '../lib/books/manuscriptImportLimits.ts'
 
 type ManuscriptImportFlowProps = {
   open: boolean
@@ -21,6 +23,13 @@ export function ManuscriptImportFlow({ open, busy = false, onClose, onImport }: 
     const file = files?.[0]
     if (!file) return
     setError(null)
+    setPreview(null)
+    try {
+      assertManuscriptFileSize(file.size)
+    } catch (sizeError) {
+      setError(sizeError instanceof Error ? sizeError.message : MANUSCRIPT_FILE_TOO_LARGE)
+      return
+    }
     setImporting(true)
     try {
       const lower = file.name.toLowerCase()
@@ -30,16 +39,22 @@ export function ManuscriptImportFlow({ open, busy = false, onClose, onImport }: 
       else chapters = await importPlainTextFile(file)
       if (chapters.length === 0) {
         setError('No text found in this file.')
-        setPreview(null)
         return
       }
       setPreview(chapters)
-    } catch {
-      setError('We could not read this file. Try .txt, .docx, or .pdf.')
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : 'We could not read this file. Try .txt, .docx, or .pdf.'
+      setError(message)
       setPreview(null)
     } finally {
       setImporting(false)
+      if (inputRef.current) inputRef.current.value = ''
     }
+  }
+
+  function resetPreview() {
+    setPreview(null)
+    setError(null)
   }
 
   return (
@@ -53,47 +68,49 @@ export function ManuscriptImportFlow({ open, busy = false, onClose, onImport }: 
         <h2 id="manuscript-import-title" className="font-serif text-xl text-ink">
           Import manuscript
         </h2>
-        <p className="text-sm text-muted">Upload a .txt, .docx, or .pdf file. Chapter breaks are detected from headings.</p>
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".txt,.docx,.pdf,text/plain,application/pdf"
-          className="sr-only"
-          onChange={(e) => void handleFiles(e.target.files)}
-        />
-        <button
-          type="button"
-          disabled={busy || importing}
-          onClick={() => inputRef.current?.click()}
-          className={`min-h-11 rounded-xl border border-line px-4 text-sm font-medium ${focusRing}`}
-        >
-          {importing ? 'Reading file…' : 'Choose file'}
-        </button>
-        {preview ? (
-          <div className="rounded-xl bg-bg p-3 text-sm">
-            <p className="font-medium text-ink">{preview.length} chapters detected</p>
-            <ul className="mt-2 flex flex-col gap-1 text-muted">
-              {preview.slice(0, 5).map((ch) => (
-                <li key={ch.title}>{ch.title}</li>
-              ))}
-              {preview.length > 5 ? <li>…and {preview.length - 5} more</li> : null}
-            </ul>
+        {!preview ? (
+          <>
+            <p className="text-sm text-muted">Upload a .txt, .docx, or .pdf file (max 10 MB). Chapter breaks are detected from headings.</p>
+            <input
+              ref={inputRef}
+              id="manuscript-file-input"
+              type="file"
+              accept=".txt,.docx,.pdf,text/plain,application/pdf"
+              className="sr-only"
+              data-testid="manuscript-file-input"
+              aria-label="Manuscript file"
+              onChange={(e) => void handleFiles(e.target.files)}
+            />
+            <button
+              type="button"
+              disabled={busy || importing}
+              onClick={() => inputRef.current?.click()}
+              className={`min-h-11 rounded-xl border border-line px-4 text-sm font-medium ${focusRing}`}
+            >
+              {importing ? 'Reading file…' : 'Choose file'}
+            </button>
+          </>
+        ) : (
+          <ManuscriptImportConfirm
+            chapters={preview}
+            busy={busy || importing}
+            onChaptersChange={setPreview}
+            onCancel={resetPreview}
+            onConfirm={() => void onImport(preview).then(onClose)}
+          />
+        )}
+        {error ? (
+          <p className="text-sm text-coral" role="alert">
+            {error}
+          </p>
+        ) : null}
+        {!preview ? (
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={onClose} className={`min-h-11 rounded-xl px-4 text-sm ${focusRing}`}>
+              Cancel
+            </button>
           </div>
         ) : null}
-        {error ? <p className="text-sm text-coral">{error}</p> : null}
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={!preview || busy || importing}
-            onClick={() => preview && void onImport(preview).then(onClose)}
-            className={`min-h-11 rounded-xl bg-coral px-4 font-semibold text-[#1a100a] disabled:opacity-50 ${focusRing}`}
-          >
-            Import chapters
-          </button>
-          <button type="button" onClick={onClose} className={`min-h-11 rounded-xl px-4 text-sm ${focusRing}`}>
-            Cancel
-          </button>
-        </div>
       </div>
     </div>
   )
