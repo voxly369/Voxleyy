@@ -13,6 +13,12 @@ import { normalizeLookupWord } from '../../lib/reader/dictionaryWord.ts'
 import { fetchDictionaryEntry, type DictionaryResult } from '../../lib/reader/dictionaryClient.ts'
 import type { RichBodyDocument } from '../../lib/creations/richDocument.ts'
 import type { StoredReadingPosition } from '../../lib/reader/readingPosition.ts'
+import {
+  queueChapterHighlightCreate,
+  syncPendingChapterHighlights,
+} from '../../lib/reader/chapterHighlightOfflineQueue.ts'
+import { applyLocalHighlightChange } from '../../lib/reader/readerSync.ts'
+import { useOnlineStatus } from '../../lib/reader/useOnlineStatus.ts'
 import { HighlightActionBar } from './HighlightActionBar.tsx'
 import { HighlightEditPanel } from './HighlightEditPanel.tsx'
 import { DictionaryLookupSheet } from './DictionaryLookupSheet.tsx'
@@ -24,7 +30,11 @@ type BookChapterAnnotationHostProps = {
   bodyText: string
   bodyRootRef: RefObject<HTMLElement | null>
   getCurrentPosition: () => StoredReadingPosition
-  children: (props: { highlights: AnchoredHighlight[]; onHighlightPress: (id: string) => void }) => React.ReactNode
+  children: (props: {
+    highlights: AnchoredHighlight[]
+    onHighlightPress: (id: string) => void
+    offlineBanner: boolean
+  }) => React.ReactNode
 }
 
 export function BookChapterAnnotationHost({
@@ -45,6 +55,7 @@ export function BookChapterAnnotationHost({
   const [lookupResult, setLookupResult] = useState<DictionaryResult | null>(null)
   const [lookupLoading, setLookupLoading] = useState(false)
   const selectionRangeRef = useRef<ReturnType<typeof rangeFromSelection>>(null)
+  const online = useOnlineStatus()
 
   const loadRemote = useCallback(async () => {
     const remote = await listHighlightsForChapter(chapterId)
@@ -54,6 +65,11 @@ export function BookChapterAnnotationHost({
   useEffect(() => {
     void loadRemote()
   }, [loadRemote])
+
+  useEffect(() => {
+    if (!online) return
+    void syncPendingChapterHighlights(chapterId).then(() => loadRemote())
+  }, [online, chapterId, loadRemote])
 
   useEffect(() => {
     selectionRangeRef.current = selectionRange
@@ -97,6 +113,25 @@ export function BookChapterAnnotationHost({
     if (!quote) return
     window.getSelection()?.removeAllRanges()
     setSelectionRange(null)
+    if (!online) {
+      const op = queueChapterHighlightCreate(chapterId, { ...activeRange, quote, colour })
+      const local = applyLocalHighlightChange([], {
+        kind: 'create',
+        tempId: op.tempId,
+        payload: {
+          creationId: chapterId,
+          startParagraph: activeRange.startParagraph,
+          startChar: activeRange.startChar,
+          endParagraph: activeRange.endParagraph,
+          endChar: activeRange.endChar,
+          quote,
+          colour,
+          note: null,
+        },
+      })
+      setHighlights((prev) => reanchorHighlights([...prev, ...local], bodyJson, bodyText))
+      return
+    }
     const created = await createChapterHighlight({
       chapterId,
       ...activeRange,
@@ -105,6 +140,7 @@ export function BookChapterAnnotationHost({
     })
     if (created.ok) {
       setHighlights((prev) => reanchorHighlights([...prev, created.highlight], bodyJson, bodyText))
+      void loadRemote()
     }
   }
 
@@ -112,6 +148,7 @@ export function BookChapterAnnotationHost({
     <>
       {children({
         highlights,
+        offlineBanner: !online,
         onHighlightPress: (id) => {
           const hit = highlights.find((h) => h.id === id)
           if (!hit) return

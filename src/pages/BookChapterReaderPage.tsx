@@ -57,7 +57,9 @@ export default function BookChapterReaderPage() {
   const [prefs, setPrefs] = useState<ReaderPreferences>(() => loadReaderPreferences())
   const [savedHighlights, setSavedHighlights] = useState<{ id: string; quote: string }[]>([])
   const [bookmarkId, setBookmarkId] = useState<string | null>(null)
+  const [bookmarkPosition, setBookmarkPosition] = useState<{ paragraph: number; offset: number } | null>(null)
   const scrollRef = useRef<HTMLElement | null>(null)
+  const readingRootRef = useRef<HTMLElement | null>(null)
   const pageViewportRef = useRef<HTMLDivElement | null>(null)
   const pageTrackRef = useRef<HTMLDivElement | null>(null)
   const contentRef = useRef<HTMLDivElement | null>(null)
@@ -137,7 +139,9 @@ export default function BookChapterReaderPage() {
       ])
       if (active) {
         setSavedHighlights(hl.map((h) => ({ id: h.id, quote: h.quote })))
-        setBookmarkId(bookmarks[0]?.id ?? null)
+        const first = bookmarks[0]
+        setBookmarkId(first?.id ?? null)
+        setBookmarkPosition(first ? { paragraph: first.paragraph, offset: first.paragraphOffset } : null)
       }
       if (progress?.chapterId === chapterId && scrollRef.current && !resumeApplied.current) {
         resumeApplied.current = true
@@ -249,15 +253,20 @@ export default function BookChapterReaderPage() {
       chapterTitle={title}
       bodyJson={bodyDoc}
       bodyText={plain}
-      bodyRootRef={scrollRef}
+      bodyRootRef={readingRootRef}
       getCurrentPosition={() => {
         const el = scrollRef.current
         if (!el) return { paragraphIndex: 0, positionOffset: 0, percent: 0 }
         return measureScrollReadingPosition(el) ?? { paragraphIndex: 0, positionOffset: 0, percent: 0 }
       }}
     >
-      {({ highlights, onHighlightPress }) => (
+      {({ highlights, onHighlightPress, offlineBanner }) => (
         <div className={`flex min-h-dvh flex-col ${readerSurfaceClass(prefs.theme)}`} data-testid="book-chapter-reader">
+          {offlineBanner ? (
+            <p className="bg-raised px-4 py-2 text-center text-sm text-muted" data-testid="book-chapter-offline-banner">
+              You are offline. Highlights sync when you reconnect.
+            </p>
+          ) : null}
           <header className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-line/40 bg-bg/90 px-4 py-3 backdrop-blur">
             <Link to={`/books/${bookId}`} className={`text-sm text-coral ${focusRing}`}>
               ← {bookTitle}
@@ -320,7 +329,10 @@ export default function BookChapterReaderPage() {
                 style={{ transform: `translateX(-${pageIndex * Math.max(pageWidth, 1)}px)` }}
               >
                 <div
-                  ref={contentRef}
+                  ref={(node) => {
+                    contentRef.current = node
+                    readingRootRef.current = node
+                  }}
                   data-reader-page-body
                   className={`h-full shrink-0 select-text ${readerTypographyClasses(prefs)}`}
                   style={{
@@ -349,6 +361,7 @@ export default function BookChapterReaderPage() {
             <article
               ref={(node) => {
                 scrollRef.current = node
+                readingRootRef.current = node
               }}
               className={`mx-auto w-full max-w-3xl flex-1 overflow-y-auto px-4 py-8 ${readerTypographyClasses(prefs)}`}
               style={{
@@ -384,10 +397,10 @@ export default function BookChapterReaderPage() {
               className={`min-h-11 text-sm ${focusRing}`}
               aria-pressed={bookmarkId != null}
               onClick={() => {
-                const el = scrollRef.current
+                const el = scrollRef.current ?? readingRootRef.current
                 if (!el) return
-                const measured = measureScrollReadingPosition(el)
-                if (!measured) return
+                const measured =
+                  measureScrollReadingPosition(el) ?? ({ paragraphIndex: 0, positionOffset: 0, percent: 0 } as const)
                 void (async () => {
                   if (bookmarkId) {
                     await deleteChapterBookmark(bookmarkId)
@@ -399,12 +412,32 @@ export default function BookChapterReaderPage() {
                     paragraph: measured.paragraphIndex,
                     paragraphOffset: measured.positionOffset,
                   })
-                  if (created.ok) setBookmarkId(created.bookmark.id)
+                  if (created.ok) {
+                    setBookmarkId(created.bookmark.id)
+                    setBookmarkPosition({
+                      paragraph: created.bookmark.paragraph,
+                      offset: created.bookmark.paragraphOffset,
+                    })
+                  }
                 })()
               }}
             >
               Bookmark
             </button>
+            {bookmarkId && bookmarkPosition ? (
+              <button
+                type="button"
+                data-testid="jump-to-bookmark"
+                className={`min-h-11 text-sm text-coral ${focusRing}`}
+                onClick={() => {
+                  const el = scrollRef.current ?? readingRootRef.current
+                  if (!el) return
+                  scrollToReadingPosition(el, bookmarkPosition.paragraph, bookmarkPosition.offset)
+                }}
+              >
+                Jump to bookmark
+              </button>
+            ) : null}
             <button
               type="button"
               className={`min-h-11 text-sm ${focusRing}`}
@@ -455,6 +488,16 @@ export default function BookChapterReaderPage() {
               }}
             >
               Theme
+            </button>
+            <button
+              type="button"
+              className={`min-h-11 text-sm ${focusRing}`}
+              onClick={() => {
+                saveReaderPreferencesLocal({ ...prefs, textSizeStep: Math.min(4, prefs.textSizeStep + 1) })
+                setPrefs(loadReaderPreferences())
+              }}
+            >
+              Increase text size
             </button>
           </footer>
           {toc.length > 0 ? (

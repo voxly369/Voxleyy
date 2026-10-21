@@ -40,7 +40,8 @@ export type E2eHighlightRow = {
 export type E2eBookmarkRow = {
   id: string
   user_id: string
-  creation_id: string
+  creation_id: string | null
+  chapter_id: string | null
   paragraph: number
   paragraph_offset: number
   label: string | null
@@ -168,7 +169,9 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
       updated_at: row.updated_at,
       resume_chapter_id: null,
     }))
-    return [...posts, ...e2eBookContinueReadingRows()]
+    return [...posts, ...e2eBookContinueReadingRows()].sort(
+      (a, b) => new Date(String(b.updated_at)).getTime() - new Date(String(a.updated_at)).getTime(),
+    )
   }
 
   if (url.includes('/rest/v1/library_reading_history')) {
@@ -308,10 +311,15 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
   if (url.includes('/rest/v1/reader_bookmarks')) {
     if (method === 'GET') {
       const creationMatch = url.match(/creation_id=eq\.([^&]+)/)
+      const chapterMatch = url.match(/chapter_id=eq\.([^&]+)/)
       const creationId = creationMatch?.[1]
-      return bookmarkRows.filter(
-        (row) => row.user_id === READER_ID && (!creationId || row.creation_id === creationId),
-      )
+      const chapterId = chapterMatch?.[1]
+      return bookmarkRows.filter((row) => {
+        if (row.user_id !== READER_ID) return false
+        if (chapterId) return row.chapter_id === chapterId
+        if (creationId) return row.creation_id === creationId
+        return true
+      })
     }
     if (method === 'POST') {
       const record = (Array.isArray(postData) ? postData[0] : postData) as Record<string, unknown>
@@ -320,7 +328,8 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
       bookmarkRows.push({
         id,
         user_id: String(record.user_id ?? READER_ID),
-        creation_id: String(record.creation_id ?? DEFAULT_CREATION_ID),
+        creation_id: record.chapter_id ? null : String(record.creation_id ?? DEFAULT_CREATION_ID),
+        chapter_id: record.chapter_id ? String(record.chapter_id) : null,
         paragraph: Number(record.paragraph ?? 0),
         paragraph_offset: Number(record.paragraph_offset ?? 0),
         label: record.label == null ? null : String(record.label),
@@ -364,8 +373,25 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
           (row.note ?? '').toLowerCase().includes(needle),
       )
     }
-    return rows
-      .map((row) => ({
+    return rows.map((row) => {
+      if (row.chapter_id) {
+        return {
+          ...row,
+          is_available: true,
+          type: 'book',
+          title: 'Free smoke book',
+          chapter_title: 'First chapter',
+          caption: null,
+          cover_url: 'https://example.com/free-cover.jpg',
+          published_at: '2026-01-02T00:00:00Z',
+          author_id: OTHER_ID,
+          author_username: OTHER_USERNAME,
+          author_display_name: OTHER_DISPLAY,
+          author_avatar_url: null,
+          author_verified: false,
+        }
+      }
+      return {
         ...row,
         is_available: true,
         type: 'story',
@@ -378,7 +404,8 @@ export function libraryReadingMockHandleRest(url: string, method: string, postDa
         author_display_name: OTHER_DISPLAY,
         author_avatar_url: null,
         author_verified: false,
-      }))
+      }
+    })
   }
 
   return undefined
@@ -420,7 +447,7 @@ export function seedChapterHighlight(input: { chapterId: string; quote?: string;
   highlightRows.push({
     id: mockUuid(1000 + nextHighlightId++),
     user_id: READER_ID,
-    creation_id: input.bookId ?? null,
+    creation_id: input.bookId ?? 'bb000000-0000-0000-0000-000000000002',
     chapter_id: input.chapterId,
     start_paragraph: 0,
     start_char: 0,
@@ -440,6 +467,7 @@ export function seedReaderBookmark(input: { creationId?: string; paragraph?: num
     id: mockUuid(2000 + nextBookmarkId++),
     user_id: READER_ID,
     creation_id: input.creationId ?? DEFAULT_CREATION_ID,
+    chapter_id: null,
     paragraph: input.paragraph ?? 0,
     paragraph_offset: 0,
     label: null,
@@ -452,8 +480,9 @@ export function seedReadingProgress(input: {
   percent: number
   position?: number
   positionOffset?: number
+  updatedAt?: string
 }) {
-  const now = new Date().toISOString()
+  const now = input.updatedAt ?? new Date().toISOString()
   progressRows.push({
     user_id: READER_ID,
     creation_id: input.creationId ?? DEFAULT_CREATION_ID,

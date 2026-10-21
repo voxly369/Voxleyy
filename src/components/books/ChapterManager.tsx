@@ -97,7 +97,7 @@ export function ChapterManager({
   }
 
   return (
-    <section aria-labelledby="chapter-manager-heading" className="flex flex-col gap-3">
+    <section aria-labelledby="chapter-manager-heading" className="flex flex-col gap-3" data-testid="chapter-manager">
       <p className="sr-only" aria-live="polite" aria-atomic="true">
         {liveMessage}
       </p>

@@ -65,4 +65,36 @@ test.describe('Manuscript import confirm', () => {
     )
     await expect(page.getByRole('alert')).toHaveText(MANUSCRIPT_FILE_TOO_LARGE)
   })
+
+  test('deletes a chapter on the confirm screen', async ({ page }) => {
+    await page.goto(AUTHOR_BOOK)
+    await page.getByRole('button', { name: 'Import manuscript' }).click()
+    const fixture = path.join(process.cwd(), 'e2e/fixtures/manuscript-smoke.txt')
+    await page.locator('[data-testid="manuscript-file-input"]').setInputFiles(fixture)
+    await expect(page.getByTestId('manuscript-import-confirm')).toBeVisible({ timeout: 15_000 })
+    await page.getByRole('button', { name: 'Split' }).first().click()
+    await page.getByRole('button', { name: 'Delete' }).nth(1).click()
+    await expect(page.getByText(/1 chapters ready/i)).toBeVisible()
+  })
+
+  test('rejects manuscripts over the chapter limit', async ({ page }) => {
+    await page.goto(AUTHOR_BOOK)
+    await page.getByRole('button', { name: 'Import manuscript' }).click()
+    await page.evaluate(() => {
+      const input = document.querySelector('[data-testid="manuscript-file-input"]') as HTMLInputElement | null
+      if (!input) throw new Error('missing input')
+      const lines = ['Chapter 1\n\nBody with enough words to avoid merge.\n\n']
+      const filler = 'word '.repeat(120)
+      for (let i = 2; i <= 201; i += 1) {
+        lines.push(`Chapter ${i}\n\n${filler} segment ${i}.\n\n`)
+      }
+      const blob = new Blob([lines.join('')], { type: 'text/plain' })
+      const file = new File([blob], 'too-many-chapters.txt', { type: 'text/plain' })
+      const dt = new DataTransfer()
+      dt.items.add(file)
+      input.files = dt.files
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+    await expect(page.getByRole('alert')).toContainText(/Too many chapters detected \(max 200\)/i)
+  })
 })
