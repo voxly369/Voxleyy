@@ -6,9 +6,11 @@ type ImageWithFallbackProps = {
   label?: string
   icon?: ReactNode
   className?: string
+  /** Classes applied to the `<img>` when loaded (defaults include object-cover). */
+  imageClassName?: string
 }
 
-export function ImageWithFallback({ src, alt, label, icon, className }: ImageWithFallbackProps) {
+export function ImageWithFallback({ src, alt, label, icon, className, imageClassName }: ImageWithFallbackProps) {
   const [failedSrc, setFailedSrc] = useState<string | undefined>(undefined)
   const failed = Boolean(src) && failedSrc === src
   const showImage = Boolean(src) && !failed
@@ -30,7 +32,7 @@ export function ImageWithFallback({ src, alt, label, icon, className }: ImageWit
           decoding="async"
           referrerPolicy="no-referrer"
           onError={() => setFailedSrc(src)}
-          className="absolute inset-0 size-full object-cover"
+          className={`absolute inset-0 size-full object-cover ${imageClassName ?? ''}`.trim()}
         />
       ) : (
         alt ? <span className="sr-only">{alt}</span> : null

@@ -89,6 +89,21 @@ function ownProfile(id: string, username: string, display_name: string, creation
   }
 }
 
+export type E2eFeedRow = ReturnType<typeof feedPosts>[number]
+
+let e2eFeedOverride: E2eFeedRow[] | null = null
+let e2eCreationDetailOverride: Record<string, unknown> | null = null
+
+/** Replace default feed rows for a single e2e file; pass null to reset. */
+export function setE2eFeedOverride(posts: E2eFeedRow[] | null) {
+  e2eFeedOverride = posts
+}
+
+/** Replace GET /creations?id=eq.SAMPLE_CREATION_ID payload; pass null to reset. */
+export function setE2eCreationDetailOverride(detail: Record<string, unknown> | null) {
+  e2eCreationDetailOverride = detail
+}
+
 export function feedPosts() {
   const longTitle = `Long title ${'word '.repeat(40)}`
   const longWord = `unbroken${'x'.repeat(120)}`
@@ -263,7 +278,7 @@ function handleRest(url: string, method: string, postData: unknown): unknown[] {
   const audienceResult = audienceMockHandleRest(url, method, postData)
   if (audienceResult !== undefined) return audienceResult
 
-  const posts = feedPosts()
+  const posts = e2eFeedOverride ?? feedPosts()
 
   if (url.includes('/rest/v1/profiles_public')) {
     if (url.includes('username=eq.writertwo')) {
@@ -328,7 +343,9 @@ function handleRest(url: string, method: string, postData: unknown): unknown[] {
   if (url.includes('/rest/v1/creations') && method === 'GET') {
     const idMatch = url.match(/id=eq\.([^&]+)/)
     const id = idMatch?.[1]
-    if (id === SAMPLE_CREATION_ID) return [creationDetail(SAMPLE_CREATION_ID)]
+    if (id === SAMPLE_CREATION_ID) {
+      return [e2eCreationDetailOverride ?? creationDetail(SAMPLE_CREATION_ID)]
+    }
     if (id === DRAFT_ID) return [editableDraft()]
 
     if (url.includes(`author_id=eq.${OTHER.id}`) && url.includes('status=eq.published')) {

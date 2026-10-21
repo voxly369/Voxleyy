@@ -58,6 +58,15 @@ h6,
 }
 
 @layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
   .pb-nav {
     padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
   }

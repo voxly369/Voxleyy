@@ -5,9 +5,9 @@ import { QuoteCardView } from '../creations/QuoteCardView.tsx'
 import { focusRing } from '../shell/navItems.ts'
 import { quoteStyleFromJson } from '../../lib/creations/bodyDocument.ts'
 import { formatCountLabel } from '../../lib/formatCountLabel.ts'
-import { wholeLineExcerpt } from '../../lib/creations/wholeLineExcerpt.ts'
+import { CoverFrame } from '../creations/CoverFrame.tsx'
+import { literaryPreviewExcerpt } from '../../lib/creations/literaryDisplay.ts'
 import type { PublishedWorkSummary } from '../../lib/creations/types.ts'
-import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 
 const LONG_PRESS_MS = 500
 const MOVE_CANCEL_PX = 10
@@ -92,8 +92,9 @@ export function ProfilePostTile({ work, saved, saveBusy, onToggleSave }: Profile
     onToggleSave(work.id, saved)
   }
 
-  const excerptSource = work.bodyText ?? work.title ?? 'Work'
-  const excerpt = wholeLineExcerpt(excerptSource, 6)
+  const preview = literaryPreviewExcerpt(work.bodyJson, work.bodyText, 6)
+  const tileText =
+    preview.lines.join('\n').trim() || work.bodyText?.trim() || work.title?.trim() || 'Work'
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-surface">
@@ -121,10 +122,10 @@ export function ProfilePostTile({ work, saved, saveBusy, onToggleSave }: Profile
               className="h-full min-h-0 rounded-none text-base"
             />
           ) : work.coverUrl ? (
-            <ImageWithFallback src={work.coverUrl} alt="" label="Cover" className="size-full object-cover" />
+            <CoverFrame src={work.coverUrl} className="size-full rounded-none" />
           ) : (
             <p className="h-[7.5rem] overflow-hidden whitespace-pre-wrap p-3 font-serif text-sm leading-normal text-ink">
-              {excerpt.text}
+              {tileText}
             </p>
           )}
         </Link>

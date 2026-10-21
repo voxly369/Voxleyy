@@ -6,6 +6,12 @@ describe('tag normalisation', () => {
     expect(normalizeTagInput(' #Hello_World ')).toBe('hello_world')
   })
 
+  it('does not append numeric suffixes to normalised tags', () => {
+    expect(normalizeTagInput('hope')).toBe('hope')
+    expect(normalizeTagInput('hello_world')).toBe('hello_world')
+    expect(addTag([], 'my_tag').tags).toEqual(['my_tag'])
+  })
+
   it('ignores duplicates and enforces max', () => {
     let tags: string[] = []
     for (let i = 0; i < 15; i += 1) {
