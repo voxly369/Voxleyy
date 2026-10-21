@@ -20,6 +20,10 @@ export function CreateTypePicker({ onPick, showIntro = true }: CreateTypePickerP
       onPick(type)
       return
     }
+    if (type === 'book') {
+      navigate('/books/new')
+      return
+    }
     navigate(`/create/new/${type}`)
   }
 

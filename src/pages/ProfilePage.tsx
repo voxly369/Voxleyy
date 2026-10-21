@@ -1,5 +1,5 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
-import { useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ProfileDisplayNamePrompt } from '../components/profile/ProfileDisplayNamePrompt.tsx'
 import { ProfileHeader } from '../components/profile/ProfileHeader.tsx'
 import { ProfileDraftsPanel } from '../components/profile/ProfileDraftsPanel.tsx'
@@ -22,6 +22,8 @@ import {
   needsDisplayName,
 } from '../lib/profiles/needsDisplayName.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
+import { listAuthorBooks } from '../lib/books/booksApi.ts'
+import type { BookRecord } from '../lib/books/bookSchema.ts'
 
 type Tab = 'posts' | 'drafts' | 'about'
 
@@ -46,6 +48,7 @@ export default function ProfilePage() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null)
   const [namePromptDismissedVisit, setNamePromptDismissedVisit] = useState(false)
+  const [ownBooks, setOwnBooks] = useState<BookRecord[]>([])
   const key = username.toLowerCase()
   const current = view?.key === key ? view : null
   const activeProblem = problem?.key === key ? problem : null
@@ -96,6 +99,16 @@ export default function ProfilePage() {
       active = false
     }
   }, [key, attempt, me?.id])
+
+  useEffect(() => {
+    if (!me?.id || !view || view.profile.id !== me.id) {
+      setOwnBooks([])
+      return
+    }
+    void listAuthorBooks(me.id).then((result) => {
+      if (result.ok) setOwnBooks(result.data)
+    })
+  }, [me?.id, view?.profile.id])
 
   async function loadMore() {
     if (!current?.nextCursor || loadingMore) return
@@ -215,6 +228,31 @@ export default function ProfilePage() {
         <div className="pt-5">
           {tab === 'posts' ? (
             <div role="tabpanel" id="panel-posts" aria-labelledby="tab-posts">
+              {isOwn && ownBooks.length > 0 ? (
+                <section aria-labelledby="profile-books-heading" className="mb-8 flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h2 id="profile-books-heading" className="font-serif text-xl text-ink">
+                      Your books
+                    </h2>
+                    <Link to="/books/new" className={`min-h-11 text-sm font-medium text-coral ${focusRing}`}>
+                      New book
+                    </Link>
+                  </div>
+                  <ul className="flex flex-col gap-2">
+                    {ownBooks.map((book) => (
+                      <li key={book.id}>
+                        <Link
+                          to={`/books/${book.id}/builder`}
+                          className={`flex min-h-11 items-center justify-between rounded-xl border border-line bg-surface px-4 py-3 ${focusRing}`}
+                        >
+                          <span className="font-medium text-ink">{book.title}</span>
+                          <span className="text-sm text-muted">{book.status}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
               {current.works.length === 0 ? (
                 <EmptyState title="No posts yet" message="Published public work appears here." />
               ) : (

@@ -20,6 +20,8 @@
     "@tiptap/pm": "2.11.5",
     "@tiptap/react": "2.11.5",
     "@tiptap/starter-kit": "2.11.5",
+    "mammoth": "^1.13.0",
+    "pdfjs-dist": "^4.10.38",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-router-dom": "6.30.6",

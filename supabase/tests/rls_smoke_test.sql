@@ -2799,6 +2799,116 @@ begin
   perform pg_temp.record('user B cannot read user A bookmarks', n = 0, 'rows=' || n);
 end $reader_annotations$;
 
+-- ---------------------------------------------------------------------------
+-- Book builder (11A): entitlements, chapter bodies, limits
+-- ---------------------------------------------------------------------------
+
+do $book_builder$
+declare
+  v_author uuid;
+  v_reader uuid;
+  v_book uuid;
+  v_ch_paid uuid;
+  v_ch_sample uuid;
+  n integer;
+begin
+  select reader_a, reader_b into v_author, v_reader from rls_ids;
+  execute format('set local role %I', session_user);
+  alter table public.creations disable trigger creations_rate_limit;
+  insert into public.creations (id, author_id, type, title, language, audience, status, body_text)
+  values (
+    'bb000000-0000-0000-0000-000000000001',
+    v_author,
+    'book',
+    'Paid smoke book',
+    'en',
+    'public',
+    'unlisted',
+    ''
+  );
+  insert into public.books (id, author_id, description, sale_model, price_cents, currency, rental_days)
+  values (
+    'bb000000-0000-0000-0000-000000000001',
+    v_author,
+    'Desc',
+    'purchase',
+    499,
+    'GBP',
+    null
+  );
+  insert into public.chapters (id, book_id, position, title, body_text, status, is_sample)
+  values (
+    'cc000000-0000-0000-0000-000000000001',
+    'bb000000-0000-0000-0000-000000000001',
+    1,
+    'Paid chapter',
+    'Secret paid chapter body',
+    'published',
+    false
+  )
+  returning id into v_ch_paid;
+  insert into public.chapters (id, book_id, position, title, body_text, status, is_sample)
+  values (
+    'cc000000-0000-0000-0000-000000000002',
+    'bb000000-0000-0000-0000-000000000001',
+    2,
+    'Sample chapter',
+    'Sample readable body',
+    'published',
+    true
+  )
+  returning id into v_ch_sample;
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_reader::text, true);
+  select count(*) into n from public.chapters where id = v_ch_paid;
+  perform pg_temp.record('non-entitled cannot read paid chapter body', n = 0, 'rows=' || n);
+  select count(*) into n from public.chapters where id = v_ch_sample;
+  perform pg_temp.record('non-entitled can read sample chapter body', n = 1, 'rows=' || n);
+  perform set_config('request.jwt.claim.sub', v_author::text, true);
+  select count(*) into n from public.book_chapters_toc where book_id = 'bb000000-0000-0000-0000-000000000001';
+  perform pg_temp.record('author can read book TOC view', n >= 2, 'rows=' || n);
+  perform set_config('request.jwt.claim.sub', v_reader::text, true);
+
+  begin
+    insert into public.book_entitlements (user_id, book_id, kind, starts_at)
+    values (v_reader, 'bb000000-0000-0000-0000-000000000001', 'purchase', now());
+    perform pg_temp.record('client cannot insert entitlements directly', false, 'should have failed');
+  exception when others then
+    perform pg_temp.record('client cannot insert entitlements directly', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  insert into public.creations (id, author_id, type, title, language, audience, status, body_text)
+  values (
+    'bb000000-0000-0000-0000-000000000002',
+    v_author,
+    'book',
+    'Free smoke book',
+    'en',
+    'public',
+    'published',
+    ''
+  );
+  insert into public.books (id, author_id, description, sale_model, price_cents)
+  values ('bb000000-0000-0000-0000-000000000002', v_author, 'Free', 'free', 0);
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_reader::text, true);
+  perform public.claim_free_book('bb000000-0000-0000-0000-000000000002');
+  select count(*) into n from public.library_books where user_id = v_reader and book_id = 'bb000000-0000-0000-0000-000000000002';
+  perform pg_temp.record('claim_free_book adds library_books row', n = 1, 'rows=' || n);
+
+  execute format('set local role %I', session_user);
+  begin
+    update public.creations set status = 'published' where id = 'bb000000-0000-0000-0000-000000000001';
+    perform pg_temp.record('paid book cannot publish while payments disabled', false, 'should fail');
+  exception when others then
+    perform pg_temp.record('paid book cannot publish while payments disabled', true, sqlerrm);
+  end;
+  alter table public.creations enable trigger creations_rate_limit;
+end $book_builder$;
+
 do $$
 declare
   n integer;

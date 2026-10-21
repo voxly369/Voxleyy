@@ -86,6 +86,78 @@ export type Database = {
           },
         ]
       }
+      book_entitlements: {
+        Row: {
+          book_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          kind: Database["public"]["Enums"]["book_entitlement_kind"]
+          starts_at: string
+          user_id: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          kind: Database["public"]["Enums"]["book_entitlement_kind"]
+          starts_at?: string
+          user_id: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["book_entitlement_kind"]
+          starts_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      books: {
+        Row: {
+          author_id: string
+          created_at: string
+          currency: string
+          description: string
+          id: string
+          isbn_internal: string | null
+          price_cents: number
+          rental_days: number | null
+          sale_model: Database["public"]["Enums"]["book_sale_model"]
+          subtitle: string | null
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          created_at?: string
+          currency?: string
+          description?: string
+          id: string
+          isbn_internal?: string | null
+          price_cents?: number
+          rental_days?: number | null
+          sale_model?: Database["public"]["Enums"]["book_sale_model"]
+          subtitle?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          created_at?: string
+          currency?: string
+          description?: string
+          id?: string
+          isbn_internal?: string | null
+          price_cents?: number
+          rental_days?: number | null
+          sale_model?: Database["public"]["Enums"]["book_sale_model"]
+          subtitle?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chapters: {
         Row: {
           body_json: Json | null
@@ -94,12 +166,14 @@ export type Database = {
           created_at: string
           id: string
           is_removed: boolean
+          is_sample: boolean
           position: number
           published_at: string | null
           scheduled_for: string | null
           status: Database["public"]["Enums"]["publish_status"]
           title: string | null
           updated_at: string
+          word_count: number
         }
         Insert: {
           body_json?: Json | null
@@ -108,12 +182,14 @@ export type Database = {
           created_at?: string
           id?: string
           is_removed?: boolean
+          is_sample?: boolean
           position: number
           published_at?: string | null
           scheduled_for?: string | null
           status?: Database["public"]["Enums"]["publish_status"]
           title?: string | null
           updated_at?: string
+          word_count?: number
         }
         Update: {
           body_json?: Json | null
@@ -122,12 +198,14 @@ export type Database = {
           created_at?: string
           id?: string
           is_removed?: boolean
+          is_sample?: boolean
           position?: number
           published_at?: string | null
           scheduled_for?: string | null
           status?: Database["public"]["Enums"]["publish_status"]
           title?: string | null
           updated_at?: string
+          word_count?: number
         }
         Relationships: [
           {
@@ -649,21 +727,33 @@ export type Database = {
         Row: {
           book_id: string
           chapter_id: string | null
+          completed: boolean
+          first_read_at: string | null
           percent: number
+          position: number
+          position_offset: number
           updated_at: string
           user_id: string
         }
         Insert: {
           book_id: string
           chapter_id?: string | null
+          completed?: boolean
+          first_read_at?: string | null
           percent?: number
+          position?: number
+          position_offset?: number
           updated_at?: string
           user_id: string
         }
         Update: {
           book_id?: string
           chapter_id?: string | null
+          completed?: boolean
+          first_read_at?: string | null
           percent?: number
+          position?: number
+          position_offset?: number
           updated_at?: string
           user_id?: string
         }
@@ -1205,6 +1295,42 @@ export type Database = {
         Update: Record<string, never>
         Relationships: []
       }
+      book_chapters_toc: {
+        Row: {
+          id: string
+          book_id: string
+          position: number
+          title: string
+          status: Database['public']['Enums']['publish_status']
+          is_sample: boolean
+          published_at: string | null
+          coming_soon: boolean
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      library_books: {
+        Row: {
+          user_id: string
+          book_id: string
+          title: string
+          cover_url: string | null
+          author_id: string
+          author_username: string
+          author_display_name: string | null
+          sale_model: Database['public']['Enums']['book_sale_model']
+          percent: number
+          last_chapter_id: string | null
+          last_read_at: string | null
+          reading_status: string
+          rental_expires_at: string | null
+          rental_days_left: number | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
       discover_trending_creations: {
         Row: Database['public']['Views']['feed_creations']['Row'] & {
           country: string | null
@@ -1298,8 +1424,14 @@ export type Database = {
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
       username_available: { Args: { candidate: string }; Returns: boolean }
+      claim_free_book: { Args: { p_book_id: string }; Returns: string }
+      payments_enabled: { Args: Record<string, never>; Returns: boolean }
+      user_has_book_entitlement: { Args: { p_user: string; p_book: string }; Returns: boolean }
+      can_read_book_chapter: { Args: { p_chapter_id: string }; Returns: boolean }
     }
     Enums: {
+      book_entitlement_kind: "free" | "purchase" | "rental" | "subscription" | "author"
+      book_sale_model: "free" | "purchase" | "rental" | "subscription"
       account_status: "active" | "suspended" | "banned"
       audience: "public" | "unlisted" | "private"
       creation_type:
@@ -1329,7 +1461,7 @@ export type Database = {
         | "ban"
         | "unban"
         | "appeal_decision"
-      publish_status: "draft" | "published" | "removed"
+      publish_status: "draft" | "published" | "unlisted" | "removed"
       report_reason:
         | "spam"
         | "inappropriate"
@@ -1500,7 +1632,9 @@ export const Constants = {
         "unban",
         "appeal_decision",
       ],
-      publish_status: ["draft", "published", "removed"],
+      book_entitlement_kind: ["free", "purchase", "rental", "subscription", "author"],
+      book_sale_model: ["free", "purchase", "rental", "subscription"],
+      publish_status: ["draft", "published", "unlisted", "removed"],
       report_reason: [
         "spam",
         "inappropriate",

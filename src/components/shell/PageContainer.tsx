@@ -13,10 +13,13 @@ type PageContainerProps = {
   variant?: PageContainerVariant
   className?: string
   children: ReactNode
+  testId?: string
 }
 
-export function PageContainer({ variant = 'feed', className = '', children }: PageContainerProps) {
+export function PageContainer({ variant = 'feed', className = '', children, testId }: PageContainerProps) {
   return (
-    <div className={`px-4 md:px-6 ${variantClass[variant]} ${className}`.trim()}>{children}</div>
+    <div data-testid={testId} className={`px-4 md:px-6 ${variantClass[variant]} ${className}`.trim()}>
+      {children}
+    </div>
   )
 }

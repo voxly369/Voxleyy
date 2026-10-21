@@ -6,6 +6,7 @@ import {
   seedLibrarySave,
   seedReadingProgress,
 } from './libraryReadingMocks.ts'
+import { bookBuilderMockHandleRest, resetBookBuilderMocks } from './bookBuilderMocks.ts'
 import { Buffer } from 'node:buffer'
 
 export const PROJECT_REF = 'ktgxdqplvggeyrnuqljx'
@@ -285,6 +286,8 @@ function handleRest(url: string, method: string, postData: unknown): unknown[] {
   if (audienceResult !== undefined) return audienceResult
   const libraryResult = libraryReadingMockHandleRest(url, method, postData)
   if (libraryResult !== undefined) return libraryResult
+  const bookResult = bookBuilderMockHandleRest(url, method, postData)
+  if (bookResult !== undefined) return bookResult
 
   const posts = e2eFeedOverride ?? feedPosts()
 
@@ -443,4 +446,4 @@ export async function seedSignedInSession(page: Page) {
   }, { key: AUTH_STORAGE_KEY, value: session })
 }
 
-export { SAMPLE_CREATION_ID, DRAFT_ID, resetLibraryReadingMocks, seedLibrarySave, seedReadingProgress }
+export { SAMPLE_CREATION_ID, DRAFT_ID, resetLibraryReadingMocks, resetBookBuilderMocks, seedLibrarySave, seedReadingProgress }

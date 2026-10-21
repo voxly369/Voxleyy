@@ -23,6 +23,9 @@ import { onLibrarySavesChanged } from '../lib/library/saveEvents.ts'
 import type { LibraryItem, LibrarySavedCursor, ReaderCollection } from '../lib/library/types.ts'
 import { validateCollectionName } from '../lib/library/collectionName.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
+import { LibraryBooksShelf } from '../components/books/LibraryBooksShelf.tsx'
+import { listLibraryBooks } from '../lib/books/booksApi.ts'
+import type { LibraryBookRow } from '../lib/books/bookSchema.ts'
 
 import { LibraryHighlightsTab } from '../components/library/LibraryHighlightsTab.tsx'
 import { getCreationById } from '../lib/creations/api.ts'
@@ -32,7 +35,7 @@ import {
 } from '../lib/reader/offlineReadingActions.ts'
 import { listOfflinePackages } from '../lib/reader/offlineReadingStore.ts'
 
-const TABS = ['continue', 'saved', 'history', 'highlights', 'collections', 'purchased'] as const
+const TABS = ['continue', 'saved', 'history', 'highlights', 'collections', 'books', 'purchased'] as const
 type LibraryTab = (typeof TABS)[number]
 
 function parseTab(value: string | null): LibraryTab {
@@ -59,23 +62,26 @@ export default function LibraryPage() {
   const [collectionError, setCollectionError] = useState<string | null>(null)
   const [offlineIds, setOfflineIds] = useState<Set<string>>(() => new Set())
   const [offlineBusyId, setOfflineBusyId] = useState<string | null>(null)
+  const [libraryBooks, setLibraryBooks] = useState<LibraryBookRow[]>([])
 
   const reload = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const [cont, saved, hist, cols] = await Promise.all([
+    const [cont, saved, hist, cols, books] = await Promise.all([
       listContinueReading(),
       listLibrarySaved(null),
       listReadingHistory(),
       listCollections(),
+      listLibraryBooks(),
     ])
     setLoading(false)
-    if (!cont.ok || !saved.ok || !hist.ok || !cols.ok) {
+    if (!cont.ok || !saved.ok || !hist.ok || !cols.ok || !books.ok) {
       setError(
         (!cont.ok && cont.error.message) ||
           (!saved.ok && saved.error.message) ||
           (!hist.ok && hist.error.message) ||
           (!cols.ok && cols.error.message) ||
+          (!books.ok && books.error.message) ||
           'Library did not load.',
       )
       return
@@ -85,6 +91,7 @@ export default function LibraryPage() {
     setSavedCursor(saved.nextCursor)
     setHistoryItems(hist.items)
     setCollections(cols.collections)
+    setLibraryBooks(books.data)
   }, [])
 
   useEffect(() => {
@@ -124,6 +131,7 @@ export default function LibraryPage() {
             ['history', 'History'],
             ['highlights', 'Highlights'],
             ['collections', 'Collections'],
+            ['books', 'Books'],
             ['purchased', 'Purchased'],
           ] as const
         ).map(([id, label]) => (
@@ -340,6 +348,14 @@ export default function LibraryPage() {
               ))
             )}
           </div>
+        )
+      ) : null}
+
+      {!loading && !error && tab === 'books' ? (
+        libraryBooks.length === 0 ? (
+          <EmptyState title="No books yet" message="Free books you add and purchases will show up here." />
+        ) : (
+          <LibraryBooksShelf books={libraryBooks} />
         )
       ) : null}
 

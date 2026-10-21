@@ -18,6 +18,10 @@ vi.mock('../../lib/library/listLibrary.ts', () => ({
   clearReadingHistory: vi.fn(),
 }))
 
+vi.mock('../../lib/books/booksApi.ts', () => ({
+  listLibraryBooks: vi.fn(async () => ({ ok: true, data: [] })),
+}))
+
 describe('LibraryPage tabs', () => {
   it('shows purchased empty state copy', async () => {
     render(

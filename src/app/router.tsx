@@ -27,6 +27,12 @@ const FollowListPage = lazy(() => import('../pages/FollowListPage.tsx'))
 const LibraryPage = lazy(() => import('../pages/LibraryPage.tsx'))
 const SavedPage = lazy(() => import('../pages/SavedPage.tsx'))
 const ReaderPage = lazy(() => import('../pages/ReaderPage.tsx'))
+const BookChapterReaderPage = lazy(() => import('../pages/BookChapterReaderPage.tsx'))
+const BookNewPage = lazy(() => import('../pages/BookNewPage.tsx'))
+const BookBuilderPage = lazy(() => import('../pages/BookBuilderPage.tsx'))
+const BookChapterEditPage = lazy(() => import('../pages/BookChapterEditPage.tsx'))
+const BookPage = lazy(() => import('../pages/BookPage.tsx'))
+const CoverStudioPage = lazy(() => import('../pages/CoverStudioPage.tsx'))
 const FounderPage = lazy(() => import('../pages/FounderPage.tsx'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage.tsx'))
 const LoginPage = lazy(() => import('../pages/auth/LoginPage.tsx'))
@@ -86,7 +92,10 @@ const router = createBrowserRouter(
                   </ToastProvider>
                 </ModalStackProvider>
               ),
-              children: [{ path: '/read/:id', element: <ReaderPage /> }],
+              children: [
+                { path: '/read/:id', element: <ReaderPage /> },
+                { path: '/read/book/:bookId/:chapterId', element: <BookChapterReaderPage /> },
+              ],
             },
             {
               element: <AppShell />,
@@ -96,6 +105,11 @@ const router = createBrowserRouter(
                 { path: '/discover/search', element: <DiscoverSearchPage /> },
                 { path: '/discover/browse', element: <DiscoverBrowsePage /> },
                 { path: '/tags/:tag', element: <TagPage /> },
+                { path: '/books/new', element: <BookNewPage /> },
+                { path: '/books/:id/builder/chapter/:chapterId', element: <BookChapterEditPage /> },
+                { path: '/books/:id/builder', element: <BookBuilderPage /> },
+                { path: '/books/:id/cover', element: <CoverStudioPage /> },
+                { path: '/books/:id', element: <BookPage /> },
                 { path: '/create', element: <CreatePage /> },
                 { path: '/create/new/:type', element: <CreationEditorPage /> },
                 { path: '/create/:id', element: <CreationEditorPage /> },

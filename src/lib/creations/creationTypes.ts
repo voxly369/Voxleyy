@@ -46,6 +46,7 @@ const phase1Set = new Set<CreationType>([
   'letter',
   'script',
   'journal',
+  'book',
 ])
 
 const literarySet = new Set<CreationType>([
@@ -59,6 +60,7 @@ const literarySet = new Set<CreationType>([
   'script',
   'journal',
   'quote_card',
+  'book',
 ])
 
 const groupByType: Record<CreationType, CreationTypeGroupId> = {

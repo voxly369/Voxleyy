@@ -9,6 +9,10 @@ vi.mock('../../lib/reader/offlineReadingStore.ts', () => ({
   listOfflinePackages: vi.fn(async () => []),
 }))
 
+vi.mock('../../lib/books/booksApi.ts', () => ({
+  listLibraryBooks: vi.fn(async () => ({ ok: true, data: [] })),
+}))
+
 vi.mock('../../lib/library/listLibrary.ts', () => ({
   listContinueReading: vi.fn(async () => ({ ok: true, items: [] })),
   listLibrarySaved: vi.fn(async () => ({ ok: true, items: [], nextCursor: null })),
