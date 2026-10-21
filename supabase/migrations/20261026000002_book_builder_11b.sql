@@ -64,13 +64,15 @@ grant execute on function public.reorder_book_chapters(uuid, uuid[]) to authenti
 -- library_continue_reading: posts + in-progress books
 -- ---------------------------------------------------------------------------
 
-create or replace view public.library_continue_reading
+drop view if exists public.library_continue_reading;
+
+create view public.library_continue_reading
 with (security_invoker = true)
 as
 select
   rp.user_id,
   rp.creation_id,
-  rp.percent,
+  rp.percent::numeric(5,2) as percent,
   rp.position,
   rp.completed,
   rp.first_read_at,
@@ -131,7 +133,9 @@ grant select on table public.library_continue_reading to authenticated;
 -- library_highlights: posts + book chapters
 -- ---------------------------------------------------------------------------
 
-create or replace view public.library_highlights
+drop view if exists public.library_highlights;
+
+create view public.library_highlights
 with (security_invoker = true)
 as
 select

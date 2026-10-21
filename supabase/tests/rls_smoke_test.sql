@@ -2906,7 +2906,6 @@ begin
   exception when others then
     perform pg_temp.record('paid book cannot publish while payments disabled', true, sqlerrm);
   end;
-  alter table public.creations enable trigger creations_rate_limit;
 end $book_builder$;
 
 -- Book builder (11B): reorder_book_chapters RPC
@@ -2965,7 +2964,6 @@ begin
   select position into pos1 from public.chapters where id = v_c2;
   select position into pos2 from public.chapters where id = v_c1;
   perform pg_temp.record('reorder_book_chapters swaps positions', pos1 = 1 and pos2 = 2, 'pos=' || pos1 || ',' || pos2);
-  alter table public.creations enable trigger creations_rate_limit;
 end $book_builder_11b$;
 
 do $$
