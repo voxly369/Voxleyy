@@ -14,6 +14,7 @@ import {
   moderationOwnProfileStatus,
   resetModerationMocks,
 } from './moderationMocks.ts'
+import { notificationMockHandleRest, resetNotificationMocks } from './notificationMocks.ts'
 import { Buffer } from 'node:buffer'
 
 export const PROJECT_REF = 'ktgxdqplvggeyrnuqljx'
@@ -89,6 +90,7 @@ function ownProfile(id: string, username: string, display_name: string, creation
     city: null,
     city_visible: false,
     timezone: 'UTC',
+    show_local_time: false,
     language: 'en',
     role: 'writer',
     status: 'active',
@@ -337,6 +339,8 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
 }
 
 function handleRest(url: string, method: string, postData: unknown): unknown {
+  const notificationResult = notificationMockHandleRest(url, method, postData)
+  if (notificationResult !== undefined) return notificationResult
   const moderationResult = moderationMockHandleRest(url, method, postData)
   if (moderationResult !== undefined) return moderationResult
   const audienceResult = audienceMockHandleRest(url, method, postData)
@@ -415,7 +419,7 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
 
   if (url.includes('/rest/v1/comments')) return commentTree()
 
-  if (url.includes('/rest/v1/notifications') || url.includes('/rest/v1/mentions')) return []
+  if (url.includes('/rest/v1/mentions')) return []
 
   if (url.includes('/rest/v1/creations') && method === 'DELETE') {
     const idMatch = url.match(/id=eq\.([^&]+)/)
@@ -472,6 +476,7 @@ function isSupabaseCloudUrl(url: string): boolean {
 }
 
 export async function installSupabaseMocks(page: Page) {
+  resetNotificationMocks()
   resetModerationMocks()
   const session = sessionResponse(READER.id, READER.email)
 
@@ -534,6 +539,7 @@ export async function seedSignedInSession(page: Page) {
 export {
   resetModerationMocks,
   setModerationAllowPrivateView,
+  setModerationIncludeBannedUserInSearch,
   setModerationIsFounder,
   setModerationOwnProfileStatus,
   setModerationReportDuplicate,
@@ -541,6 +547,19 @@ export {
   setModerationUnseenWarnings,
   seedModerationAuditLog,
 } from './moderationMocks.ts'
+
+export {
+  bumpNotificationUnread,
+  resetNotificationMocks,
+  setNotificationQuietManual,
+  setNotificationUnreadOverride,
+} from './notificationMocks.ts'
+
+export async function seedNotificationsE2e(page: Page) {
+  await page.addInitScript(() => {
+    localStorage.setItem('voxly-e2e-notifications', '1')
+  })
+}
 
 export {
   SAMPLE_CREATION_ID,

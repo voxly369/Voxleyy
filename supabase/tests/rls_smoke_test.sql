@@ -3165,6 +3165,69 @@ begin
   perform pg_temp.record('reorder_book_chapters swaps positions', pos1 = 1 and pos2 = 2, 'pos=' || pos1 || ',' || pos2);
 end $book_builder_11b$;
 
+-- Prompt 13A: notifications RLS and trigger smoke (requires 20261027000001_notifications_13a.sql).
+do $notifications_13a$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_note uuid;
+  v_count integer;
+begin
+  select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
+  if v_a is null or v_b is null then
+    perform pg_temp.record('notifications 13A skipped', true, 'missing rls_ids readers');
+    return;
+  end if;
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+
+  begin
+    insert into public.notifications (recipient_id, type, actor_id)
+    values (v_a, 'like', v_b);
+    perform pg_temp.record('notifications insert blocked for authenticated', false, 'insert succeeded');
+  exception when insufficient_privilege then
+    perform pg_temp.record('notifications insert blocked for authenticated', true, 'insufficient_privilege');
+  when others then
+    perform pg_temp.record('notifications insert blocked for authenticated', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select public.create_notification(
+    v_a, v_b, 'comment', 'creation', (select id from public.creations limit 1), '{}'::jsonb
+  ) into v_note;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  update public.notifications set read_at = now() where id = v_note and recipient_id = v_a;
+  get diagnostics v_count = row_count;
+  perform pg_temp.record('notification owner can mark read', v_count = 1, 'row_count=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  update public.notifications set read_at = now() where id = v_note and recipient_id = v_a;
+  get diagnostics v_count = row_count;
+  perform pg_temp.record('cross-user notification read blocked', v_count = 0, 'row_count=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select public.notification_unread_count() into v_count;
+  perform pg_temp.record('notification_unread_count rpc smoke', v_count >= 0, 'count=' || v_count);
+
+  for i in 1..505 loop
+    perform public.create_notification(
+      v_a, v_b, 'comment', 'comment', gen_random_uuid(),
+      jsonb_build_object('creation_id', (select id from public.creations limit 1))
+    );
+  end loop;
+  update public.notifications set read_at = now() where recipient_id = v_a and read_at is null;
+  for i in 1..20 loop
+    perform public.create_notification(
+      v_a, v_b, 'comment', 'comment', gen_random_uuid(),
+      jsonb_build_object('creation_id', (select id from public.creations limit 1))
+    );
+  end loop;
+  select count(*) into v_count from public.notifications where recipient_id = v_a;
+  perform pg_temp.record('notifications prune cap near 500', v_count <= 500, 'rows=' || v_count);
+end $notifications_13a$;
+
 do $$
 declare
   n integer;
