@@ -3373,6 +3373,11 @@ begin
   select held into v_held from public.notifications where id = v_id;
   perform pg_temp.record('quiet reach nobody holds notifications', v_held = true, 'held=' || v_held);
 
+  update public.notification_settings set quiet_reach = 'pen_pals' where user_id = v_a;
+  select public.create_notification(v_a, v_b, 'comment', 'comment', gen_random_uuid(), '{}'::jsonb) into v_id;
+  select held into v_held from public.notifications where id = v_id;
+  perform pg_temp.record('quiet reach pen pals holds until feature ships', v_held = true, 'held=' || v_held);
+
   delete from public.follows where follower_id in (v_a, v_b) and followee_id in (v_a, v_b);
   update public.notification_settings set quiet_reach = 'close_contacts' where user_id = v_a;
   select public.create_notification(v_a, v_b, 'comment', 'comment', gen_random_uuid(), '{}'::jsonb) into v_id;
