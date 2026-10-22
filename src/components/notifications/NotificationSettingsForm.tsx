@@ -191,10 +191,15 @@ export function NotificationSettingsForm() {
               className="min-h-11 rounded-2xl border border-line bg-bg px-3 text-base"
             >
               <option value="everyone">Everyone</option>
-              <option value="close_contacts">Close contacts</option>
+              <option value="close_contacts">Close contacts (mutual follows)</option>
               <option value="pen_pals">Pen pals</option>
               <option value="nobody">Nobody</option>
             </select>
+            {form.quiet_reach === 'pen_pals' ? (
+              <p className="text-sm text-muted" data-testid="quiet-reach-pen-pals-note">
+                Available when Pen Pals launch. Until then, this behaves like nobody during quiet hours.
+              </p>
+            ) : null}
           </label>
         </div>
       </fieldset>

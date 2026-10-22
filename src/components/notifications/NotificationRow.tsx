@@ -73,6 +73,7 @@ export function NotificationRow(props: Props) {
         className={className}
         data-testid="notification-row"
         data-notification-id={row.id}
+        data-held={!isAdmin && 'held' in row && row.held ? 'true' : 'false'}
         onClick={handleClick}
       >
         {inner}
@@ -81,7 +82,12 @@ export function NotificationRow(props: Props) {
   }
 
   return (
-    <div className={className} data-testid="notification-row" data-notification-id={row.id}>
+    <div
+      className={className}
+      data-testid="notification-row"
+      data-notification-id={row.id}
+      data-held={!isAdmin && 'held' in row && row.held ? 'true' : 'false'}
+    >
       {inner}
     </div>
   )

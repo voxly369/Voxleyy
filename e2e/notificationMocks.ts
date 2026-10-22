@@ -127,6 +127,55 @@ export function resetNotificationMocks() {
 export function setNotificationQuietManual(value: boolean) {
   quietManual = value
   settings = { ...settings, quiet_manual: value }
+  if (!value && Number(settings.quiet_summary_pending) > 0) {
+    const pending = Number(settings.quiet_summary_pending)
+    settings = { ...settings, quiet_summary_pending: 0 }
+    notifications.unshift({
+      id: '00000000-0000-0000-0000-000000000sum1',
+      recipient_id: READER.id,
+      type: 'summary',
+      actor_id: null,
+      target_type: null,
+      target_id: null,
+      data: { kind: 'quiet_end', count: pending },
+      held: false,
+      created_at: new Date().toISOString(),
+      read_at: null,
+      actor_username: null,
+      actor_display_name: null,
+      actor_avatar_url: null,
+      target_title: null,
+      target_excerpt: null,
+    })
+  }
+}
+
+export function setNotificationQuietReach(value: string) {
+  settings = { ...settings, quiet_reach: value }
+}
+
+export function seedHeldNotification() {
+  settings = {
+    ...settings,
+    quiet_summary_pending: Number(settings.quiet_summary_pending ?? 0) + 1,
+  }
+  notifications.unshift({
+    id: '00000000-0000-0000-0000-000000000held',
+    recipient_id: READER.id,
+    type: 'like',
+    actor_id: OTHER.id,
+    target_type: 'creation',
+    target_id: CREATION_ID,
+    data: {},
+    held: true,
+    created_at: new Date().toISOString(),
+    read_at: null,
+    actor_username: OTHER.username,
+    actor_display_name: OTHER.display_name,
+    actor_avatar_url: null,
+    target_title: 'Readable creation',
+    target_excerpt: 'Held while quiet',
+  })
 }
 
 export function setNotificationUnreadOverride(count: number | null) {
@@ -161,7 +210,7 @@ export function notificationToastEvents(): string[] {
 
 function unreadCount(): number {
   if (unreadOverride !== null) return unreadOverride
-  return notifications.filter((n) => !n.read_at).length
+  return notifications.filter((n) => !n.read_at && n.held !== true).length
 }
 
 function parseLimit(url: string): number {

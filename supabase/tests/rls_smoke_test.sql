@@ -3228,6 +3228,229 @@ begin
   perform pg_temp.record('notifications prune cap near 500', v_count <= 500, 'rows=' || v_count);
 end $notifications_13a$;
 
+-- Prompt 13B: quiet reach, mention visibility, summaries, Realtime, settings toggles.
+do $notifications_13b$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_founder uuid;
+  v_public uuid;
+  v_private uuid;
+  v_username text;
+  v_comment uuid;
+  v_id uuid;
+  v_count integer;
+  v_before integer;
+  v_after integer;
+  v_held boolean;
+  v_summary integer;
+  v_pending integer;
+begin
+  select reader_a, reader_b, founder, public_id, private_id
+    into v_a, v_b, v_founder, v_public, v_private
+  from rls_ids limit 1;
+
+  execute format('set local role %I', session_user);
+
+  update public.profiles
+  set status = 'active', suspended_until = null, status_reason = null
+  where id in (v_a, v_b);
+
+  delete from public.blocks where (blocker_id = v_b and blocked_id = v_a) or (blocker_id = v_a and blocked_id = v_b);
+
+  update public.creations
+  set is_removed = false, removed_reason = null, status = 'published', audience = 'public'
+  where id = v_public;
+  update public.creations
+  set is_removed = false, status = 'published', audience = 'private'
+  where id = v_private;
+
+  alter table public.comments disable trigger comments_rate_limit;
+
+  update public.notification_settings
+  set notify_likes = false, notify_comments = true, quiet_manual = false, quiet_summary_pending = 0
+  where user_id = v_a;
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select public.create_notification(v_a, v_b, 'like', 'creation', v_public, '{}'::jsonb) into v_id;
+  perform pg_temp.record('disabled like type creates no notification', v_id is null, 'id=' || coalesce(v_id::text, 'null'));
+
+  select public.create_notification(v_a, v_b, 'comment', 'comment', gen_random_uuid(), '{}'::jsonb) into v_id;
+  perform pg_temp.record('enabled comment type still creates notification', v_id is not null, 'id=' || coalesce(v_id::text, 'null'));
+
+  select username::text into v_username from public.profiles where id = v_a;
+
+  perform pg_temp.record(
+    'can_user_view_creation true for public fixture',
+    public.can_user_view_creation(v_a, v_public),
+    'viewer=' || v_a::text
+  );
+
+  select count(*) into v_before from public.notifications where recipient_id = v_a and type = 'mention';
+
+  insert into public.comments (creation_id, author_id, body)
+  values (v_private, v_b, 'mention test private')
+  returning id into v_comment;
+  insert into public.mentions (comment_id, creation_id, author_id, mentioned_user_id)
+  values (v_comment, v_private, v_b, v_a)
+  on conflict do nothing;
+
+  select count(*) into v_after
+  from public.notifications
+  where recipient_id = v_a and type = 'mention';
+  perform pg_temp.record(
+    'mention on private creation creates no notification',
+    v_after = v_before,
+    'before=' || v_before || ' after=' || v_after
+  );
+
+  insert into public.comments (creation_id, author_id, body)
+  values (v_public, v_b, 'mention test public')
+  returning id into v_comment;
+  insert into public.mentions (comment_id, creation_id, author_id, mentioned_user_id)
+  values (v_comment, v_public, v_b, v_a)
+  on conflict do nothing;
+
+  select count(*) into v_after
+  from public.notifications
+  where recipient_id = v_a and type = 'mention';
+  perform pg_temp.record(
+    'mention on viewable public creation creates exactly one notification',
+    v_after = v_before + 1,
+    'before=' || v_before || ' after=' || v_after
+  );
+
+  insert into public.blocks (blocker_id, blocked_id) values (v_a, v_b);
+  insert into public.comments (creation_id, author_id, body)
+  values (v_public, v_b, 'blocked mention attempt')
+  returning id into v_comment;
+  insert into public.mentions (comment_id, creation_id, author_id, mentioned_user_id)
+  values (v_comment, v_public, v_b, v_a)
+  on conflict do nothing;
+  select count(*) into v_count
+  from public.notifications
+  where recipient_id = v_a and type = 'mention';
+  perform pg_temp.record(
+    'mention blocked author creates no notification',
+    v_count = v_after,
+    'rows=' || v_count || ' expected=' || v_after
+  );
+  delete from public.blocks where blocker_id = v_a and blocked_id = v_b;
+
+  perform pg_temp.record(
+    'no self-notification from create_notification',
+    public.create_notification(v_a, v_a, 'follow', 'profile', v_b, '{}'::jsonb) is null,
+    'skipped'
+  );
+
+  insert into public.blocks (blocker_id, blocked_id) values (v_a, v_b)
+  on conflict do nothing;
+  perform pg_temp.record(
+    'no notification across blocks',
+    public.create_notification(v_a, v_b, 'comment', 'comment', gen_random_uuid(), '{}'::jsonb) is null,
+    'skipped'
+  );
+  delete from public.blocks where blocker_id = v_a and blocked_id = v_b;
+
+  insert into public.mutes (user_id, muted_user_id) values (v_a, v_b)
+  on conflict do nothing;
+  perform pg_temp.record(
+    'no notification for muted actor',
+    public.create_notification(v_a, v_b, 'comment', 'comment', gen_random_uuid(), '{}'::jsonb) is null,
+    'skipped'
+  );
+  delete from public.mutes where user_id = v_a and muted_user_id = v_b;
+
+  update public.notification_settings
+  set quiet_manual = true, quiet_reach = 'everyone', quiet_summary_pending = 0
+  where user_id = v_a;
+  select public.create_notification(v_a, v_b, 'follow', 'profile', v_b, '{}'::jsonb) into v_id;
+  select held into v_held from public.notifications where id = v_id;
+  perform pg_temp.record('quiet reach everyone does not hold notifications', v_held = false, 'held=' || v_held);
+
+  update public.notification_settings set quiet_reach = 'nobody' where user_id = v_a;
+  select public.create_notification(v_a, v_b, 'comment', 'comment', gen_random_uuid(), '{}'::jsonb) into v_id;
+  select held into v_held from public.notifications where id = v_id;
+  perform pg_temp.record('quiet reach nobody holds notifications', v_held = true, 'held=' || v_held);
+
+  update public.notification_settings set quiet_reach = 'pen_pals' where user_id = v_a;
+  select public.create_notification(v_a, v_b, 'comment', 'comment', gen_random_uuid(), '{}'::jsonb) into v_id;
+  select held into v_held from public.notifications where id = v_id;
+  perform pg_temp.record('quiet reach pen pals holds until feature ships', v_held = true, 'held=' || v_held);
+
+  delete from public.follows where follower_id in (v_a, v_b) and followee_id in (v_a, v_b);
+  update public.notification_settings set quiet_reach = 'close_contacts' where user_id = v_a;
+  select public.create_notification(v_a, v_b, 'comment', 'comment', gen_random_uuid(), '{}'::jsonb) into v_id;
+  select held into v_held from public.notifications where id = v_id;
+  perform pg_temp.record('quiet reach close contacts holds non-mutual', v_held = true, 'held=' || v_held);
+
+  insert into public.follows (follower_id, followee_id) values (v_a, v_b), (v_b, v_a);
+  select public.create_notification(v_a, v_b, 'comment', 'comment', gen_random_uuid(), '{}'::jsonb) into v_id;
+  select held into v_held from public.notifications where id = v_id;
+  perform pg_temp.record('quiet reach close contacts delivers mutual follows', v_held = false, 'held=' || v_held);
+
+  update public.notification_settings
+  set notify_likes = false, quiet_reach = 'nobody', quiet_manual = true
+  where user_id = v_a;
+  select public.create_notification(v_a, v_founder, 'warning', 'profile', v_a, '{"message":"x"}'::jsonb) into v_id;
+  select held into v_held from public.notifications where id = v_id;
+  perform pg_temp.record('warning ignores disabled toggle and reach holding', v_id is not null and v_held = false, 'held=' || v_held);
+
+  delete from public.notifications where recipient_id = v_a and type = 'summary';
+  update public.notification_settings
+  set quiet_manual = true, quiet_reach = 'nobody', quiet_summary_pending = 0
+  where user_id = v_a;
+  perform public.create_notification(v_a, v_b, 'comment', 'comment', gen_random_uuid(), '{}'::jsonb);
+  select quiet_summary_pending into v_pending from public.notification_settings where user_id = v_a;
+
+  update public.notification_settings set quiet_manual = false where user_id = v_a;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform public.prepare_notification_delivery();
+  perform public.prepare_notification_delivery();
+
+  select count(*) into v_summary
+  from public.notifications
+  where recipient_id = v_a and type = 'summary' and data->>'kind' = 'quiet_end';
+  perform pg_temp.record(
+    'quiet end summary created exactly once after quiet ends',
+    v_summary = 1,
+    'summaries=' || v_summary || ' pending_was=' || v_pending
+  );
+
+  update public.notification_settings
+  set digest_enabled = true,
+      digest_time = '00:00:00'::time,
+      digest_last_date = null,
+      timezone = 'UTC'
+  where user_id = v_a;
+
+  perform public.prepare_notification_delivery();
+  perform public.prepare_notification_delivery();
+  select count(*) into v_summary
+  from public.notifications
+  where recipient_id = v_a and type = 'summary' and data->>'kind' = 'daily_digest'
+    and (created_at at time zone 'UTC')::date = (now() at time zone 'UTC')::date;
+  perform pg_temp.record('daily digest summary idempotent per day', v_summary = 1, 'summaries=' || v_summary);
+
+  select count(*) into v_count
+  from pg_publication_tables
+  where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notifications';
+  perform pg_temp.record('notifications table published to supabase_realtime', v_count = 1, 'rows=' || v_count);
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select count(*) into v_count from public.notifications where recipient_id = v_a;
+  perform pg_temp.record(
+    'realtime RLS hides other users notification rows',
+    v_count = 0,
+    'rows=' || v_count
+  );
+
+  execute format('set local role %I', session_user);
+  alter table public.comments enable trigger comments_rate_limit;
+end $notifications_13b$;
+
 do $$
 declare
   n integer;
