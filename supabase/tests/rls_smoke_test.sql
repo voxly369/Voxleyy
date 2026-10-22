@@ -2908,6 +2908,160 @@ begin
   end;
 end $book_builder$;
 
+-- ---------------------------------------------------------------------------
+-- Moderation (12A): mutes, hidden words, reports, appeals, Founder RPCs
+-- ---------------------------------------------------------------------------
+
+do $moderation_12a$
+declare
+  v_founder uuid;
+  v_a uuid;
+  v_b uuid;
+  v_post uuid;
+  v_comment uuid;
+  v_report uuid;
+  v_audit uuid;
+  v_appeal uuid;
+  n integer;
+  v_detail text;
+  v_blocked boolean;
+begin
+  select founder, reader_a, reader_b into v_founder, v_a, v_b from rls_ids;
+
+  execute format('set local role %I', session_user);
+  alter table public.creations disable trigger creations_rate_limit;
+  insert into public.creations (author_id, type, title, language, audience, status, body_text, published_at)
+  values (v_b, 'poem', 'Mute feed post', 'en', 'public', 'published', 'Visible until muted', now())
+  returning id into v_post;
+  insert into public.creations (author_id, type, title, language, audience, status, body_text, published_at)
+  values (v_b, 'poem', 'Comment host', 'en', 'public', 'published', 'Host', now());
+  insert into public.comments (creation_id, author_id, body)
+  select id, v_b, 'badword spam comment' from public.creations where author_id = v_b and title = 'Comment host'
+  returning id into v_comment;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+
+  select count(*) into n from public.feed_creations where id = v_post;
+  perform pg_temp.record('feed shows author before mute', n = 1, 'rows=' || n);
+
+  insert into public.mutes (user_id, muted_user_id) values (v_a, v_b);
+  select count(*) into n from public.feed_creations where id = v_post;
+  perform pg_temp.record('feed hides muted author', n = 0, 'rows=' || n);
+
+  insert into public.hidden_words (user_id, word) values (v_a, 'badword');
+  select count(*) into n from public.comments where id = v_comment;
+  perform pg_temp.record('hidden word hides matching comment', n = 0, 'rows=' || n);
+
+  begin
+    insert into public.mutes (user_id, muted_user_id) values (v_b, v_b);
+    perform pg_temp.record('cannot mute yourself', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record('cannot mute yourself', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  begin
+    insert into public.reports (target_type, target_id, reason)
+    values ('profile', v_b, 'spam');
+    perform pg_temp.record('cannot report yourself', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record('cannot report yourself', true, sqlerrm);
+  end;
+
+  insert into public.reports (target_type, target_id, reported_user_id, reason)
+  values ('creation', v_post, v_b, 'spam')
+  returning id into v_report;
+
+  begin
+    insert into public.reports (target_type, target_id, reported_user_id, reason)
+    values ('creation', v_post, v_b, 'harassment');
+    perform pg_temp.record('duplicate report friendly message', false, 'second insert succeeded');
+  exception when others then
+    perform pg_temp.record(
+      'duplicate report friendly message',
+      sqlerrm = 'You already reported this',
+      sqlerrm
+    );
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    insert into public.warnings (user_id, message, created_by)
+    values (v_b, 'Direct insert', v_a);
+    perform pg_temp.record('client cannot insert warnings directly', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record('client cannot insert warnings directly', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+
+  perform public.dismiss_report(v_report, 'Not a violation');
+  select status::text into v_detail from public.reports where id = v_report;
+  perform pg_temp.record('dismiss_report closes report', v_detail = 'dismissed', coalesce(v_detail, 'null'));
+
+  select count(*) into n from public.moderation_actions where report_id = v_report and action = 'dismiss';
+  perform pg_temp.record('dismiss_report writes audit row', n = 1, 'rows=' || n);
+
+  insert into public.reports (target_type, target_id, reported_user_id, reason)
+  values ('comment', v_comment, v_b, 'inappropriate')
+  returning id into v_report;
+
+  perform public.remove_content('comment', v_comment, 'Removed in smoke test', v_report);
+  select is_removed into v_blocked from public.comments where id = v_comment;
+  perform pg_temp.record('remove_content marks comment removed', v_blocked, 'is_removed=' || v_blocked);
+
+  perform public.restore_content('comment', v_comment, 'Restored in smoke test', null);
+  select is_removed into v_blocked from public.comments where id = v_comment;
+  perform pg_temp.record('restore_content clears removal', not v_blocked, 'is_removed=' || v_blocked);
+
+  perform public.warn_user(v_b, 'Please follow community rules.', 'Official warning', null);
+  select count(*) into n from public.warnings where user_id = v_b;
+  perform pg_temp.record('warn_user inserts warning row', n >= 1, 'rows=' || n);
+
+  perform public.suspend_user(v_b, 7, 'Smoke suspension', null);
+  select status::text into v_detail from public.profiles where id = v_b;
+  perform pg_temp.record('suspend_user sets suspended status', v_detail = 'suspended', coalesce(v_detail, 'null'));
+  perform public.unban_user(v_b, 'Lift suspension', null);
+
+  select id into v_audit from public.moderation_actions
+  where target_user_id = v_b and action = 'remove' order by created_at desc limit 1;
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  insert into public.appeals (user_id, moderation_action_id, message)
+  values (v_b, v_audit, 'Please restore my comment.');
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  select id into v_appeal from public.appeals where user_id = v_b order by created_at desc limit 1;
+  perform public.decide_appeal(v_appeal, 'overturned', 'Appeal granted in smoke test');
+
+  select count(*) into n from public.founder_report_queue;
+  perform pg_temp.record('founder_report_queue readable by founder', n >= 0, 'rows=' || n);
+
+  select jsonb_array_length(public.founder_user_search('reader'))::integer into n;
+  perform pg_temp.record('founder_user_search returns matches', n >= 1, 'matches=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    select count(*) into n from public.founder_report_queue;
+    perform pg_temp.record('non-founder sees empty report queue', n = 0, 'rows=' || n);
+  exception when others then
+    perform pg_temp.record('non-founder sees empty report queue', true, sqlerrm);
+  end;
+
+  delete from public.mutes where user_id = v_a and muted_user_id = v_b;
+  delete from public.hidden_words where user_id = v_a and word = 'badword';
+end $moderation_12a$;
+
 -- Book builder (11B): reorder_book_chapters RPC
 do $book_builder_11b$
 declare
