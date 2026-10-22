@@ -391,6 +391,8 @@ $$;
 
 revoke all on function public.founder_mark_report(uuid, public.report_status) from public, anon, authenticated;
 
+drop function if exists public.founder_set_user_status(uuid, public.account_status, text, timestamptz);
+
 create or replace function public.founder_set_user_status(
   p_user uuid,
   p_status public.account_status,
@@ -1211,3 +1213,91 @@ create policy appeals_select on public.appeals
 
 create policy appeals_insert on public.appeals
   for insert to authenticated with check (user_id = auth.uid());
+
+-- ---------------------------------------------------------------------------
+-- Open-report checks for deletes (RLS on reports must not hide reports from authors)
+-- ---------------------------------------------------------------------------
+
+create or replace function public.creation_has_open_report(p_creation_id uuid) returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.reports r
+    where r.status = 'open'
+      and r.target_type = 'creation'
+      and r.target_id = p_creation_id
+  );
+$$;
+
+create or replace function public.comment_has_open_report(p_comment_id uuid, p_creation_id uuid) returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.reports r
+    where r.status = 'open'
+      and (
+        (r.target_type = 'comment' and r.target_id = p_comment_id)
+        or (r.target_type = 'creation' and r.target_id = p_creation_id)
+      )
+  );
+$$;
+
+create or replace function public.chapter_has_open_report(p_chapter_id uuid, p_book_id uuid) returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.reports r
+    where r.status = 'open'
+      and (
+        (r.target_type = 'chapter' and r.target_id = p_chapter_id)
+        or (r.target_type = 'creation' and r.target_id = p_book_id)
+      )
+  );
+$$;
+
+revoke all on function public.creation_has_open_report(uuid) from public, anon;
+revoke all on function public.comment_has_open_report(uuid, uuid) from public, anon;
+revoke all on function public.chapter_has_open_report(uuid, uuid) from public, anon;
+grant execute on function public.creation_has_open_report(uuid) to authenticated;
+grant execute on function public.comment_has_open_report(uuid, uuid) to authenticated;
+grant execute on function public.chapter_has_open_report(uuid, uuid) to authenticated;
+
+drop policy if exists creations_delete on public.creations;
+create policy creations_delete on public.creations
+  for delete to authenticated
+  using (
+    author_id = auth.uid()
+    and public.is_active_user()
+    and is_removed = false
+    and not public.creation_has_open_report(id)
+  );
+
+drop policy if exists chapters_delete on public.chapters;
+create policy chapters_delete on public.chapters
+  for delete to authenticated
+  using (
+    public.is_active_user()
+    and exists (
+      select 1 from public.creations c
+      where c.id = chapters.book_id and c.author_id = auth.uid()
+    )
+    and not public.chapter_has_open_report(id, book_id)
+  );
+
+drop policy if exists comments_delete on public.comments;
+create policy comments_delete on public.comments
+  for delete to authenticated
+  using (
+    author_id = auth.uid()
+    and public.is_active_user()
+    and not public.comment_has_open_report(id, creation_id)
+  );

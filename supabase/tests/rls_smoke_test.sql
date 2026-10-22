@@ -1291,8 +1291,20 @@ begin
   insert into public.creations (author_id, type, title, audience, status)
   values (v_a, 'poem', 'To delete', 'public', 'draft')
   returning id into v_reported;
-  insert into public.reports (target_type, target_id, reason)
-  values ('creation', v_reported, 'spam');
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+  insert into public.reports (target_type, target_id, reported_user_id, reason)
+  values ('creation', v_reported, v_a, 'spam');
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
   delete from public.creations where id = v_reported;
   select exists (select 1 from public.creations where id = v_reported) into v_blocked;
   if v_blocked then v_detail := 'row remains'; else v_detail := 'deleted'; end if;
@@ -2930,6 +2942,7 @@ begin
 
   execute format('set local role %I', session_user);
   alter table public.creations disable trigger creations_rate_limit;
+  alter table public.comments disable trigger comments_rate_limit;
   insert into public.creations (author_id, type, title, language, audience, status, body_text, published_at)
   values (v_b, 'poem', 'Mute feed post', 'en', 'public', 'published', 'Visible until muted', now())
   returning id into v_post;
@@ -2938,6 +2951,7 @@ begin
   insert into public.comments (creation_id, author_id, body)
   select id, v_b, 'badword spam comment' from public.creations where author_id = v_b and title = 'Comment host'
   returning id into v_comment;
+  alter table public.comments enable trigger comments_rate_limit;
   execute 'set local role authenticated';
   perform set_config('request.jwt.claim.sub', v_a::text, true);
   perform set_config(
@@ -2972,6 +2986,13 @@ begin
   exception when others then
     perform pg_temp.record('cannot report yourself', true, sqlerrm);
   end;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
 
   insert into public.reports (target_type, target_id, reported_user_id, reason)
   values ('creation', v_post, v_b, 'spam')
@@ -3037,11 +3058,21 @@ begin
   where target_user_id = v_b and action = 'remove' order by created_at desc limit 1;
 
   perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
   insert into public.appeals (user_id, moderation_action_id, message)
-  values (v_b, v_audit, 'Please restore my comment.');
+  values (v_b, v_audit, 'Please restore my comment.')
+  returning id into v_appeal;
 
   perform set_config('request.jwt.claim.sub', v_founder::text, true);
-  select id into v_appeal from public.appeals where user_id = v_b order by created_at desc limit 1;
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
   perform public.decide_appeal(v_appeal, 'overturned', 'Appeal granted in smoke test');
 
   select count(*) into n from public.founder_report_queue;
