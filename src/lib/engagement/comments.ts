@@ -1,3 +1,5 @@
+import { feedBadgesByUserIds } from '../badges/api.ts'
+import { displayBadgesForFeed } from '../badges/displayBadgesForFeed.ts'
 import { supabase } from '../supabaseClient.ts'
 import { providerFields } from '../supabaseFailure.ts'
 import { buildCommentTree, type CommentAuthor, type CommentNode, type CommentRow } from './commentTree.ts'
@@ -153,6 +155,15 @@ export async function listComments(
     const author = parseCommentAuthor(record.author)
     const authorId = text(record.author_id)
     if (author && authorId) authors.set(authorId, author)
+  }
+
+  const badgeMapResult = await feedBadgesByUserIds([...authors.keys()])
+  if (!badgeMapResult.ok) return fail('unavailable', badgeMapResult.error.message)
+  for (const [authorId, author] of authors) {
+    authors.set(authorId, {
+      ...author,
+      feedBadges: displayBadgesForFeed(badgeMapResult.data.get(authorId) ?? []),
+    })
   }
 
   const tree = buildCommentTree([...topPage, ...replyRows], authors, options)

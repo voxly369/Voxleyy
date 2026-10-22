@@ -16,6 +16,7 @@ export type CommentAuthor = {
   avatarUrl: string | null
   verified: boolean
   unavailable?: boolean
+  feedBadges?: import('../badges/types.ts').FeedBadge[]
 }
 
 const UNAVAILABLE_AUTHOR: CommentAuthor = {

@@ -25,6 +25,10 @@ describe('buildDisplayText', () => {
     expect(buildDisplayText(row({ type: 'mention' }))).toContain('mentioned you')
   })
 
+  it('formats badge awards', () => {
+    expect(buildDisplayText(row({ type: 'badge_awarded', data: { badge_name: 'Poet' } }))).toContain('Poet')
+  })
+
   it('formats moderation and summary', () => {
     expect(buildDisplayText(row({ type: 'moderation_notice', data: { kind: 'banned' } }))).toContain('banned')
     expect(buildDisplayText(row({ type: 'summary', data: { count: 3 } }))).toContain('3 notifications')

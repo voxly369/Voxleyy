@@ -14,6 +14,7 @@ function work(overrides: Partial<PublishedWorkSummary> = {}): PublishedWorkSumma
     audience: 'public',
     likeCount: 1,
     commentCount: 0,
+    viewCount: 0,
     bodyText: '\n\n\nFirst visible line after blanks\nSecond line',
     bodyJson: null,
     ...overrides,

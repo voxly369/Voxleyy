@@ -1,3 +1,5 @@
+import { feedBadgesByUserIds } from '../badges/api.ts'
+import { displayBadgesForFeed } from '../badges/displayBadgesForFeed.ts'
 import type { CreationAuthor } from '../creations/types.ts'
 import { supabase } from '../supabaseClient.ts'
 import { providerFields } from '../supabaseFailure.ts'
@@ -155,6 +157,11 @@ export async function listFeed(kind: FeedKind, cursor: import('./cursor.ts').Fee
   const tagMap = await tagsForCreations(creationIds)
   if ('ok' in tagMap && tagMap.ok === false) return tagMap
 
+  const authorIds = [...new Set(page.map((entry) => entry.post.author.id))]
+  const badgeMapResult = await feedBadgesByUserIds(authorIds)
+  if (!badgeMapResult.ok) return fail('unavailable', badgeMapResult.error.message, badgeMapResult.error)
+  const badgeMap = badgeMapResult.data
+
   const { liked, saved } = engagement as { liked: Set<string>; saved: Set<string> }
   const tags = tagMap as Map<string, string[]>
 
@@ -163,6 +170,10 @@ export async function listFeed(kind: FeedKind, cursor: import('./cursor.ts').Fee
     data: {
       posts: page.map((entry) => ({
         ...entry.post,
+        author: {
+          ...entry.post.author,
+          feedBadges: displayBadgesForFeed(badgeMap.get(entry.post.author.id) ?? []),
+        },
         likedByViewer: liked.has(entry.id),
         savedByViewer: saved.has(entry.id),
         tags: tags.get(entry.id) ?? [],

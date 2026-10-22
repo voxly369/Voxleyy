@@ -470,7 +470,7 @@ export async function publishCreation(input: {
 }
 
 const PUBLISHED_LIST_COLUMNS =
-  'id, type, title, cover_url, published_at, audience, like_count, comment_count, body_text, body_json' as const
+  'id, type, title, cover_url, published_at, audience, like_count, comment_count, view_count, body_text, body_json' as const
 
 export async function listUserPublished(
   userId: string,
@@ -519,6 +519,7 @@ export async function listUserPublished(
           audience: audience as PublishedWorksPage['works'][number]['audience'],
           likeCount: typeof row.like_count === 'number' ? row.like_count : 0,
           commentCount: typeof row.comment_count === 'number' ? row.comment_count : 0,
+          viewCount: typeof row.view_count === 'number' ? row.view_count : 0,
           bodyText: text(row.body_text),
           bodyJson: row.body_json ?? null,
         },

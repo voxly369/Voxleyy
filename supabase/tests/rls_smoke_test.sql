@@ -3451,6 +3451,149 @@ begin
   alter table public.comments enable trigger comments_rate_limit;
 end $notifications_13b$;
 
+-- Prompt 14A: badges, streaks, views, storefront, analytics (20261029000001_badges_streaks_14a.sql).
+do $badges_14a$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_founder uuid;
+  v_count integer;
+  v_poet boolean;
+  v_note integer;
+  i integer;
+  v_creation uuid;
+begin
+  select reader_a, reader_b, founder into v_a, v_b, v_founder from rls_ids limit 1;
+  if v_a is null or v_b is null then
+    perform pg_temp.record('badges 14A skipped', true, 'missing rls_ids');
+    return;
+  end if;
+
+  select count(*) into v_count from public.badges;
+  perform pg_temp.record('badges seed rows present', v_count >= 20, 'count=' || v_count);
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    insert into public.user_badges (user_id, badge_key) values (v_a, 'poet');
+    perform pg_temp.record('user_badges insert blocked for client', false, 'insert succeeded');
+  exception when insufficient_privilege then
+    perform pg_temp.record('user_badges insert blocked for client', true, 'insufficient_privilege');
+  when others then
+    perform pg_temp.record('user_badges insert blocked for client', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  delete from public.notifications where recipient_id = v_a and type = 'badge_awarded';
+  perform public.award_user_badge(v_a, 'poet', null);
+  perform public.award_user_badge(v_a, 'poet', null);
+  select count(*) into v_count from public.user_badges where user_id = v_a and badge_key = 'poet' and month is null;
+  perform pg_temp.record('award_user_badge idempotent', v_count = 1, 'rows=' || v_count);
+
+  select count(*) into v_note
+  from public.notifications
+  where recipient_id = v_a and type = 'badge_awarded' and data->>'badge_key' = 'poet';
+  perform pg_temp.record('badge_awarded notification once', v_note = 1, 'notifications=' || v_note);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    perform public.pin_badge('storyteller'::text, 1::smallint);
+    perform pg_temp.record('pin unearned badge blocked', false, 'pin succeeded');
+  exception when others then
+    perform pg_temp.record('pin unearned badge blocked', true, sqlerrm);
+  end;
+
+  perform public.award_user_badge(v_a, 'storyteller', null);
+  perform public.award_user_badge(v_a, 'author', null);
+  perform public.award_user_badge(v_a, 'featured', null);
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform public.pin_badge('poet'::text, 1::smallint);
+  perform public.pin_badge('storyteller'::text, 2::smallint);
+  perform public.pin_badge('author'::text, 3::smallint);
+  select count(*) into v_count from public.user_pinned_badges where user_id = v_a;
+  perform pg_temp.record('pin at most three slots', v_count = 3, 'pins=' || v_count);
+  perform public.pin_badge('featured'::text, 1::smallint);
+  select count(*) into v_count from public.user_pinned_badges where user_id = v_a;
+  perform pg_temp.record('pin replace keeps three slots', v_count = 3, 'pins=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  begin
+    delete from public.user_pinned_badges where user_id = v_a;
+    perform pg_temp.record('cannot delete others pins', false, 'delete succeeded');
+  exception when insufficient_privilege then
+    perform pg_temp.record('cannot delete others pins', true, 'insufficient_privilege');
+  end;
+  execute format('set local role %I', session_user);
+  select count(*) into v_count from public.user_pinned_badges where user_id = v_a;
+  perform pg_temp.record('others pins unchanged after delete attempt', v_count = 3, 'pins=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  begin
+    perform public.award_featured_badge(v_a);
+    perform pg_temp.record('featured badge founder award', true, 'ok');
+  exception when others then
+    perform pg_temp.record('featured badge founder award', false, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  begin
+    perform public.award_featured_badge(v_a);
+    perform pg_temp.record('featured badge non-founder blocked', false, 'awarded');
+  exception when others then
+    perform pg_temp.record('featured badge non-founder blocked', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform public.apply_writing_streak_day(v_a, (now() at time zone 'UTC')::date);
+  perform public.apply_writing_streak_day(v_a, (now() at time zone 'UTC')::date);
+  select writing_current into v_count from public.user_streaks where user_id = v_a;
+  perform pg_temp.record('writing streak idempotent same day', v_count = 1, 'current=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select coalesce((public.get_creator_analytics()->>'views_7d')::integer, 0) into v_count;
+  perform pg_temp.record('get_creator_analytics own data', v_count >= 0, 'views_7d=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select id into v_creation from public.creations where author_id = v_b and audience = 'public' and status = 'published' limit 1;
+  if v_creation is null then
+    perform pg_temp.record('view dedupe within 24h', true, 'no public creation fixture');
+  else
+    delete from public.creation_view_events where creation_id = v_creation and viewer_id = v_a;
+    perform public.record_creation_view(v_creation);
+    perform public.record_creation_view(v_creation);
+    select count(*) into v_count from public.creation_view_events where creation_id = v_creation and viewer_id = v_a;
+    perform pg_temp.record('view dedupe within 24h', v_count = 1, 'events=' || v_count);
+  end if;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.close_month((date_trunc('month', now()) - interval '2 months')::date);
+  perform public.close_month((date_trunc('month', now()) - interval '2 months')::date);
+  select count(*) into v_count
+  from public.closed_months
+  where month = date_trunc('month', now() - interval '2 months')::date;
+  perform pg_temp.record('close_month idempotent', v_count = 1, 'rows=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  begin
+    perform public.close_month((date_trunc('month', now()) - interval '3 months')::date);
+    perform pg_temp.record('close_month non-founder blocked', false, 'closed');
+  exception when others then
+    perform pg_temp.record('close_month non-founder blocked', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  execute 'set local role anon';
+  begin
+    perform public.get_creator_analytics();
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('analytics anon blocked', false, 'returned');
+  exception when others then
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('analytics anon blocked', true, sqlerrm);
+  end;
+end $badges_14a$;
+
 do $$
 declare
   n integer;

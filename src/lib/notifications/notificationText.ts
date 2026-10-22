@@ -81,6 +81,15 @@ export function buildDisplayText(row: NotificationRow): string {
       const count = typeof data.count === 'number' ? data.count : row.data.pending ?? 'some'
       return `While you were in quiet mode, you received ${count} notifications`
     }
+    case 'badge_awarded': {
+      const badge =
+        typeof data.badge_name === 'string' && data.badge_name.trim()
+          ? data.badge_name.trim()
+          : typeof data.badge_key === 'string'
+            ? data.badge_key.replace(/_/g, ' ')
+            : 'a badge'
+      return `You earned the ${badge} badge`
+    }
     default:
       return 'New notification'
   }
