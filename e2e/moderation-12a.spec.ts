@@ -4,6 +4,7 @@ import {
   seedSignedInSession,
   OTHER,
   READER,
+  setModerationOwnProfileStatus,
   setModerationReportDuplicate,
 } from './fixtures.ts'
 
@@ -70,43 +71,7 @@ test.describe('moderation 12A flows', () => {
   })
 
   test('suspended banner when profile suspended', async ({ page }) => {
-    await page.route('**/*.supabase.co/**', async (route) => {
-      const url = route.request().url()
-      if (url.includes('/rest/v1/profiles_public') && url.includes(`id=eq.${READER.id}`)) {
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([
-            {
-              id: READER.id,
-              username: READER.username,
-              display_name: READER.display_name,
-              bio: 'Bio',
-              avatar_url: null,
-              banner_url: null,
-              website: null,
-              country: null,
-              city: null,
-              city_visible: false,
-              timezone: 'UTC',
-              language: 'en',
-              role: 'writer',
-              status: 'suspended',
-              suspended_until: '2030-01-01T00:00:00.000Z',
-              verified: false,
-              who_can_message: 'everyone',
-              follower_count: 0,
-              following_count: 0,
-              creation_count: 0,
-              created_at: '2026-01-01T00:00:00.000Z',
-              updated_at: '2026-01-01T00:00:00.000Z',
-            },
-          ]),
-        })
-        return
-      }
-      await route.fallback()
-    })
+    setModerationOwnProfileStatus('suspended')
     await page.goto('/', { waitUntil: 'networkidle' })
     await expect(page.getByTestId('suspended-banner')).toBeVisible()
   })

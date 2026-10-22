@@ -102,7 +102,7 @@ export default function SettingsPage() {
       </section>
       <SafetySettingsSection />
       {isFounder ? (
-        <section className="rounded-2xl border border-line bg-surface p-5">
+        <section className="rounded-2xl border border-line bg-surface p-5" data-testid="settings-founder-section">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Founder</h2>
           <Link
             to="/founder"

@@ -3,6 +3,8 @@ import type { Route } from '@playwright/test'
 type Json = Record<string, unknown> | unknown[] | string | number | boolean | null
 
 let reportDuplicate = false
+let isFounderUser = false
+let ownProfileStatus: 'active' | 'suspended' | 'banned' | null = null
 let blocks: { blocked_id: string }[] = []
 let mutes: { muted_user_id: string }[] = []
 let hiddenWords: { word: string }[] = []
@@ -12,6 +14,8 @@ let founderQueue: Record<string, unknown>[] = []
 
 export function resetModerationMocks() {
   reportDuplicate = false
+  isFounderUser = false
+  ownProfileStatus = null
   blocks = []
   mutes = []
   hiddenWords = []
@@ -45,9 +49,35 @@ export function setModerationReportDuplicate(value: boolean) {
   reportDuplicate = value
 }
 
+export function setModerationIsFounder(value: boolean) {
+  isFounderUser = value
+}
+
+export function setModerationOwnProfileStatus(status: 'active' | 'suspended' | 'banned' | null) {
+  ownProfileStatus = status
+}
+
+export function moderationOwnProfileStatus(): typeof ownProfileStatus {
+  return ownProfileStatus
+}
+
+export function moderationMutedUserIds(): string[] {
+  return mutes.map((m) => m.muted_user_id)
+}
+
+export function moderationBlockedUserIds(): string[] {
+  return blocks.map((b) => b.blocked_id)
+}
+
 export function moderationMockHandleRest(url: string, method: string, postData: unknown): Json | undefined {
   if (url.includes('/rest/v1/rpc/my_account_restriction')) {
-    return [{ status: 'banned', status_reason: 'Policy violation', suspended_until: null }]
+    if (ownProfileStatus === 'banned') {
+      return [{ status: 'banned', status_reason: 'Repeated harassment', suspended_until: null }]
+    }
+    if (ownProfileStatus === 'suspended') {
+      return [{ status: 'suspended', status_reason: 'Policy violation', suspended_until: '2030-01-01T00:00:00.000Z' }]
+    }
+    return [{ status: 'active', status_reason: null, suspended_until: null }]
   }
 
   if (url.includes('/rest/v1/rpc/dismiss_report') || url.includes('/rest/v1/rpc/remove_content')) {
@@ -55,7 +85,7 @@ export function moderationMockHandleRest(url: string, method: string, postData: 
   }
 
   if (url.includes('/rest/v1/rpc/is_founder')) {
-    return url.includes('founder=1') ? true : false
+    return isFounderUser
   }
 
   if (url.includes('/rest/v1/founder_report_queue')) {
@@ -110,6 +140,19 @@ export function moderationMockHandleRest(url: string, method: string, postData: 
   }
 
   if (url.includes('/rest/v1/moderation_actions')) {
+    if (isFounderUser && method === 'GET') {
+      return [
+        {
+          id: '00000000-0000-0000-0000-0000000000aa',
+          action: 'dismiss',
+          target_type: 'creation',
+          target_id: '00000000-0000-0000-0000-000000000001',
+          target_user_id: null,
+          reason: 'Not a policy violation after review.',
+          created_at: '2026-01-03T00:00:00.000Z',
+        },
+      ]
+    }
     return []
   }
 

@@ -49,7 +49,11 @@ export function AccountStatusPage() {
             Your appeal was submitted. The Founder will review it.
           </p>
         ) : (
-          <form onSubmit={(e) => void onAppeal(e)} className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4">
+          <form
+            onSubmit={(e) => void onAppeal(e)}
+            data-testid="appeal-form"
+            className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4"
+          >
             <h2 className="text-base font-semibold text-ink">Appeal this decision</h2>
             <label className="flex flex-col gap-1 text-sm">
               Moderation action ID

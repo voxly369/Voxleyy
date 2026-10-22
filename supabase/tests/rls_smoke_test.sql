@@ -2937,6 +2937,8 @@ declare
   n integer;
   v_detail text;
   v_blocked boolean;
+  v_ok boolean;
+  v_text text;
 begin
   select founder, reader_a, reader_b into v_founder, v_a, v_b from rls_ids;
 
@@ -2963,13 +2965,25 @@ begin
   select count(*) into n from public.feed_creations where id = v_post;
   perform pg_temp.record('feed shows author before mute', n = 1, 'rows=' || n);
 
+  insert into public.hidden_words (user_id, word) values (v_a, 'badword');
+  select count(*) into n from public.comments where id = v_comment;
+  perform pg_temp.record('hidden word still returns comment for collapse UI', n = 1, 'rows=' || n);
+  select public.comment_contains_hidden_word(v_a, 'this has badword in it') into v_ok;
+  perform pg_temp.record('comment_contains_hidden_word matches whole word', v_ok, 'fn=' || v_ok);
+  execute format('set local role %I', session_user);
+  update public.creations set body_text = 'Visible badword in body' where id = v_post;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select coalesce(body_excerpt, '') into v_text from public.feed_creations where id = v_post;
+  perform pg_temp.record(
+    'hidden word redacts feed excerpt when body matches',
+    coalesce(v_text, '') = '',
+    'excerpt=' || coalesce(v_text, '<null>')
+  );
+
   insert into public.mutes (user_id, muted_user_id) values (v_a, v_b);
   select count(*) into n from public.feed_creations where id = v_post;
   perform pg_temp.record('feed hides muted author', n = 0, 'rows=' || n);
-
-  insert into public.hidden_words (user_id, word) values (v_a, 'badword');
-  select count(*) into n from public.comments where id = v_comment;
-  perform pg_temp.record('hidden word hides matching comment', n = 0, 'rows=' || n);
 
   begin
     insert into public.mutes (user_id, muted_user_id) values (v_b, v_b);

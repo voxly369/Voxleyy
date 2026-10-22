@@ -133,7 +133,7 @@ export default function FounderPage() {
       ) : null}
 
       {tab === 'reports' ? (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4" data-testid="founder-report-queue">
           {reportRows.length === 0 ? (
             <EmptyState title="Report queue" message="No open reports." />
           ) : (
