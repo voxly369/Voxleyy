@@ -4,7 +4,7 @@ import { PageSkeleton } from '../components/states/Skeleton.tsx'
 import { AccountStatusPage } from '../pages/auth/AccountStatusPage.tsx'
 import { useAuth } from '../lib/auth/auth-context.ts'
 import { safeNextPath } from '../lib/auth/safeNextPath.ts'
-import { isRestrictedStatus } from '../lib/auth/profile.ts'
+import { isBannedStatus } from '../lib/auth/profile.ts'
 
 export function RequireAuth() {
   const { session, profile, loading, error, refreshProfile, signOut } = useAuth()
@@ -45,7 +45,7 @@ export function RequireAuth() {
     )
   }
 
-  if (isRestrictedStatus(profile.status)) return <AccountStatusPage />
+  if (isBannedStatus(profile.status)) return <AccountStatusPage />
 
   return <Outlet />
 }

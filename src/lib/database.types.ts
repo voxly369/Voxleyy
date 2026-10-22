@@ -39,6 +39,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      appeals: {
+        Row: {
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision: Database["public"]["Enums"]["appeal_decision"] | null
+          id: string
+          message: string
+          moderation_action_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: Database["public"]["Enums"]["appeal_decision"] | null
+          id?: string
+          message: string
+          moderation_action_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision?: Database["public"]["Enums"]["appeal_decision"] | null
+          id?: string
+          message?: string
+          moderation_action_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       blocks: {
         Row: {
           blocked_id: string
@@ -788,39 +824,78 @@ export type Database = {
           },
         ]
       }
+      hidden_words: {
+        Row: {
+          created_at: string
+          user_id: string
+          word: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+          word: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+          word?: string
+        }
+        Relationships: []
+      }
+      mutes: {
+        Row: {
+          created_at: string
+          muted_user_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          muted_user_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          muted_user_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       reports: {
         Row: {
           created_at: string
+          decided_at: string | null
+          decided_by: string | null
           details: string | null
           id: string
           reason: Database["public"]["Enums"]["report_reason"]
           reported_user_id: string | null
           reporter_id: string
-          reviewed_at: string | null
           status: Database["public"]["Enums"]["report_status"]
           target_id: string
           target_type: Database["public"]["Enums"]["report_target"]
         }
         Insert: {
           created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
           details?: string | null
           id?: string
           reason: Database["public"]["Enums"]["report_reason"]
           reported_user_id?: string | null
           reporter_id?: string
-          reviewed_at?: string | null
           status?: Database["public"]["Enums"]["report_status"]
           target_id: string
           target_type: Database["public"]["Enums"]["report_target"]
         }
         Update: {
           created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
           details?: string | null
           id?: string
           reason?: Database["public"]["Enums"]["report_reason"]
           reported_user_id?: string | null
           reporter_id?: string
-          reviewed_at?: string | null
           status?: Database["public"]["Enums"]["report_status"]
           target_id?: string
           target_type?: Database["public"]["Enums"]["report_target"]
@@ -1373,6 +1448,51 @@ export type Database = {
         Update: Record<string, never>
         Relationships: []
       }
+      founder_content_browser: {
+        Row: {
+          author_display_name: string | null
+          author_id: string
+          author_username: string | null
+          audience: Database["public"]["Enums"]["audience"] | null
+          body_excerpt: string | null
+          content_id: string
+          content_kind: string
+          created_at: string
+          is_removed: boolean
+          published_at: string | null
+          removed_reason: string | null
+          status: Database["public"]["Enums"]["publish_status"] | null
+          title: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      founder_report_queue: {
+        Row: {
+          details: string | null
+          moderation_actions_against_user: number
+          prior_reports_against_user: number
+          reason: Database["public"]["Enums"]["report_reason"]
+          report_id: string
+          reported_at: string
+          reported_display_name: string | null
+          reported_user_id: string | null
+          reported_user_status: Database["public"]["Enums"]["account_status"] | null
+          reported_username: string | null
+          reporter_display_name: string | null
+          reporter_id: string
+          reporter_username: string | null
+          status: Database["public"]["Enums"]["report_status"]
+          target_id: string
+          target_snapshot: Json | null
+          target_type: Database["public"]["Enums"]["report_target"]
+          warnings_against_user: number
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
       founder_featured_writers_public: {
         Row: {
           writer_id: string | null
@@ -1400,11 +1520,79 @@ export type Database = {
         Returns: boolean
       }
       founder_email: { Args: never; Returns: string }
+      ban_user: {
+        Args: { p_report_id?: string; p_reason: string; p_user: string }
+        Returns: undefined
+      }
+      decide_appeal: {
+        Args: {
+          p_appeal_id: string
+          p_decision: Database["public"]["Enums"]["appeal_decision"]
+          p_reason: string
+        }
+        Returns: undefined
+      }
+      dismiss_report: {
+        Args: { p_report_id: string; p_reason: string }
+        Returns: undefined
+      }
       founder_set_user_status: {
         Args: {
           p_reason: string
+          p_report_id?: string
           p_status: Database["public"]["Enums"]["account_status"]
           p_until?: string
+          p_user: string
+        }
+        Returns: undefined
+      }
+      founder_user_search: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: Json
+      }
+      my_account_restriction: {
+        Args: Record<string, never>
+        Returns: {
+          status: Database["public"]["Enums"]["account_status"]
+          status_reason: string | null
+          suspended_until: string | null
+        }[]
+      }
+      remove_content: {
+        Args: {
+          p_report_id?: string
+          p_reason: string
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: undefined
+      }
+      restore_content: {
+        Args: {
+          p_report_id?: string
+          p_reason: string
+          p_target_id: string
+          p_target_type: string
+        }
+        Returns: undefined
+      }
+      suspend_user: {
+        Args: { p_days: number; p_report_id?: string; p_reason: string; p_user: string }
+        Returns: undefined
+      }
+      unban_user: {
+        Args: { p_report_id?: string; p_reason: string; p_user: string }
+        Returns: undefined
+      }
+      view_reported_private_content: {
+        Args: { p_report_id: string }
+        Returns: Json
+      }
+      warn_user: {
+        Args: {
+          p_message: string
+          p_report_id?: string
+          p_reason: string
           p_user: string
         }
         Returns: undefined
@@ -1460,6 +1648,7 @@ export type Database = {
         | "course"
         | "event"
         | "collab"
+      appeal_decision: "upheld" | "overturned"
       mod_action:
         | "dismiss"
         | "remove"
@@ -1469,6 +1658,7 @@ export type Database = {
         | "ban"
         | "unban"
         | "appeal_decision"
+        | "private_view"
       publish_status: "draft" | "published" | "unlisted" | "removed"
       report_reason:
         | "spam"

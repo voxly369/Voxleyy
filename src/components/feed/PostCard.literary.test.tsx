@@ -2,10 +2,15 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { PostCard } from './PostCard.tsx'
+import { ModalStackProvider } from '../../lib/shell/modalStack.tsx'
 import type { FeedPost } from '../../lib/feed/types.ts'
 
 vi.mock('../../lib/engagement/toggleLike.ts', () => ({
   toggleLike: vi.fn(),
+}))
+
+vi.mock('../../lib/auth/auth-context.ts', () => ({
+  useAuth: () => ({ profile: { id: 'viewer-id' } }),
 }))
 
 const PROSE_EXCERPT = [
@@ -48,7 +53,9 @@ describe('PostCard literary preview', () => {
   it('uses a single stanza for prose-style poem excerpt', () => {
     const { container } = render(
       <MemoryRouter>
-        <PostCard post={poemPost(PROSE_EXCERPT)} onCommentClick={() => {}} onPostUpdate={() => {}} />
+        <ModalStackProvider>
+          <PostCard post={poemPost(PROSE_EXCERPT)} onCommentClick={() => {}} onPostUpdate={() => {}} />
+        </ModalStackProvider>
       </MemoryRouter>,
     )
     const stanzaGroups = container.querySelectorAll('.flex.flex-col.gap-0')
@@ -59,11 +66,13 @@ describe('PostCard literary preview', () => {
   it('shows Read more directly under excerpt when truncated', () => {
     render(
       <MemoryRouter>
-        <PostCard
-          post={{ ...poemPost('Line\n'.repeat(20)), bodyTruncated: true }}
-          onCommentClick={() => {}}
-          onPostUpdate={() => {}}
-        />
+        <ModalStackProvider>
+          <PostCard
+            post={{ ...poemPost('Line\n'.repeat(20)), bodyTruncated: true }}
+            onCommentClick={() => {}}
+            onPostUpdate={() => {}}
+          />
+        </ModalStackProvider>
       </MemoryRouter>,
     )
     expect(screen.getByText('Read more')).toBeInTheDocument()

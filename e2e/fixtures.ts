@@ -7,6 +7,7 @@ import {
   seedReadingProgress,
 } from './libraryReadingMocks.ts'
 import { bookBuilderMockHandleRest, resetBookBuilderMocks, softDeleteBookInMock } from './bookBuilderMocks.ts'
+import { moderationMockHandleRest, resetModerationMocks } from './moderationMocks.ts'
 import { Buffer } from 'node:buffer'
 
 export const PROJECT_REF = 'ktgxdqplvggeyrnuqljx'
@@ -302,14 +303,19 @@ function editableDraft() {
 }
 
 async function fulfillJson(route: Route, body: unknown, status = 200) {
+  const method = route.request().method()
+  const code =
+    method === 'POST' && status === 200 && route.request().url().includes('/rest/v1/reports') ? 201 : status
   await route.fulfill({
-    status,
+    status: code,
     contentType: 'application/json',
     body: JSON.stringify(body),
   })
 }
 
-function handleRest(url: string, method: string, postData: unknown): unknown[] {
+function handleRest(url: string, method: string, postData: unknown): unknown {
+  const moderationResult = moderationMockHandleRest(url, method, postData)
+  if (moderationResult !== undefined) return moderationResult
   const audienceResult = audienceMockHandleRest(url, method, postData)
   if (audienceResult !== undefined) return audienceResult
   const libraryResult = libraryReadingMockHandleRest(url, method, postData)
@@ -433,6 +439,7 @@ function isSupabaseCloudUrl(url: string): boolean {
 }
 
 export async function installSupabaseMocks(page: Page) {
+  resetModerationMocks()
   const session = sessionResponse(READER.id, READER.email)
 
   await page.route('**/*', async (route) => {
@@ -457,6 +464,11 @@ export async function installSupabaseMocks(page: Page) {
       return
     }
 
+    if (url.includes('/rest/v1/rpc/my_account_restriction')) {
+      await fulfillJson(route, [{ status: 'active', status_reason: null, suspended_until: null }])
+      return
+    }
+
     if (url.includes('/rest/v1/')) {
       let postData: unknown = null
       try {
@@ -465,6 +477,11 @@ export async function installSupabaseMocks(page: Page) {
         postData = null
       }
       const body = handleRest(url, route.request().method(), postData)
+      if (body && typeof body === 'object' && !Array.isArray(body) && '__httpError' in body) {
+        const err = (body as { __httpError: { status: number; message: string } }).__httpError
+        await fulfillJson(route, { message: err.message, code: 'P0001' }, err.status)
+        return
+      }
       await fulfillJson(route, body)
       return
     }
@@ -484,6 +501,8 @@ export async function seedSignedInSession(page: Page) {
     localStorage.setItem(key, JSON.stringify(value))
   }, { key: AUTH_STORAGE_KEY, value: session })
 }
+
+export { resetModerationMocks, setModerationReportDuplicate } from './moderationMocks.ts'
 
 export {
   SAMPLE_CREATION_ID,

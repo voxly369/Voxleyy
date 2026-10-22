@@ -5,6 +5,7 @@ import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { EmptyState } from '../components/states/EmptyState.tsx'
 import { ImageWithFallback } from '../components/states/ImageWithFallback.tsx'
+import { SafetySettingsSection } from '../components/safety/SafetySettingsSection.tsx'
 import { useAuth } from '../lib/auth/auth-context.ts'
 import { USERNAME_TAKEN_NOTICE } from '../lib/auth/messages.ts'
 import { ThemeChoiceGroup } from '../components/shell/ThemeChoiceGroup.tsx'
@@ -36,7 +37,7 @@ function dismissNotice(userId: string) {
 
 export default function SettingsPage() {
   const { choice, setTheme } = useTheme()
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, signOut, isFounder } = useAuth()
   const chosen = chosenUsername(user?.user_metadata)
   const assigned = profile?.username.toLowerCase() ?? ''
   const showUsernameNotice = Boolean(user && chosen && assigned && chosen !== assigned && !noticeDismissed(user.id))
@@ -99,6 +100,18 @@ export default function SettingsPage() {
           </Link>
         </div>
       </section>
+      <SafetySettingsSection />
+      {isFounder ? (
+        <section className="rounded-2xl border border-line bg-surface p-5">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Founder</h2>
+          <Link
+            to="/founder"
+            className={`mt-4 inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Founder dashboard
+          </Link>
+        </section>
+      ) : null}
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">About</h2>
         <Link

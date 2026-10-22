@@ -18,6 +18,7 @@ import type { CommentNode } from '../../lib/engagement/commentTree.ts'
 import { parseMentions } from '../../lib/engagement/mentions.ts'
 import { supabase } from '../../lib/supabaseClient.ts'
 import { MentionText } from './MentionText.tsx'
+import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
 import { useMediaQuery, DESKTOP_NAV_QUERY } from '../../lib/shell/useMediaQuery.ts'
 
 type CommentsSheetProps = {
@@ -160,6 +161,7 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
                 <li key={comment.id} className="rounded-xl border border-line p-3">
                   <CommentRow
                     node={comment}
+                    creationId={creationId}
                     viewerId={user?.id ?? null}
                     knownMentions={knownMentions}
                     onReply={() => setReplyTo(comment.id)}
@@ -173,6 +175,7 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
                     <div key={reply.id} className="ml-4 mt-3 border-l border-line pl-3">
                       <CommentRow
                         node={reply}
+                        creationId={creationId}
                         viewerId={user?.id ?? null}
                         knownMentions={knownMentions}
                         onReply={() => setReplyTo(reply.id)}
@@ -288,6 +291,7 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
 
 function CommentRow({
   node,
+  creationId: _creationId,
   viewerId,
   knownMentions,
   onReply,
@@ -295,6 +299,7 @@ function CommentRow({
   onDelete,
 }: {
   node: CommentNode
+  creationId: string
   viewerId: string | null
   knownMentions: ReadonlySet<string>
   onReply: () => void
@@ -305,6 +310,7 @@ function CommentRow({
   const unavailable = node.author.unavailable === true
   return (
     <div>
+      <div className="flex items-start justify-between gap-2">
       <p className="text-xs font-medium text-muted">
         {unavailable ? (
           node.author.displayName
@@ -315,6 +321,22 @@ function CommentRow({
           </>
         )}
       </p>
+      {!own && !unavailable ? (
+        <SafetyOverflowMenu
+          testId={`comment-safety-${node.id}`}
+          subject={{
+            reportedUserId: node.author.id,
+            displayLabel: node.author.displayName || node.author.username,
+            report: {
+              targetType: 'comment',
+              targetId: node.id,
+              reportedUserId: node.author.id,
+              label: 'comment',
+            },
+          }}
+        />
+      ) : null}
+      </div>
       {node.body ? <MentionText text={node.body} knownUsernames={knownMentions} /> : null}
       <div className="mt-2 flex flex-wrap gap-2">
         <button

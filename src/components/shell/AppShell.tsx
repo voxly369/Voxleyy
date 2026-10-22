@@ -1,4 +1,7 @@
 import { Outlet } from 'react-router-dom'
+import { SuspendedBanner } from '../safety/SuspendedBanner.tsx'
+import { WarningModal } from '../safety/WarningModal.tsx'
+import { useAuth } from '../../lib/auth/auth-context.ts'
 import { CreateSheetProvider } from '../../lib/shell/CreateSheetProvider.tsx'
 import { ModalStackProvider } from '../../lib/shell/modalStack.tsx'
 import { VOXLY_APP_ROOT_ID } from '../../lib/shell/modalStackContext.ts'
@@ -9,6 +12,9 @@ import { ToastProvider } from './ToastProvider.tsx'
 import { focusRing } from './navItems.ts'
 
 export function AppShell() {
+  const { profile } = useAuth()
+  const suspended = profile?.status === 'suspended'
+
   return (
     <ModalStackProvider>
       <ToastProvider>
@@ -17,6 +23,8 @@ export function AppShell() {
             <SkipLink />
             <BottomNav />
             <NavRail />
+            {suspended ? <SuspendedBanner suspendedUntil={profile?.suspended_until ?? null} /> : null}
+            <WarningModal />
             <main
               id="main"
               tabIndex={-1}

@@ -1,41 +1,89 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { focusRing } from '../../components/shell/navItems.ts'
 import { useAuth } from '../../lib/auth/auth-context.ts'
-import type { AccountStatus } from '../../lib/auth/profile.ts'
+import { myAccountRestriction } from '../../lib/safety/accountRestriction.ts'
+import { submitAppeal } from '../../lib/safety/appealsApi.ts'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts'
 
-function endDate(value: string | null): string | null {
-  if (!value) return null
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return null
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'long', timeStyle: 'short' }).format(date)
-}
-
-function explanation(status: AccountStatus, until: string | null): string {
-  if (status === 'suspended') {
-    const when = endDate(until)
-    if (when) return `Your account is suspended until ${when}. You can use Voxly again after that.`
-    return 'Your account is suspended. You can use Voxly again when the suspension ends.'
-  }
-  return 'Your account is banned. You cannot use Voxly with this account.'
-}
-
 export function AccountStatusPage() {
-  const { profile, signOut } = useAuth()
-  const status = profile?.status === 'banned' ? 'banned' : 'suspended'
-  const title = status === 'banned' ? 'Account banned' : 'Account suspended'
+  const { signOut } = useAuth()
+  const [reason, setReason] = useState<string | null>(null)
+  const [actionId, setActionId] = useState('')
+  const [appealMessage, setAppealMessage] = useState('')
+  const [appealError, setAppealError] = useState<string | null>(null)
+  const [appealSent, setAppealSent] = useState(false)
   const [pending, setPending] = useState(false)
-  useDocumentTitle(title)
+  useDocumentTitle('Account banned')
+
+  useEffect(() => {
+    void (async () => {
+      const result = await myAccountRestriction()
+      if (result.ok && result.data.statusReason) setReason(result.data.statusReason)
+    })()
+  }, [])
+
+  async function onAppeal(event: React.FormEvent) {
+    event.preventDefault()
+    setAppealError(null)
+    const result = await submitAppeal(actionId.trim(), appealMessage)
+    if (!result.ok) {
+      setAppealError(result.error.message)
+      return
+    }
+    setAppealSent(true)
+  }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-bg px-5 py-10">
+    <main className="flex min-h-screen items-center justify-center bg-bg px-5 py-10" data-testid="account-banned">
       <div className="flex w-full max-w-md flex-col gap-5">
         <p className="font-serif text-4xl text-ink">Voxly</p>
-        <h1 className="text-3xl text-ink">{title}</h1>
+        <h1 className="text-3xl text-ink">Account banned</h1>
         <p role="status" aria-live="polite" className="text-base text-ink">
-          {explanation(status, profile?.suspended_until ?? null)}
+          Your account is banned. You cannot use Voxly with this account.
         </p>
-        <p className="text-sm text-muted">An appeal option arrives in a later step.</p>
+        {reason ? (
+          <p className="rounded-2xl border border-line bg-surface p-4 text-sm text-ink">{reason}</p>
+        ) : null}
+        {appealSent ? (
+          <p role="status" className="text-sm text-ink">
+            Your appeal was submitted. The Founder will review it.
+          </p>
+        ) : (
+          <form onSubmit={(e) => void onAppeal(e)} className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4">
+            <h2 className="text-base font-semibold text-ink">Appeal this decision</h2>
+            <label className="flex flex-col gap-1 text-sm">
+              Moderation action ID
+              <input
+                value={actionId}
+                onChange={(event) => setActionId(event.target.value)}
+                className="min-h-11 rounded-2xl border border-line bg-bg px-3 text-base"
+                required
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              Message
+              <textarea
+                value={appealMessage}
+                onChange={(event) => setAppealMessage(event.target.value)}
+                maxLength={500}
+                rows={3}
+                className="rounded-2xl border border-line bg-bg px-3 py-2 text-base"
+                required
+              />
+            </label>
+            {appealError ? (
+              <p role="alert" className="text-sm text-coral">
+                {appealError}
+              </p>
+            ) : null}
+            <button
+              type="submit"
+              className={`min-h-11 rounded-2xl bg-coral px-4 text-base font-semibold text-white ${focusRing}`}
+            >
+              Submit appeal
+            </button>
+          </form>
+        )}
         <button
           type="button"
           disabled={pending}
@@ -43,7 +91,7 @@ export function AccountStatusPage() {
             setPending(true)
             void signOut()
           }}
-          className={`inline-flex min-h-11 items-center justify-center rounded-2xl bg-coral px-5 text-base font-semibold text-white disabled:opacity-60 ${focusRing}`}
+          className={`inline-flex min-h-11 items-center justify-center rounded-2xl border border-line px-5 text-base font-semibold text-ink disabled:opacity-60 ${focusRing}`}
         >
           {pending ? 'Please wait…' : 'Log out'}
         </button>

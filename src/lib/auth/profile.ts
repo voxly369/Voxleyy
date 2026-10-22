@@ -34,6 +34,11 @@ export type OwnProfile = {
   updated_at: string
 }
 
+export function isBannedStatus(status: AccountStatus): boolean {
+  return status === 'banned'
+}
+
+/** @deprecated Prefer isBannedStatus for route guards; suspended users use the app with a banner. */
 export function isRestrictedStatus(status: AccountStatus): boolean {
   return status === 'suspended' || status === 'banned'
 }
