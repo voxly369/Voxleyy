@@ -35,6 +35,8 @@ const BookPage = lazy(() => import('../pages/BookPage.tsx'))
 const CoverStudioPage = lazy(() => import('../pages/CoverStudioPage.tsx'))
 const BookPreviewPage = lazy(() => import('../pages/BookPreviewPage.tsx'))
 const FounderPage = lazy(() => import('../pages/FounderPage.tsx'))
+const MyReportsPage = lazy(() => import('../pages/settings/MyReportsPage.tsx'))
+const AppealsPage = lazy(() => import('../pages/settings/AppealsPage.tsx'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage.tsx'))
 const LoginPage = lazy(() => import('../pages/auth/LoginPage.tsx'))
 const SignUpPage = lazy(() => import('../pages/auth/SignUpPage.tsx'))
@@ -120,6 +122,8 @@ const router = createBrowserRouter(
                 { path: '/c/:id', element: <CreationPage /> },
                 { path: '/messages', element: <MessagesPage /> },
                 { path: '/settings', element: <SettingsPage /> },
+                { path: '/settings/reports', element: <MyReportsPage /> },
+                { path: '/settings/appeals', element: <AppealsPage /> },
                 { path: '/settings/profile', element: <EditProfilePage /> },
                 { path: '/library', element: <LibraryPage /> },
                 { path: '/library/saved', element: <SavedPage /> },

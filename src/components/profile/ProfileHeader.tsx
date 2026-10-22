@@ -7,6 +7,7 @@ import { MenuLinesIcon } from '../icons/MenuLinesIcon.tsx'
 import { CountLink, SafeWebsite } from './SafeWebsite.tsx'
 import { FollowButton } from './FollowButton.tsx'
 import { VerifiedBadge } from './VerifiedBadge.tsx'
+import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
 
 type ProfileHeaderProps = {
   profile: PublicProfile
@@ -54,6 +55,20 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
         <div className="flex flex-wrap items-center gap-2">
           <h1 className="text-4xl text-ink">{name}</h1>
           {profile.verified ? <VerifiedBadge /> : null}
+          {!isOwn ? (
+            <SafetyOverflowMenu
+              subject={{
+                reportedUserId: profile.id,
+                displayLabel: profile.displayName || profile.username,
+                report: {
+                  targetType: 'profile',
+                  targetId: profile.id,
+                  reportedUserId: profile.id,
+                  label: 'profile',
+                },
+              }}
+            />
+          ) : null}
           {profile.role === 'writer' ? (
             <span className="rounded-full bg-raised px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
               Writer

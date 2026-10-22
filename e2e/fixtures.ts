@@ -7,6 +7,13 @@ import {
   seedReadingProgress,
 } from './libraryReadingMocks.ts'
 import { bookBuilderMockHandleRest, resetBookBuilderMocks, softDeleteBookInMock } from './bookBuilderMocks.ts'
+import {
+  moderationBlockedUserIds,
+  moderationMockHandleRest,
+  moderationMutedUserIds,
+  moderationOwnProfileStatus,
+  resetModerationMocks,
+} from './moderationMocks.ts'
 import { Buffer } from 'node:buffer'
 
 export const PROJECT_REF = 'ktgxdqplvggeyrnuqljx'
@@ -252,7 +259,7 @@ function commentTree() {
       creation_id: SAMPLE_CREATION_ID,
       author_id: OTHER.id,
       parent_id: null,
-      body: 'Top comment @readerone',
+      body: 'Top comment with badword @readerone',
       is_removed: false,
       created_at: '2026-01-02T00:00:00Z',
       updated_at: '2026-01-02T00:00:00Z',
@@ -302,14 +309,19 @@ function editableDraft() {
 }
 
 async function fulfillJson(route: Route, body: unknown, status = 200) {
+  const method = route.request().method()
+  const code =
+    method === 'POST' && status === 200 && route.request().url().includes('/rest/v1/reports') ? 201 : status
   await route.fulfill({
-    status,
+    status: code,
     contentType: 'application/json',
     body: JSON.stringify(body),
   })
 }
 
-function handleRest(url: string, method: string, postData: unknown): unknown[] {
+function handleRest(url: string, method: string, postData: unknown): unknown {
+  const moderationResult = moderationMockHandleRest(url, method, postData)
+  if (moderationResult !== undefined) return moderationResult
   const audienceResult = audienceMockHandleRest(url, method, postData)
   if (audienceResult !== undefined) return audienceResult
   const libraryResult = libraryReadingMockHandleRest(url, method, postData)
@@ -324,7 +336,12 @@ function handleRest(url: string, method: string, postData: unknown): unknown[] {
       return [ownProfile(OTHER.id, OTHER.username, OTHER.display_name, 12)]
     }
     if (url.includes('username=eq.readerone') || url.includes(`id=eq.${READER.id}`)) {
-      return [ownProfile(READER.id, READER.username, READER.display_name, 0)]
+      const row = ownProfile(READER.id, READER.username, READER.display_name, 0)
+      const status = moderationOwnProfileStatus()
+      if (status) {
+        return [{ ...row, status, suspended_until: status === 'suspended' ? '2030-01-01T00:00:00.000Z' : null }]
+      }
+      return [row]
     }
     if (url.includes('order=follower_count')) {
       return Array.from({ length: 5 }, (_, i) =>
@@ -334,7 +351,11 @@ function handleRest(url: string, method: string, postData: unknown): unknown[] {
     return [ownProfile(READER.id, READER.username, READER.display_name)]
   }
 
-  if (url.includes('/rest/v1/feed_creations') || url.includes('/rest/v1/following_feed')) return posts
+  if (url.includes('/rest/v1/feed_creations') || url.includes('/rest/v1/following_feed')) {
+    const hiddenAuthors = new Set([...moderationMutedUserIds(), ...moderationBlockedUserIds()])
+    if (hiddenAuthors.size === 0) return posts
+    return posts.filter((p) => !hiddenAuthors.has(p.author_id))
+  }
 
   if (url.includes('/rest/v1/discover_trending_creations') || url.includes('/rest/v1/discover_new_creations')) {
     return posts.slice(0, 4)
@@ -433,6 +454,7 @@ function isSupabaseCloudUrl(url: string): boolean {
 }
 
 export async function installSupabaseMocks(page: Page) {
+  resetModerationMocks()
   const session = sessionResponse(READER.id, READER.email)
 
   await page.route('**/*', async (route) => {
@@ -452,8 +474,9 @@ export async function installSupabaseMocks(page: Page) {
       return
     }
 
-    if (url.includes('/rest/v1/rpc/is_founder')) {
-      await fulfillJson(route, false)
+    if (url.includes('/rest/v1/rpc/is_founder') || url.includes('/rest/v1/rpc/my_account_restriction')) {
+      const body = handleRest(url, route.request().method(), null)
+      await fulfillJson(route, body)
       return
     }
 
@@ -465,6 +488,11 @@ export async function installSupabaseMocks(page: Page) {
         postData = null
       }
       const body = handleRest(url, route.request().method(), postData)
+      if (body && typeof body === 'object' && !Array.isArray(body) && '__httpError' in body) {
+        const err = (body as { __httpError: { status: number; message: string } }).__httpError
+        await fulfillJson(route, { message: err.message, code: 'P0001' }, err.status)
+        return
+      }
       await fulfillJson(route, body)
       return
     }
@@ -484,6 +512,13 @@ export async function seedSignedInSession(page: Page) {
     localStorage.setItem(key, JSON.stringify(value))
   }, { key: AUTH_STORAGE_KEY, value: session })
 }
+
+export {
+  resetModerationMocks,
+  setModerationIsFounder,
+  setModerationOwnProfileStatus,
+  setModerationReportDuplicate,
+} from './moderationMocks.ts'
 
 export {
   SAMPLE_CREATION_ID,

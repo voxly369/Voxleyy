@@ -14,6 +14,8 @@ import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { focusRing } from '../shell/navItems.ts'
 import { toggleLike } from '../../lib/engagement/toggleLike.ts'
 import { tagPagePath } from '../../lib/discover/tagLink.ts'
+import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
+import { useAuth } from '../../lib/auth/auth-context.ts'
 
 type PostCardProps = {
   post: FeedPost
@@ -22,6 +24,8 @@ type PostCardProps = {
 }
 
 export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) {
+  const { profile } = useAuth()
+  const isOwn = profile?.id === post.author.id
   const lastTap = useRef(0)
   const [pulseLike, setPulseLike] = useState(false)
 
@@ -81,7 +85,23 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
             @{post.author.username}
           </Link>
         </div>
-        <span className="text-xs uppercase tracking-wide text-muted">{creationTypeLabel(post.type)}</span>
+        <div className="flex items-center gap-1">
+          <span className="text-xs uppercase tracking-wide text-muted">{creationTypeLabel(post.type)}</span>
+          {!isOwn ? (
+            <SafetyOverflowMenu
+              subject={{
+                reportedUserId: post.author.id,
+                displayLabel: post.author.displayName || post.author.username,
+                report: {
+                  targetType: 'post',
+                  targetId: post.id,
+                  reportedUserId: post.author.id,
+                  label: 'post',
+                },
+              }}
+            />
+          ) : null}
+        </div>
       </header>
 
       <Link

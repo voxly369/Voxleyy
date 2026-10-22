@@ -18,6 +18,9 @@ import type { CommentNode } from '../../lib/engagement/commentTree.ts'
 import { parseMentions } from '../../lib/engagement/mentions.ts'
 import { supabase } from '../../lib/supabaseClient.ts'
 import { MentionText } from './MentionText.tsx'
+import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
+import { listHiddenWords } from '../../lib/safety/hiddenWordsApi.ts'
+import { hiddenWordMatch } from '../../lib/safety/hiddenWordMatch.ts'
 import { useMediaQuery, DESKTOP_NAV_QUERY } from '../../lib/shell/useMediaQuery.ts'
 
 type CommentsSheetProps = {
@@ -40,6 +43,8 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
   const [knownMentions, setKnownMentions] = useState<Set<string>>(new Set())
   const [editId, setEditId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [hiddenWords, setHiddenWords] = useState<string[]>([])
+  const [revealedCommentIds, setRevealedCommentIds] = useState<Set<string>>(() => new Set())
 
   const accountBlocked =
     profile?.status === 'suspended' || profile?.status === 'banned'
@@ -49,6 +54,18 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
       : profile?.status === 'suspended'
         ? 'Your account is suspended and cannot comment.'
         : null
+
+  useEffect(() => {
+    if (!open) return
+    let active = true
+    void listHiddenWords().then((result) => {
+      if (!active || !result.ok) return
+      setHiddenWords(result.data.map((row) => row.word))
+    })
+    return () => {
+      active = false
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -160,8 +177,18 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
                 <li key={comment.id} className="rounded-xl border border-line p-3">
                   <CommentRow
                     node={comment}
+                    creationId={creationId}
                     viewerId={user?.id ?? null}
                     knownMentions={knownMentions}
+                    hiddenWords={hiddenWords}
+                    revealed={revealedCommentIds.has(comment.id)}
+                    onReveal={() =>
+                      setRevealedCommentIds((prev) => {
+                        const next = new Set(prev)
+                        next.add(comment.id)
+                        return next
+                      })
+                    }
                     onReply={() => setReplyTo(comment.id)}
                     onEdit={() => {
                       setEditId(comment.id)
@@ -173,8 +200,18 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
                     <div key={reply.id} className="ml-4 mt-3 border-l border-line pl-3">
                       <CommentRow
                         node={reply}
+                        creationId={creationId}
                         viewerId={user?.id ?? null}
                         knownMentions={knownMentions}
+                        hiddenWords={hiddenWords}
+                        revealed={revealedCommentIds.has(reply.id)}
+                        onReveal={() =>
+                          setRevealedCommentIds((prev) => {
+                            const next = new Set(prev)
+                            next.add(reply.id)
+                            return next
+                          })
+                        }
                         onReply={() => setReplyTo(reply.id)}
                         onEdit={() => {
                           setEditId(reply.id)
@@ -214,7 +251,7 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
             </p>
           ) : null}
           {composerDisabledMessage ? (
-            <p className="mb-2 text-sm text-muted" role="status">
+            <p className="mb-2 text-sm text-muted" role="status" data-testid="comments-composer-disabled">
               {composerDisabledMessage}
             </p>
           ) : null}
@@ -288,23 +325,33 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
 
 function CommentRow({
   node,
+  creationId: _creationId,
   viewerId,
   knownMentions,
+  hiddenWords,
+  revealed,
+  onReveal,
   onReply,
   onEdit,
   onDelete,
 }: {
   node: CommentNode
+  creationId: string
   viewerId: string | null
   knownMentions: ReadonlySet<string>
+  hiddenWords: readonly string[]
+  revealed: boolean
+  onReveal: () => void
   onReply: () => void
   onEdit: () => void
   onDelete: () => void
 }) {
   const own = viewerId === node.author.id
   const unavailable = node.author.unavailable === true
+  const hiddenByWord = !own && hiddenWordMatch(node.body, hiddenWords) && !revealed
   return (
     <div>
+      <div className="flex items-start justify-between gap-2">
       <p className="text-xs font-medium text-muted">
         {unavailable ? (
           node.author.displayName
@@ -315,7 +362,34 @@ function CommentRow({
           </>
         )}
       </p>
-      {node.body ? <MentionText text={node.body} knownUsernames={knownMentions} /> : null}
+      {!own && !unavailable ? (
+        <SafetyOverflowMenu
+          testId={`comment-safety-${node.id}`}
+          subject={{
+            reportedUserId: node.author.id,
+            displayLabel: node.author.displayName || node.author.username,
+            report: {
+              targetType: 'comment',
+              targetId: node.id,
+              reportedUserId: node.author.id,
+              label: 'comment',
+            },
+          }}
+        />
+      ) : null}
+      </div>
+      {hiddenByWord ? (
+        <button
+          type="button"
+          data-testid={`hidden-comment-${node.id}`}
+          onClick={onReveal}
+          className={`mt-1 text-sm text-muted underline ${focusRing}`}
+        >
+          Hidden comment, show
+        </button>
+      ) : node.body ? (
+        <MentionText text={node.body} knownUsernames={knownMentions} />
+      ) : null}
       <div className="mt-2 flex flex-wrap gap-2">
         <button
           type="button"
