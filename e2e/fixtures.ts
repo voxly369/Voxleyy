@@ -15,6 +15,7 @@ import {
   resetModerationMocks,
 } from './moderationMocks.ts'
 import { notificationMockHandleRest, resetNotificationMocks } from './notificationMocks.ts'
+import { messageMockHandleRest, resetMessageMocks } from './messageMocks.ts'
 import { badgeMockHandleRest, resetBadgeMocks } from './badgeMocks.ts'
 import { Buffer } from 'node:buffer'
 
@@ -345,6 +346,8 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
   if (badgeResult !== undefined) return badgeResult
   const notificationResult = notificationMockHandleRest(url, method, postData)
   if (notificationResult !== undefined) return notificationResult
+  const messageResult = messageMockHandleRest(url, method, postData)
+  if (messageResult !== undefined) return messageResult
   const moderationResult = moderationMockHandleRest(url, method, postData)
   if (moderationResult !== undefined) return moderationResult
   const audienceResult = audienceMockHandleRest(url, method, postData)
@@ -482,6 +485,7 @@ function isSupabaseCloudUrl(url: string): boolean {
 export async function installSupabaseMocks(page: Page) {
   resetBadgeMocks()
   resetNotificationMocks()
+  resetMessageMocks()
   resetModerationMocks()
   const session = sessionResponse(READER.id, READER.email)
 
@@ -552,6 +556,15 @@ export {
   setModerationUnseenWarnings,
   seedModerationAuditLog,
 } from './moderationMocks.ts'
+
+export {
+  bumpMessageUnread,
+  E2E_CONVERSATION_ID,
+  resetMessageMocks,
+  setMessageCanMessage,
+  setMessageQuietStatus,
+  setMessageUnreadOverride,
+} from './messageMocks.ts'
 
 export {
   bumpNotificationUnread,

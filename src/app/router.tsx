@@ -124,6 +124,7 @@ const router = createBrowserRouter(
                 { path: '/write/drafts', element: <DraftsListPage /> },
                 { path: '/c/:id', element: <CreationPage /> },
                 { path: '/messages', element: <MessagesPage /> },
+                { path: '/messages/:conversationId', element: <MessagesPage /> },
                 { path: '/settings', element: <SettingsPage /> },
                 { path: '/settings/reports', element: <MyReportsPage /> },
                 { path: '/settings/appeals', element: <AppealsPage /> },

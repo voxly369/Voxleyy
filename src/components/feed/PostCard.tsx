@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { CoverFrame } from '../creations/CoverFrame.tsx'
 import { LiteraryBodyView } from '../creations/LiteraryBodyView.tsx'
 import { bodyExcerpt } from '../../lib/creations/excerpt.ts'
@@ -17,6 +17,7 @@ import { toggleLike } from '../../lib/engagement/toggleLike.ts'
 import { tagPagePath } from '../../lib/discover/tagLink.ts'
 import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
 import { useAuth } from '../../lib/auth/auth-context.ts'
+import { getOrCreateDm } from '../../lib/messages/api.ts'
 
 type PostCardProps = {
   post: FeedPost
@@ -26,7 +27,9 @@ type PostCardProps = {
 
 export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) {
   const { profile } = useAuth()
+  const navigate = useNavigate()
   const isOwn = profile?.id === post.author.id
+  const [sharePending, setSharePending] = useState(false)
   const lastTap = useRef(0)
   const [pulseLike, setPulseLike] = useState(false)
 
@@ -60,6 +63,19 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
     post.bodyTruncated || excerptTruncated || (poemPreview?.truncated ?? false)
   const quoteText = (previewSource || post.caption || post.title || '').trim() || 'Quote'
 
+  async function shareToMessage() {
+    if (sharePending) return
+    setSharePending(true)
+    if (isOwn) {
+      setSharePending(false)
+      navigate(`/messages?share=${post.id}`)
+      return
+    }
+    const result = await getOrCreateDm(post.author.id)
+    setSharePending(false)
+    if (result.ok) navigate(`/messages/${result.data}?share=${post.id}`)
+  }
+
   return (
     <article className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
       <header className="mb-3 flex items-center gap-3">
@@ -89,6 +105,15 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
         </div>
         <div className="flex items-center gap-1">
           <span className="text-xs uppercase tracking-wide text-muted">{creationTypeLabel(post.type)}</span>
+          <button
+            type="button"
+            disabled={sharePending}
+            onClick={() => void shareToMessage()}
+            data-testid="post-share-to-message"
+            className={`inline-flex min-h-11 items-center rounded-full px-2 text-xs font-medium text-muted ${focusRing}`}
+          >
+            Message
+          </button>
           {!isOwn ? (
             <SafetyOverflowMenu
               subject={{

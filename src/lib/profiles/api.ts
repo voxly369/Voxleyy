@@ -151,7 +151,11 @@ function updatePayload(fields: ProfileUpdate): ProfileResult<ProfileUpdate> {
     payload.language = fields.language
   }
   if (fields.who_can_message !== undefined) {
-    if (fields.who_can_message !== 'everyone' && fields.who_can_message !== 'followers') {
+    if (
+      fields.who_can_message !== 'everyone' &&
+      fields.who_can_message !== 'followers' &&
+      fields.who_can_message !== 'subscribers'
+    ) {
       return fail('invalid', 'Choose who can message you.')
     }
     payload.who_can_message = fields.who_can_message

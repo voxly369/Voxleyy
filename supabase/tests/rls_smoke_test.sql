@@ -3594,6 +3594,213 @@ begin
   end;
 end $badges_14a$;
 
+-- Prompt 15A item 0: automatic badge thresholds + rising star month.
+do $badges_15a$
+declare
+  v_writer uuid := gen_random_uuid();
+  v_other uuid := gen_random_uuid();
+  v_count integer;
+  i integer;
+  v_book uuid;
+  v_f uuid;
+  v_month date := (date_trunc('month', now()) - interval '4 months')::date;
+begin
+  perform pg_temp.create_test_user(v_writer, v_writer::text || '@badge15.test', now());
+  perform pg_temp.create_test_user(v_other, v_other::text || '@badge15b.test', now());
+  update public.profiles set role = 'writer' where id = v_writer;
+
+  for i in 1..4 loop
+    insert into public.creations (author_id, type, title, audience, status, body_text)
+    values (v_writer, 'poem', 'Poem ' || i, 'public', 'published', 'Body');
+  end loop;
+  perform public.evaluate_automatic_badges(v_writer);
+  select count(*) into v_count from public.user_badges where user_id = v_writer and badge_key = 'poet';
+  perform pg_temp.record('Poet not awarded at 4 poems', v_count = 0, 'rows=' || v_count);
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_writer, 'poem', 'Poem 5', 'public', 'published', 'Body');
+  perform public.evaluate_automatic_badges(v_writer);
+  select count(*) into v_count from public.user_badges where user_id = v_writer and badge_key = 'poet';
+  perform pg_temp.record('Poet awarded at 5 poems', v_count = 1, 'rows=' || v_count);
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_writer, 'poem', 'Private poem', 'private', 'published', 'Secret');
+  perform public.evaluate_automatic_badges(v_writer);
+  select count(*) into v_count from public.user_badges where user_id = v_writer and badge_key = 'poet';
+  perform pg_temp.record('private poems do not add poet count', v_count = 1, 'rows=' || v_count);
+
+  for i in 1..5 loop
+    insert into public.creations (author_id, type, title, audience, status, body_text)
+    values (v_writer, 'story', 'Story ' || i, 'public', 'published', 'Body');
+  end loop;
+  perform public.evaluate_automatic_badges(v_writer);
+  select count(*) into v_count from public.user_badges where user_id = v_writer and badge_key = 'storyteller';
+  perform pg_temp.record('Storyteller awarded at 5 stories', v_count = 1, 'rows=' || v_count);
+
+  update public.profiles set follower_count = 99 where id = v_writer;
+  perform public.evaluate_automatic_badges(v_writer);
+  select count(*) into v_count from public.user_badges where user_id = v_writer and badge_key = 'rising_creator';
+  perform pg_temp.record('Rising Creator not at 99 followers', v_count = 0, 'rows=' || v_count);
+  update public.profiles set follower_count = 100 where id = v_writer;
+  perform public.evaluate_automatic_badges(v_writer);
+  select count(*) into v_count from public.user_badges where user_id = v_writer and badge_key = 'rising_creator';
+  perform pg_temp.record('Rising Creator at 100 followers', v_count = 1, 'rows=' || v_count);
+
+  insert into public.creations (author_id, type, title, audience, status, body_text, like_count)
+  values (v_writer, 'written_post', 'Trend', 'public', 'published', 'Body', 999);
+  perform public.evaluate_automatic_badges(v_writer);
+  select count(*) into v_count from public.user_badges where user_id = v_writer and badge_key = 'trending';
+  perform pg_temp.record('Trending not at 999 likes on one post', v_count = 0, 'rows=' || v_count);
+  update public.creations set like_count = 1000
+  where author_id = v_writer and title = 'Trend';
+  perform public.evaluate_automatic_badges(v_writer);
+  select count(*) into v_count from public.user_badges where user_id = v_writer and badge_key = 'trending';
+  perform pg_temp.record('Trending at 1000 likes on one post', v_count = 1, 'rows=' || v_count);
+
+  update public.creations set like_count = 0 where author_id = v_writer;
+  update public.creations set like_count = 9999 where author_id = v_writer and title = 'Trend';
+  perform public.evaluate_automatic_badges(v_writer);
+  select count(*) into v_count from public.user_badges where user_id = v_writer and badge_key = 'viral_creator';
+  perform pg_temp.record('Viral Creator not at 9999 total likes', v_count = 0, 'rows=' || v_count);
+  update public.creations set like_count = 10000 where author_id = v_writer and title = 'Trend';
+  perform public.evaluate_automatic_badges(v_writer);
+  select count(*) into v_count from public.user_badges where user_id = v_writer and badge_key = 'viral_creator';
+  perform pg_temp.record('Viral Creator at 10000 total likes', v_count = 1, 'rows=' || v_count);
+
+  insert into public.creations (id, author_id, type, title, audience, status, body_text)
+  values (gen_random_uuid(), v_writer, 'book', 'My book', 'public', 'published', 'Chapters')
+  returning id into v_book;
+  insert into public.books (id, author_id, description, sale_model, price_cents)
+  values (v_book, v_writer, 'Desc', 'free', 0);
+  perform public.evaluate_automatic_badges(v_writer);
+  select count(*) into v_count from public.user_badges where user_id = v_writer and badge_key = 'author';
+  perform pg_temp.record('Author on first published book', v_count = 1, 'rows=' || v_count);
+
+  -- Rising star: 3+ follows in month, under 1000 followers
+  update public.profiles set follower_count = 50, role = 'writer' where id = v_writer;
+  for i in 1..3 loop
+    v_f := gen_random_uuid();
+    perform pg_temp.create_test_user(v_f, v_f::text || '@rs.test', now());
+    insert into public.follows (follower_id, followee_id, created_at)
+    values (v_f, v_writer, v_month + (i || ' days')::interval);
+  end loop;
+  perform public.close_month_core(v_month, false);
+  select count(*) into v_count from public.user_badges
+  where user_id = v_writer and badge_key = 'rising_star_month';
+  perform pg_temp.record('Rising Star awarded with 3 new follows', v_count >= 1, 'rows=' || v_count);
+end $badges_15a$;
+
+-- Prompt 15A: direct messages RLS and RPC smoke.
+do $messages_15a$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_founder uuid;
+  v_ma uuid := gen_random_uuid();
+  v_mb uuid := gen_random_uuid();
+  v_conv uuid;
+  v_msg uuid;
+  v_count integer;
+  v_future timestamptz := now() + interval '2 days';
+begin
+  select reader_a, reader_b, founder into v_a, v_b, v_founder from rls_ids limit 1;
+  if v_a is null or v_b is null then
+    perform pg_temp.record('messages 15A skipped', true, 'missing rls_ids');
+    return;
+  end if;
+
+  perform pg_temp.create_test_user(v_ma, v_ma::text || '@msg-a.test', now());
+  perform pg_temp.create_test_user(v_mb, v_mb::text || '@msg-b.test', now());
+  update public.profiles set who_can_message = 'everyone' where id in (v_a, v_b, v_ma, v_mb);
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    insert into public.messages (conversation_id, sender_id, body)
+    values (gen_random_uuid(), v_a, 'hack');
+    perform pg_temp.record('messages direct insert blocked', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record('messages direct insert blocked', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  update public.profiles set who_can_message = 'followers' where id = v_mb;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_ma::text, true);
+  begin
+    perform public.get_or_create_dm(v_mb);
+    perform pg_temp.record('followers-only safe space blocks non-follower', false, 'created');
+  exception when others then
+    perform pg_temp.record('followers-only safe space blocks non-follower', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  update public.profiles set who_can_message = 'subscribers' where id = v_mb;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_ma::text, true);
+  begin
+    perform public.get_or_create_dm(v_mb);
+    perform pg_temp.record('subscribers-only safe space blocks for now', false, 'created');
+  exception when others then
+    perform pg_temp.record('subscribers-only safe space blocks for now', true, sqlerrm);
+  end;
+  execute format('set local role %I', session_user);
+  update public.profiles set who_can_message = 'everyone' where id = v_mb;
+  execute 'set local role authenticated';
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  v_conv := public.get_or_create_dm(v_b);
+  v_msg := public.send_message(v_conv, 'Hello there');
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select count(*) into v_count from public.messages_visible where conversation_id = v_conv;
+  perform pg_temp.record('recipient sees delivered message', v_count >= 1, 'rows=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  v_msg := public.send_message(v_conv, 'Future note', null, v_future);
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select count(*) into v_count from public.messages_visible where conversation_id = v_conv and body = 'Future note';
+  perform pg_temp.record('scheduled message hidden from recipient', v_count = 0, 'rows=' || v_count);
+  select public.message_unread_total() into v_count;
+  perform pg_temp.record('scheduled message excluded from unread', v_count = 0, 'rows=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select count(*) into v_count from public.messages_visible where body = 'Future note';
+  perform pg_temp.record('sender sees scheduled message', v_count = 1, 'rows=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  select count(*) into v_count from public.messages;
+  perform pg_temp.record('founder cannot select messages table', v_count = 0, 'rows=' || v_count);
+
+  execute format('set local role %I', session_user);
+  insert into public.blocks (blocker_id, blocked_id) values (v_a, v_b)
+  on conflict do nothing;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    perform public.get_or_create_dm(v_b);
+    perform pg_temp.record('blocked pair cannot open dm', false, 'created');
+  exception when others then
+    perform pg_temp.record('blocked pair cannot open dm', true, sqlerrm);
+  end;
+  delete from public.blocks where blocker_id = v_a and blocked_id = v_b;
+
+  perform set_config('request.jwt.claim.sub', v_ma::text, true);
+  v_conv := public.get_or_create_dm(v_mb);
+  execute format('set local role %I', session_user);
+  delete from public.notifications where target_id = v_conv and type = 'message';
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_ma::text, true);
+  perform set_config('request.jwt.claim.sub', v_mb::text, true);
+  perform public.set_conversation_muted(v_conv, true);
+  perform set_config('request.jwt.claim.sub', v_ma::text, true);
+  perform public.send_message(v_conv, 'Muted ping');
+  perform set_config('request.jwt.claim.sub', v_mb::text, true);
+  select count(*) into v_count from public.notifications
+  where recipient_id = v_mb and type = 'message' and target_id = v_conv;
+  perform pg_temp.record('muted conversation skips message notification', v_count = 0, 'rows=' || v_count);
+end $messages_15a$;
+
 do $$
 declare
   n integer;

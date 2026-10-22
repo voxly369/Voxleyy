@@ -342,6 +342,93 @@ export type Database = {
           },
         ]
       }
+      conversation_members: {
+        Row: {
+          conversation_id: string
+          joined_at: string
+          last_read_at: string
+          left_at: string | null
+          muted: boolean
+          user_id: string
+        }
+        Insert: {
+          conversation_id: string
+          joined_at?: string
+          last_read_at?: string
+          left_at?: string | null
+          muted?: boolean
+          user_id: string
+        }
+        Update: {
+          conversation_id?: string
+          joined_at?: string
+          last_read_at?: string
+          left_at?: string | null
+          muted?: boolean
+          user_id?: string
+        }
+        Relationships: []
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          dm_high: string | null
+          dm_low: string | null
+          id: string
+          kind: Database["public"]["Enums"]["conversation_kind"]
+          last_activity_at: string
+        }
+        Insert: {
+          created_at?: string
+          dm_high?: string | null
+          dm_low?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["conversation_kind"]
+          last_activity_at?: string
+        }
+        Update: {
+          created_at?: string
+          dm_high?: string | null
+          dm_low?: string | null
+          id?: string
+          kind?: Database["public"]["Enums"]["conversation_kind"]
+          last_activity_at?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          deleted_at: string | null
+          deliver_at: string
+          id: string
+          sender_id: string
+          shared_creation_id: string | null
+        }
+        Insert: {
+          body: string
+          conversation_id: string
+          created_at?: string
+          deleted_at?: string | null
+          deliver_at?: string
+          id?: string
+          sender_id: string
+          shared_creation_id?: string | null
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          deliver_at?: string
+          id?: string
+          sender_id?: string
+          shared_creation_id?: string | null
+        }
+        Relationships: []
+      }
       mentions: {
         Row: {
           author_id: string
@@ -1806,8 +1893,51 @@ export type Database = {
         Update: Record<string, never>
         Relationships: []
       }
+      messages_visible: {
+        Row: {
+          body: string | null
+          conversation_id: string
+          created_at: string
+          deleted_at: string | null
+          deliver_at: string
+          id: string
+          is_deleted: boolean
+          is_scheduled: boolean
+          sender_id: string
+          shared_creation_id: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
     }
     Functions: {
+      can_user_message: {
+        Args: { p_recipient: string; p_sender: string }
+        Returns: boolean
+      }
+      delete_message: { Args: { p_message_id: string }; Returns: undefined }
+      get_or_create_dm: { Args: { p_other: string }; Returns: string }
+      list_my_conversations: {
+        Args: { p_cursor?: string | null; p_limit?: number }
+        Returns: Json
+      }
+      mark_conversation_read: { Args: { p_conversation_id: string }; Returns: undefined }
+      message_unread_total: { Args: Record<string, never>; Returns: number }
+      recipient_quiet_status: { Args: { p_recipient: string }; Returns: Json }
+      send_message: {
+        Args: {
+          p_body: string
+          p_conversation_id: string
+          p_deliver_at?: string | null
+          p_shared_creation_id?: string | null
+        }
+        Returns: string
+      }
+      set_conversation_muted: {
+        Args: { p_conversation_id: string; p_muted: boolean }
+        Returns: undefined
+      }
       can_view_creation: { Args: { c: string }; Returns: boolean }
       chosen_username_ok: { Args: { candidate: string }; Returns: boolean }
       counts_as_published: {
@@ -1980,7 +2110,8 @@ export type Database = {
         | "copyright"
         | "other"
       report_status: "open" | "dismissed" | "actioned"
-      report_target: "creation" | "chapter" | "comment" | "profile"
+      conversation_kind: "dm" | "community" | "channel"
+      report_target: "creation" | "chapter" | "comment" | "profile" | "message"
       user_role: "reader" | "writer" | "founder"
     }
     CompositeTypes: {
@@ -2154,7 +2285,8 @@ export const Constants = {
         "other",
       ],
       report_status: ["open", "dismissed", "actioned"],
-      report_target: ["creation", "chapter", "comment", "profile"],
+      conversation_kind: ["dm", "community", "channel"],
+      report_target: ["creation", "chapter", "comment", "profile", "message"],
       user_role: ["reader", "writer", "founder"],
     },
   },

@@ -5,6 +5,7 @@ import { listBlocks, unblockUser } from '../../lib/safety/blocksApi.ts'
 import { addHiddenWord, listHiddenWords, removeHiddenWord } from '../../lib/safety/hiddenWordsApi.ts'
 import { listMutes, unmuteUser } from '../../lib/safety/mutesApi.ts'
 import type { BlockRow, HiddenWordRow, MuteRow } from '../../lib/safety/types.ts'
+import { MessagePrivacySettings } from '../messages/MessagePrivacySettings.tsx'
 
 export function SafetySettingsSection() {
   const [blocks, setBlocks] = useState<BlockRow[]>([])
@@ -56,6 +57,8 @@ export function SafetySettingsSection() {
           Appeals
         </Link>
       </div>
+
+      <MessagePrivacySettings />
 
       <h3 className="mt-6 text-sm font-semibold text-ink">Blocked accounts</h3>
       {loading ? (

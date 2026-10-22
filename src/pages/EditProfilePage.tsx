@@ -20,11 +20,9 @@ function toForm(profile: {
   city: string | null
   city_visible: boolean
   language: string
-  who_can_message: string
 }): ProfileFormValues {
   const country = profile.country?.trim().toUpperCase() ?? ''
   const language = /^[a-z]{2,8}$/.test(profile.language) ? profile.language : 'en'
-  const whoCanMessage = profile.who_can_message === 'followers' ? 'followers' : 'everyone'
   return {
     displayName: profile.display_name,
     bio: profile.bio,
@@ -33,7 +31,6 @@ function toForm(profile: {
     country: /^[A-Z]{2}$/.test(country) ? country : '',
     cityVisible: profile.city_visible,
     language,
-    whoCanMessage,
   }
 }
 
@@ -92,7 +89,6 @@ function EditProfileForm({
       city: parsed.data.city,
       city_visible: parsed.data.cityVisible,
       language: parsed.data.language,
-      who_can_message: parsed.data.whoCanMessage,
     })
     setPending(false)
     if (!result.ok) {
@@ -107,7 +103,6 @@ function EditProfileForm({
       city: result.data.city,
       city_visible: result.data.cityVisible,
       language: result.data.language,
-      who_can_message: parsed.data.whoCanMessage,
     })
     setForm(next)
     setSavedForm(next)
@@ -237,22 +232,6 @@ function EditProfileForm({
                 {language.name}
               </option>
             ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-2">
-          <label htmlFor="who-can-message" className="text-sm font-medium text-ink">
-            Who can message you
-          </label>
-          <select
-            id="who-can-message"
-            value={form.whoCanMessage}
-            onChange={(event) =>
-              update({ whoCanMessage: event.target.value === 'followers' ? 'followers' : 'everyone' })
-            }
-            className={`min-h-11 rounded-2xl border border-line bg-bg px-3 text-base text-ink ${focusRing}`}
-          >
-            <option value="everyone">Everyone</option>
-            <option value="followers">Followers only</option>
           </select>
         </div>
         <p role="alert" aria-live="polite" className="min-h-5 text-sm text-coral">

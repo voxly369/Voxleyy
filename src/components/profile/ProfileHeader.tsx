@@ -7,6 +7,7 @@ import type { PublicProfile } from '../../lib/profiles/types.ts'
 import { MenuLinesIcon } from '../icons/MenuLinesIcon.tsx'
 import { CountLink, SafeWebsite } from './SafeWebsite.tsx'
 import { FollowButton } from './FollowButton.tsx'
+import { ProfileMessageButton } from './ProfileMessageButton.tsx'
 import { VerifiedBadge } from './VerifiedBadge.tsx'
 import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
 import { LocalTime } from '../time/LocalTime.tsx'
@@ -106,13 +107,14 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
             </Link>
           </div>
         ) : (
-          <div className="lg:hidden">
+          <div className="flex flex-wrap gap-2 lg:hidden">
             <FollowButton
               userId={profile.id}
               username={profile.username}
               following={following}
               onChange={onFollowingChange}
             />
+            <ProfileMessageButton userId={profile.id} />
           </div>
         )}
         </div>
@@ -123,13 +125,14 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
           <CountLink count={profile.creationCount} noun="work" />
         </div>
         {!isOwn ? (
-          <div className="hidden lg:block">
+          <div className="hidden flex-wrap justify-end gap-2 lg:flex">
             <FollowButton
               userId={profile.id}
               username={profile.username}
               following={following}
               onChange={onFollowingChange}
             />
+            <ProfileMessageButton userId={profile.id} />
           </div>
         ) : null}
         </div>
