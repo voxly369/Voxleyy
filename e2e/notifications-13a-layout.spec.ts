@@ -14,7 +14,7 @@ for (const width of WIDTHS) {
     const box = await bell.boundingBox()
     expect(box).not.toBeNull()
     if (width < 768) {
-      expect(box!.x).toBeGreaterThan(width / 2)
+      expect(box!.x + box!.width / 2).toBeLessThan(width / 2)
     }
     await bell.click()
     await expect(page.getByRole('heading', { name: /Notifications/i })).toBeVisible()

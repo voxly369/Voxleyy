@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { BellIcon } from '../icons/BellIcon.tsx'
 import { focusRing } from '../shell/navItems.ts'
+import { useMediaQuery } from '../../lib/shell/useMediaQuery.ts'
 import { useNotifications } from '../../lib/notifications/useNotifications.ts'
 
 type NotificationBellProps = {
@@ -18,6 +19,9 @@ export function NotificationBell({ className = '', variant = 'rail' }: Notificat
   const { unreadCount, panelOpen, setPanelOpen, registerPanelAnchor } = useNotifications()
   const buttonRef = useRef<HTMLButtonElement>(null)
   const open = panelOpen
+  const railLabelVisible = useMediaQuery('(min-width: 1280px)')
+  const iconOnlyName =
+    unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'
 
   return (
     <div className={`relative ${className}`} data-testid="notification-bell-wrap">
@@ -27,7 +31,7 @@ export function NotificationBell({ className = '', variant = 'rail' }: Notificat
         aria-expanded={open}
         aria-haspopup="dialog"
         aria-controls="notification-panel-root"
-        aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        aria-label={variant === 'rail' && railLabelVisible ? undefined : iconOnlyName}
         data-testid={variant === 'mobile' ? 'notification-bell-mobile' : 'notification-bell-rail'}
         onClick={() => {
           registerPanelAnchor(buttonRef.current)
