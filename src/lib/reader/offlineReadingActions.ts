@@ -31,6 +31,8 @@ export function creationDetailFromOfflinePackage(pkg: OfflineReadingPackage): Cr
     mood: null,
     language: 'en',
     isOwn: false,
+    isRemoved: false,
+    removedReason: null,
     author: {
       id: '00000000-0000-0000-0000-000000000099',
       username: w.authorUsername,

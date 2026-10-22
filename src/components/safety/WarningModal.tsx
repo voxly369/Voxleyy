@@ -47,6 +47,7 @@ export function WarningModal() {
       labelledBy={titleId}
       className="w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-lg"
     >
+      <div data-testid="warning-modal">
       <h2 id={titleId} className="font-serif text-xl text-ink">
         Warning from the Founder
       </h2>
@@ -59,6 +60,7 @@ export function WarningModal() {
       >
         {busy ? 'Please wait…' : 'I understand'}
       </button>
+      </div>
     </Modal>
   )
 }

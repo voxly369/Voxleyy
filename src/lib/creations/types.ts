@@ -32,6 +32,8 @@ export type CreationDetail = WorkSummary & {
   language: string
   updatedAt: string
   isOwn: boolean
+  isRemoved: boolean
+  removedReason: string | null
 }
 
 export type CreationFailure = {

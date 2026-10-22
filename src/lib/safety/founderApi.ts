@@ -266,6 +266,7 @@ export async function listFounderAppeals(): Promise<SafetyResult<Record<string, 
 
 export async function listFounderAuditLog(
   cursor: string | null,
+  actionFilter?: string | null,
 ): Promise<SafetyResult<{ rows: FounderAuditRow[]; nextCursor: string | null }>> {
   type AuditCursor = { createdAt: string; id: string }
   let decoded: AuditCursor | null = null
@@ -283,6 +284,10 @@ export async function listFounderAuditLog(
     .order('created_at', { ascending: false })
     .order('id', { ascending: false })
     .limit(FOUNDER_PAGE_SIZE + 1)
+
+  if (actionFilter) {
+    query = query.eq('action', actionFilter as FounderAuditRow['action'])
+  }
 
   if (decoded?.createdAt && decoded.id) {
     query = query.or(

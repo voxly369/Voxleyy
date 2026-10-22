@@ -56,6 +56,8 @@ const createdDetail: CreationDetail = {
   mood: null,
   language: 'en',
   isOwn: true,
+  isRemoved: false,
+  removedReason: null,
   author: { id: 'user-1', username: 'writer', displayName: 'Writer', avatarUrl: null, verified: false },
 }
 

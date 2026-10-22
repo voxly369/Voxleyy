@@ -8,6 +8,10 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",
+    "check:migrations": "node scripts/check-migration-versions.mjs",
+    "check:e2e-isolated": "node scripts/check-e2e-hooks-isolated.mjs",
+    "check:production": "node scripts/check-production-build.mjs",
+    "verify": "npm run lint && npm run check:migrations && npm run check:e2e-isolated && npm run build && npm run check:production && npm test",
     "test:e2e": "playwright test",
     "preview": "vite preview"
   },

@@ -81,6 +81,8 @@ test.describe('moderation 12A extended', () => {
     await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page.getByLabel('Reason (required)')).toHaveCount(0, { timeout: 8000 })
     await page.getByRole('button', { name: 'Audit log' }).click()
-    await expect(page.getByText('dismiss')).toBeVisible()
+    await expect(
+      page.getByTestId('founder-audit-log').locator('div.rounded-xl').filter({ has: page.locator('span.font-semibold', { hasText: 'dismiss' }) }).first(),
+    ).toBeVisible()
   })
 })
