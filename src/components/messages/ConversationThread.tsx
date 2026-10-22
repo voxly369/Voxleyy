@@ -15,7 +15,7 @@ import {
 } from '../../lib/messages/api.ts'
 import { groupMessagesByDay } from '../../lib/messages/grouping.ts'
 import { shouldShowConsiderateModal } from '../../lib/messages/quietPrompt.ts'
-import type { ConversationSummary, QuietStatus, SharedCreationPreview, VisibleMessage } from '../../lib/messages/types.ts'
+import type { ConversationSummary, QuietStatus, SharedCreationPreview, ThreadMessage } from '../../lib/messages/types.ts'
 import { useMessages } from '../../lib/messages/useMessages.ts'
 import { ConsiderateSendingModal } from './ConsiderateSendingModal.tsx'
 import { MessageBubble } from './MessageBubble.tsx'
@@ -29,27 +29,37 @@ type ConversationThreadProps = {
   onSent?: () => void
 }
 
+type OutboundPayload = { body: string; deliverAt: string | null; sharedCreationId: string | null; clientId?: string }
+
 export function ConversationThread({
   conversation,
   conversationId,
   showBackLink = false,
-  sharedCreationId = null,
+  sharedCreationId: sharedCreationIdFromUrl = null,
   onSent,
 }: ConversationThreadProps) {
   const { user } = useAuth()
   const { refresh, refreshUnread, patchConversation } = useMessages()
-  const [messages, setMessages] = useState<VisibleMessage[]>([])
+  const [messages, setMessages] = useState<ThreadMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sendBusy, setSendBusy] = useState(false)
-  const [sendError, setSendError] = useState<string | null>(null)
   const [quietStatus, setQuietStatus] = useState<QuietStatus | null>(null)
   const [considerateOpen, setConsiderateOpen] = useState(false)
-  const [pendingSend, setPendingSend] = useState<{ body: string; deliverAt: string | null; sharedCreationId: string | null } | null>(null)
+  const [pendingSend, setPendingSend] = useState<OutboundPayload | null>(null)
   const [sharedPreviews, setSharedPreviews] = useState<Record<string, SharedCreationPreview>>({})
+  const [composerShareId, setComposerShareId] = useState<string | null>(sharedCreationIdFromUrl)
+  const [composerShareLabel, setComposerShareLabel] = useState<string | null>(null)
+  const [retryPayloads, setRetryPayloads] = useState<Record<string, OutboundPayload>>({})
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const other = conversation
+
+  useEffect(() => {
+    if (sharedCreationIdFromUrl) {
+      setComposerShareId(sharedCreationIdFromUrl)
+    }
+  }, [sharedCreationIdFromUrl])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -90,14 +100,62 @@ export function ConversationThread({
   }, [messages, sharedPreviews])
 
   useEffect(() => {
+    if (composerShareId && !composerShareLabel) {
+      void fetchSharedCreationPreview(composerShareId).then((result) => {
+        if (result.ok && result.data) {
+          const label = result.data.title?.trim() || result.data.caption?.trim() || 'Shared post'
+          setComposerShareLabel(label)
+        }
+      })
+    }
+  }, [composerShareId, composerShareLabel])
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
 
   const groups = useMemo(() => groupMessagesByDay(messages), [messages])
 
-  async function performSend(payload: { body: string; deliverAt: string | null; sharedCreationId: string | null }) {
+  function appendOptimistic(payload: OutboundPayload): string {
+    const clientId = payload.clientId ?? `local-${Date.now()}`
+    const now = new Date().toISOString()
+    const optimistic: ThreadMessage = {
+      id: clientId,
+      clientId,
+      conversationId,
+      senderId: user?.id ?? '',
+      body: payload.body,
+      sharedCreationId: payload.sharedCreationId,
+      deliverAt: payload.deliverAt ?? now,
+      createdAt: now,
+      deletedAt: null,
+      isDeleted: false,
+      isScheduled: Boolean(payload.deliverAt && payload.deliverAt > now),
+      localStatus: 'sending',
+    }
+    setMessages((prev) => [...prev, optimistic])
+    setRetryPayloads((prev) => ({ ...prev, [clientId]: { ...payload, clientId } }))
+    return clientId
+  }
+
+  function markOptimisticFailed(clientId: string) {
+    setMessages((prev) =>
+      prev.map((row) => (row.clientId === clientId ? { ...row, localStatus: 'failed' as const } : row)),
+    )
+  }
+
+  function removeOptimistic(clientId: string) {
+    setMessages((prev) => prev.filter((row) => row.clientId !== clientId))
+    setRetryPayloads((prev) => {
+      const next = { ...prev }
+      delete next[clientId]
+      return next
+    })
+  }
+
+  async function performSend(payload: OutboundPayload, options?: { skipOptimistic?: boolean }) {
+    const clientId = options?.skipOptimistic ? payload.clientId : appendOptimistic(payload)
     setSendBusy(true)
-    setSendError(null)
     const result = await sendMessage({
       conversationId,
       body: payload.body,
@@ -106,11 +164,14 @@ export function ConversationThread({
     })
     setSendBusy(false)
     if (!result.ok) {
-      setSendError(result.error.message)
+      if (clientId) markOptimisticFailed(clientId)
       return
     }
+    if (clientId) removeOptimistic(clientId)
     setConsiderateOpen(false)
     setPendingSend(null)
+    setComposerShareId(null)
+    setComposerShareLabel(null)
     await load()
     await refresh()
     onSent?.()
@@ -123,6 +184,15 @@ export function ConversationThread({
       return
     }
     void performSend(payload)
+  }
+
+  function retrySend(clientId: string) {
+    const payload = retryPayloads[clientId]
+    if (!payload) return
+    setMessages((prev) =>
+      prev.map((row) => (row.clientId === clientId ? { ...row, localStatus: 'sending' as const } : row)),
+    )
+    void performSend({ ...payload, clientId }, { skipOptimistic: true })
   }
 
   async function toggleMute() {
@@ -193,34 +263,38 @@ export function ConversationThread({
           <section key={group.key} className="mb-6" aria-label={group.label}>
             <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wide text-muted">{group.label}</p>
             <div className="flex flex-col gap-3">
-              {group.messages.map((message) => (
+              {group.messages.map((message) => {
+                const threadMessage = message as ThreadMessage
+                return (
                 <MessageBubble
-                  key={message.id}
-                  message={message}
+                  key={threadMessage.clientId ?? threadMessage.id}
+                  message={threadMessage}
                   isOwn={message.senderId === user?.id}
+                  reportedUserId={other?.otherUserId}
                   sharedPreview={message.sharedCreationId ? sharedPreviews[message.sharedCreationId] : null}
                   onDeleted={() => void load()}
+                  onCancelled={() => void load()}
+                  onRetry={retrySend}
                 />
-              ))}
+              )})}
             </div>
           </section>
         ))}
         <div ref={bottomRef} />
       </div>
 
-      {sendError ? (
-        <p role="alert" className="px-3 text-sm text-coral">
-          {sendError}
-        </p>
-      ) : null}
-
       <MessageComposer
         busy={sendBusy}
-        sharedCreationId={sharedCreationId}
+        sharedCreationId={composerShareId}
+        sharedPostLabel={composerShareLabel}
+        onSharedCreationChange={(id, label) => {
+          setComposerShareId(id)
+          setComposerShareLabel(label ?? null)
+        }}
         onSend={(payload) =>
           requestSend({
             ...payload,
-            sharedCreationId: payload.sharedCreationId ?? sharedCreationId,
+            sharedCreationId: payload.sharedCreationId ?? composerShareId,
           })
         }
       />

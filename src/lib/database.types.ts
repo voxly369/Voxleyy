@@ -1925,6 +1925,8 @@ export type Database = {
       mark_conversation_read: { Args: { p_conversation_id: string }; Returns: undefined }
       message_unread_total: { Args: Record<string, never>; Returns: number }
       recipient_quiet_status: { Args: { p_recipient: string }; Returns: Json }
+      cancel_scheduled_message: { Args: { p_message_id: string }; Returns: undefined }
+      search_dm_writers: { Args: { p_query: string }; Returns: Json }
       send_message: {
         Args: {
           p_body: string

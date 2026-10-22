@@ -178,6 +178,10 @@ export function setModerationReportsEmpty() {
   reports = []
 }
 
+export function prependFounderQueueRow(row: Record<string, unknown>) {
+  founderQueue = [row, ...founderQueue]
+}
+
 /** Seed audit rows for Founder pagination e2e (newest first by created_at). */
 export function seedModerationAuditLog(count: number) {
   auditLog = Array.from({ length: count }, (_, index) => ({

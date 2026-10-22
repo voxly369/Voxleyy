@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ConversationList } from '../components/messages/ConversationList.tsx'
+import { DmWriterSearch } from '../components/messages/DmWriterSearch.tsx'
 import { ConversationThread } from '../components/messages/ConversationThread.tsx'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { EmptyState } from '../components/states/EmptyState.tsx'
@@ -53,6 +54,7 @@ export default function MessagesPage() {
           className={`${showListMobile ? 'flex' : 'hidden'} min-h-0 w-full flex-col md:flex md:w-80 md:shrink-0 md:border-r md:border-line`}
           data-testid="messages-list-pane"
         >
+          <DmWriterSearch />
           <ConversationList
             rows={conversations}
             activeId={conversationId ?? null}

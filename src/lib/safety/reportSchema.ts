@@ -22,7 +22,7 @@ const uuid = z
   .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid target id.')
 
 export const reportSchema = z.object({
-  targetType: z.enum(['post', 'comment', 'profile'] satisfies readonly ReportUiTargetType[]),
+  targetType: z.enum(['post', 'comment', 'profile', 'message'] satisfies readonly ReportUiTargetType[]),
   targetId: uuid,
   reportedUserId: uuid.optional(),
   reason: z.enum(REPORT_REASONS),
@@ -39,7 +39,9 @@ export const reportSchema = z.object({
 
 export type ReportInput = z.infer<typeof reportSchema>
 
-export function mapUiTargetToDb(targetType: ReportUiTargetType): 'creation' | 'comment' | 'profile' {
+export function mapUiTargetToDb(
+  targetType: ReportUiTargetType,
+): 'creation' | 'comment' | 'profile' | 'message' {
   if (targetType === 'post') return 'creation'
   return targetType
 }

@@ -31,10 +31,13 @@ export function FounderReportCard({ row, onActionComplete }: FounderReportCardPr
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [privatePreview, setPrivatePreview] = useState<string | null>(null)
+  const [messageContext, setMessageContext] = useState<{ body: string; context: string } | null>(null)
   const [privateBusy, setPrivateBusy] = useState(false)
 
   const snapshot = row.target_snapshot ?? {}
-  const isPrivateTarget = snapshot.audience === 'private' || snapshot.content_audience === 'private'
+  const isMessageTarget = row.target_type === 'message'
+  const isPrivateTarget =
+    isMessageTarget || snapshot.audience === 'private' || snapshot.content_audience === 'private'
   const bodyPreview =
     typeof snapshot.body === 'string'
       ? snapshot.body
@@ -119,18 +122,35 @@ export function FounderReportCard({ row, onActionComplete }: FounderReportCardPr
       {isPrivateTarget ? (
         <div className="mt-3 rounded-xl border border-line bg-bg p-3">
           <p className="text-sm text-muted" data-testid="private-content-warning">
-            Viewing reported private content is logged in the audit trail.
+            {isMessageTarget
+              ? 'Viewing reported message context is logged in the audit trail.'
+              : 'Viewing reported private content is logged in the audit trail.'}
           </p>
           <button
             type="button"
             disabled={privateBusy}
-            data-testid="view-reported-private-content"
+            data-testid={isMessageTarget ? 'view-reported-message' : 'view-reported-private-content'}
             onClick={() => {
               setPrivateBusy(true)
               void viewReportedPrivateContent(row.report_id).then((result) => {
                 setPrivateBusy(false)
                 if (!result.ok) {
                   setError(result.error.message)
+                  return
+                }
+                if (isMessageTarget) {
+                  const reported = result.data.reported_message as Record<string, unknown> | undefined
+                  const reportedBody = typeof reported?.body === 'string' ? reported.body : ''
+                  const contextRows = Array.isArray(result.data.context) ? result.data.context : []
+                  const contextText = contextRows
+                    .map((item) => {
+                      const rowItem = item as Record<string, unknown>
+                      const body = typeof rowItem.body === 'string' ? rowItem.body : ''
+                      return body.trim()
+                    })
+                    .filter(Boolean)
+                    .join('\n---\n')
+                  setMessageContext({ body: reportedBody, context: contextText })
                   return
                 }
                 const body =
@@ -144,12 +164,22 @@ export function FounderReportCard({ row, onActionComplete }: FounderReportCardPr
             }}
             className={`mt-2 text-sm font-semibold text-coral ${focusRing}`}
           >
-            View reported private content
+            {isMessageTarget ? 'View reported message' : 'View reported private content'}
           </button>
           {privatePreview ? (
             <p className="mt-2 whitespace-pre-wrap text-sm text-ink" data-testid="private-content-preview">
               {privatePreview}
             </p>
+          ) : null}
+          {messageContext ? (
+            <div className="mt-2 space-y-2" data-testid="reported-message-preview">
+              <p className="whitespace-pre-wrap text-sm font-medium text-ink">{messageContext.body}</p>
+              {messageContext.context ? (
+                <pre className="max-h-48 overflow-auto whitespace-pre-wrap rounded-xl bg-raised p-2 text-xs text-muted">
+                  {messageContext.context}
+                </pre>
+              ) : null}
+            </div>
           ) : null}
         </div>
       ) : null}

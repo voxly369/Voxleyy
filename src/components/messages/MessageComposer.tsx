@@ -1,13 +1,17 @@
 import { useId, useState, type FormEvent } from 'react'
 import { focusRing } from '../shell/navItems.ts'
 import { MESSAGE_BODY_MAX } from '../../lib/messages/types.ts'
+import type { DmSharePostHit } from '../../lib/messages/types.ts'
 import { remainingCharacters, validateMessageBody } from '../../lib/messages/validation.ts'
+import { SharePostPicker } from './SharePostPicker.tsx'
 
 type MessageComposerProps = {
   disabled?: boolean
   busy?: boolean
   initialBody?: string
   sharedCreationId?: string | null
+  sharedPostLabel?: string | null
+  onSharedCreationChange?: (creationId: string | null, label?: string | null) => void
   onSend: (payload: { body: string; deliverAt: string | null; sharedCreationId: string | null }) => void
 }
 
@@ -16,6 +20,8 @@ export function MessageComposer({
   busy = false,
   initialBody = '',
   sharedCreationId = null,
+  sharedPostLabel = null,
+  onSharedCreationChange,
   onSend,
 }: MessageComposerProps) {
   const [body, setBody] = useState(initialBody)
@@ -49,12 +55,28 @@ export function MessageComposer({
     setScheduleValue('')
   }
 
+  function onShareSelect(post: DmSharePostHit) {
+    const label = post.title?.trim() || post.caption?.trim() || 'Shared post'
+    onSharedCreationChange?.(post.id, label)
+  }
+
   return (
     <form onSubmit={submit} className="flex flex-col gap-2 border-t border-line bg-surface p-3" data-testid="message-composer">
       {sharedCreationId ? (
-        <p className="text-sm text-muted" data-testid="composer-shared-post">
-          Sharing a post in this message.
-        </p>
+        <div className="flex items-center justify-between gap-2 text-sm" data-testid="composer-shared-post">
+          <p className="text-muted">
+            Sharing: <span className="font-medium text-ink">{sharedPostLabel ?? 'A post'}</span>
+          </p>
+          {onSharedCreationChange ? (
+            <button
+              type="button"
+              onClick={() => onSharedCreationChange(null, null)}
+              className={`text-coral underline ${focusRing}`}
+            >
+              Remove
+            </button>
+          ) : null}
+        </div>
       ) : null}
       <label htmlFor={textareaId} className="sr-only">
         Message
@@ -82,8 +104,8 @@ export function MessageComposer({
           <button
             type="button"
             disabled={disabled || busy}
-            onClick={() => setPickerOpen((value) => !value)}
-            data-testid="share-post-picker-stub"
+            onClick={() => setPickerOpen(true)}
+            data-testid="share-post-picker-trigger"
             className={`min-h-11 rounded-2xl border border-line px-3 text-sm font-medium text-ink ${focusRing}`}
           >
             Share post
@@ -109,16 +131,12 @@ export function MessageComposer({
           data-testid="message-schedule-input"
         />
       ) : null}
-      {pickerOpen ? (
-        <p className="text-sm text-muted" role="status">
-          Post picker arrives in a later step. Share from a post menu for now.
-        </p>
-      ) : null}
       {error ? (
         <p role="alert" className="text-sm text-coral">
           {error}
         </p>
       ) : null}
+      <SharePostPicker open={pickerOpen} onClose={() => setPickerOpen(false)} onSelect={onShareSelect} />
     </form>
   )
 }

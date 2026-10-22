@@ -4,7 +4,7 @@ export type ReportReason = Database['public']['Enums']['report_reason']
 export type ReportTargetType = Database['public']['Enums']['report_target']
 
 /** UI label "post" maps to database `creation`. */
-export type ReportUiTargetType = 'post' | 'comment' | 'profile'
+export type ReportUiTargetType = 'post' | 'comment' | 'profile' | 'message'
 
 export type SafetyApiError = {
   code: 'invalid' | 'forbidden' | 'unavailable' | 'duplicate' | 'rate_limited'

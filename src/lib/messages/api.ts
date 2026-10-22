@@ -3,6 +3,8 @@ import { providerFields } from '../supabaseFailure.ts'
 import { parseQuietStatus } from './quietPrompt.ts'
 import type {
   ConversationSummary,
+  DmSharePostHit,
+  DmWriterHit,
   MessageFailure,
   MessageResult,
   QuietStatus,
@@ -175,6 +177,73 @@ export async function deleteMessage(messageId: string): Promise<MessageResult<vo
   const { error } = await supabase.rpc('delete_message', { p_message_id: messageId })
   if (error) return fail('unavailable', 'Could not delete message.', error)
   return { ok: true, data: undefined }
+}
+
+export async function cancelScheduledMessage(messageId: string): Promise<MessageResult<void>> {
+  const { error } = await supabase.rpc('cancel_scheduled_message', { p_message_id: messageId })
+  if (error) {
+    const code = error.message?.includes('Only scheduled') ? 'invalid' : 'unavailable'
+    return fail(code, error.message ?? 'Could not cancel scheduled message.', error)
+  }
+  return { ok: true, data: undefined }
+}
+
+export async function searchDmWriters(query: string): Promise<MessageResult<DmWriterHit[]>> {
+  const { data, error } = await supabase.rpc('search_dm_writers', { p_query: query.trim() })
+  if (error) return fail('unavailable', 'Could not search writers.', error)
+  let list: unknown = data
+  if (typeof list === 'string') {
+    try {
+      list = JSON.parse(list) as unknown
+    } catch {
+      list = []
+    }
+  }
+  if (!Array.isArray(list)) return { ok: true, data: [] }
+  const rows: DmWriterHit[] = []
+  for (const item of list) {
+    if (!item || typeof item !== 'object') continue
+    const row = item as Record<string, unknown>
+    const id = text(row.id)
+    const username = text(row.username)
+    if (!id || !username) continue
+    rows.push({
+      id,
+      username,
+      displayName: text(row.display_name) ?? username,
+      avatarUrl: text(row.avatar_url),
+      canMessage: row.can_message === true,
+    })
+  }
+  return { ok: true, data: rows }
+}
+
+export async function searchDmSharePosts(query: string): Promise<MessageResult<DmSharePostHit[]>> {
+  const safe = query.trim()
+  const { data, error } = await supabase.rpc('search_discovery', {
+    p_query: safe.length > 0 ? safe : 'a',
+    p_tab: 'posts',
+    p_limit: 20,
+  })
+  if (error) return fail('unavailable', 'Could not search posts.', error)
+  const payload = (data ?? {}) as Record<string, unknown>
+  const posts = Array.isArray(payload.posts) ? payload.posts : []
+  const rows: DmSharePostHit[] = []
+  for (const item of posts) {
+    if (!item || typeof item !== 'object') continue
+    const row = item as Record<string, unknown>
+    const id = text(row.id)
+    if (!id) continue
+    rows.push({
+      id,
+      title: text(row.title),
+      caption: text(row.caption),
+      excerpt: text(row.body_excerpt),
+      authorUsername: text(row.author_username) ?? 'writer',
+      authorDisplayName: text(row.author_display_name) ?? 'Writer',
+    })
+  }
+  return { ok: true, data: rows }
 }
 
 export async function markConversationRead(conversationId: string): Promise<MessageResult<void>> {
