@@ -551,7 +551,9 @@ export {
 export {
   bumpNotificationUnread,
   resetNotificationMocks,
+  seedHeldNotification,
   setNotificationQuietManual,
+  setNotificationQuietReach,
   setNotificationUnreadOverride,
 } from './notificationMocks.ts'
 
