@@ -3,6 +3,7 @@ import { useAuth } from '../../lib/auth/auth-context.ts'
 import { useCreateSheet } from '../../lib/shell/useCreateSheet.ts'
 import { focusRing, railNavItems } from './navItems.ts'
 import { MoreMenu } from './MoreMenu.tsx'
+import { NotificationBell } from '../notifications/NotificationBell.tsx'
 
 function NavTooltip({ label }: { label: string }) {
   return (
@@ -83,6 +84,9 @@ export function NavRail() {
             </li>
           )
         })}
+        <li className="relative hidden w-full md:block">
+          <NotificationBell variant="rail" className="w-full" />
+        </li>
         <li className="mt-auto w-full pt-2">
           <MoreMenu username={username} />
         </li>

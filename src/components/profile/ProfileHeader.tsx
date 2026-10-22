@@ -8,6 +8,7 @@ import { CountLink, SafeWebsite } from './SafeWebsite.tsx'
 import { FollowButton } from './FollowButton.tsx'
 import { VerifiedBadge } from './VerifiedBadge.tsx'
 import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
+import { LocalTime } from '../time/LocalTime.tsx'
 
 type ProfileHeaderProps = {
   profile: PublicProfile
@@ -84,6 +85,7 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
           </p>
         ) : null}
         {profile.cityVisible && profile.city ? <p className="text-sm text-muted">{profile.city}</p> : null}
+        {profile.showLocalTime ? <LocalTime timezone={profile.timezone} /> : null}
         <SafeWebsite value={profile.website} />
         {isOwn ? (
           <div className="flex flex-wrap gap-2">

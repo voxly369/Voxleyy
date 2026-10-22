@@ -623,6 +623,8 @@ export type Database = {
         Row: {
           actor_id: string | null
           created_at: string
+          data: Json
+          held: boolean
           id: string
           read_at: string | null
           recipient_id: string
@@ -633,6 +635,8 @@ export type Database = {
         Insert: {
           actor_id?: string | null
           created_at?: string
+          data?: Json
+          held?: boolean
           id?: string
           read_at?: string | null
           recipient_id: string
@@ -643,6 +647,8 @@ export type Database = {
         Update: {
           actor_id?: string | null
           created_at?: string
+          data?: Json
+          held?: boolean
           id?: string
           read_at?: string | null
           recipient_id?: string
@@ -681,6 +687,114 @@ export type Database = {
           },
         ]
       }
+      notification_settings: {
+        Row: {
+          digest_enabled: boolean
+          digest_last_date: string | null
+          digest_time: string | null
+          notify_announcements: boolean
+          notify_chapters: boolean
+          notify_comments: boolean
+          notify_follows: boolean
+          notify_likes: boolean
+          notify_mentions: boolean
+          notify_messages: boolean
+          notify_sales: boolean
+          quiet_enabled: boolean
+          quiet_manual: boolean
+          quiet_reach: string
+          quiet_schedule_end: string | null
+          quiet_schedule_start: string | null
+          quiet_summary_pending: number
+          show_local_time: boolean
+          timezone: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          digest_enabled?: boolean
+          digest_last_date?: string | null
+          digest_time?: string | null
+          notify_announcements?: boolean
+          notify_chapters?: boolean
+          notify_comments?: boolean
+          notify_follows?: boolean
+          notify_likes?: boolean
+          notify_mentions?: boolean
+          notify_messages?: boolean
+          notify_sales?: boolean
+          quiet_enabled?: boolean
+          quiet_manual?: boolean
+          quiet_reach?: string
+          quiet_schedule_end?: string | null
+          quiet_schedule_start?: string | null
+          quiet_summary_pending?: number
+          show_local_time?: boolean
+          timezone?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          digest_enabled?: boolean
+          digest_last_date?: string | null
+          digest_time?: string | null
+          notify_announcements?: boolean
+          notify_chapters?: boolean
+          notify_comments?: boolean
+          notify_follows?: boolean
+          notify_likes?: boolean
+          notify_mentions?: boolean
+          notify_messages?: boolean
+          notify_sales?: boolean
+          quiet_enabled?: boolean
+          quiet_manual?: boolean
+          quiet_reach?: string
+          quiet_schedule_end?: string | null
+          quiet_schedule_start?: string | null
+          quiet_summary_pending?: number
+          show_local_time?: boolean
+          timezone?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      admin_notifications: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          data: Json
+          id: string
+          read_at: string | null
+          recipient_id: string
+          target_id: string | null
+          target_type: string | null
+          type: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          read_at?: string | null
+          recipient_id: string
+          target_id?: string | null
+          target_type?: string | null
+          type: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          data?: Json
+          id?: string
+          read_at?: string | null
+          recipient_id?: string
+          target_id?: string | null
+          target_type?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -697,6 +811,7 @@ export type Database = {
           id: string
           language: string
           role: Database["public"]["Enums"]["user_role"]
+          show_local_time: boolean
           status: Database["public"]["Enums"]["account_status"]
           status_reason: string | null
           suspended_until: string | null
@@ -722,6 +837,7 @@ export type Database = {
           id: string
           language?: string
           role?: Database["public"]["Enums"]["user_role"]
+          show_local_time?: boolean
           status?: Database["public"]["Enums"]["account_status"]
           status_reason?: string | null
           suspended_until?: string | null
@@ -747,6 +863,7 @@ export type Database = {
           id?: string
           language?: string
           role?: Database["public"]["Enums"]["user_role"]
+          show_local_time?: boolean
           status?: Database["public"]["Enums"]["account_status"]
           status_reason?: string | null
           suspended_until?: string | null
@@ -1184,6 +1301,7 @@ export type Database = {
           id: string | null
           language: string | null
           role: Database["public"]["Enums"]["user_role"] | null
+          show_local_time: boolean | null
           status: Database["public"]["Enums"]["account_status"] | null
           suspended_until: string | null
           timezone: string | null
@@ -1508,6 +1626,47 @@ export type Database = {
         Update: Record<string, never>
         Relationships: []
       }
+      notification_feed: {
+        Row: {
+          id: string
+          recipient_id: string
+          type: string
+          actor_id: string | null
+          target_type: string | null
+          target_id: string | null
+          data: Json
+          held: boolean
+          created_at: string
+          read_at: string | null
+          actor_username: string | null
+          actor_display_name: string | null
+          actor_avatar_url: string | null
+          target_title: string | null
+          target_excerpt: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      admin_notification_feed: {
+        Row: {
+          id: string
+          recipient_id: string
+          type: string
+          actor_id: string | null
+          target_type: string | null
+          target_id: string | null
+          data: Json
+          created_at: string
+          read_at: string | null
+          actor_username: string | null
+          actor_display_name: string | null
+          actor_avatar_url: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
     }
     Functions: {
       can_view_creation: { Args: { c: string }; Returns: boolean }
@@ -1600,6 +1759,10 @@ export type Database = {
       is_active_user: { Args: never; Returns: boolean }
       is_blocked_between: { Args: { a: string; b: string }; Returns: boolean }
       is_founder: { Args: never; Returns: boolean }
+      notification_unread_count: { Args: Record<string, never>; Returns: number }
+      prepare_notification_delivery: { Args: Record<string, never>; Returns: undefined }
+      mark_all_notifications_read: { Args: Record<string, never>; Returns: undefined }
+      clear_read_notifications: { Args: Record<string, never>; Returns: number }
       search_discovery: {
         Args: { p_query: string; p_tab?: string; p_limit?: number }
         Returns: Json

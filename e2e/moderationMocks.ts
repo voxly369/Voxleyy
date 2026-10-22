@@ -8,6 +8,7 @@ type Json = Record<string, unknown> | unknown[] | string | number | boolean | nu
 
 let reportDuplicate = false
 let isFounderUser = false
+let includeBannedUserInSearch = false
 let ownProfileStatus: 'active' | 'suspended' | 'banned' | null = null
 let blocks: { blocked_id: string }[] = []
 let mutes: { muted_user_id: string }[] = []
@@ -39,6 +40,7 @@ function pushAudit(action: string, reason: string, extra: Record<string, unknown
 export function resetModerationMocks() {
   reportDuplicate = false
   isFounderUser = false
+  includeBannedUserInSearch = false
   ownProfileStatus = null
   blocks = []
   mutes = []
@@ -154,6 +156,10 @@ export function setModerationReportDuplicate(value: boolean) {
 
 export function setModerationIsFounder(value: boolean) {
   isFounderUser = value
+}
+
+export function setModerationIncludeBannedUserInSearch(value: boolean) {
+  includeBannedUserInSearch = value
 }
 
 export function setModerationOwnProfileStatus(status: 'active' | 'suspended' | 'banned' | null) {
@@ -282,7 +288,7 @@ export function moderationMockHandleRest(url: string, method: string, postData: 
     return { body_text: 'Secret journal entry' }
   }
   if (url.includes('/rest/v1/rpc/founder_user_search')) {
-    return [
+    const hits = [
       {
         id: '22222222-2222-2222-2222-222222222222',
         username: 'writertwo',
@@ -294,6 +300,19 @@ export function moderationMockHandleRest(url: string, method: string, postData: 
         email: 'writer@example.com',
       },
     ]
+    if (includeBannedUserInSearch) {
+      hits.push({
+        id: '44444444-4444-4444-4444-444444444444',
+        username: 'banneduser',
+        display_name: 'Banned User',
+        role: 'writer',
+        status: 'banned',
+        follower_count: 0,
+        created_at: '2025-12-01T00:00:00.000Z',
+        email: 'banned@example.com',
+      })
+    }
+    return hits
   }
 
   if (url.includes('/rest/v1/founder_report_queue')) {

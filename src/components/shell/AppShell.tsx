@@ -10,6 +10,9 @@ import { NavRail } from './NavRail.tsx'
 import { SkipLink } from './SkipLink.tsx'
 import { ToastProvider } from './ToastProvider.tsx'
 import { focusRing } from './navItems.ts'
+import { NotificationProvider } from '../../lib/notifications/NotificationProvider.tsx'
+import { NotificationBell } from '../notifications/NotificationBell.tsx'
+import { NotificationPanelHost } from '../notifications/NotificationPanelHost.tsx'
 
 export function AppShell() {
   const { profile } = useAuth()
@@ -18,13 +21,20 @@ export function AppShell() {
   return (
     <ModalStackProvider>
       <ToastProvider>
+        <NotificationProvider>
         <CreateSheetProvider>
           <div id={VOXLY_APP_ROOT_ID}>
             <SkipLink />
+            <div className="pointer-events-none fixed right-4 top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 md:hidden">
+              <div className="pointer-events-auto">
+                <NotificationBell variant="mobile" className="rounded-full border border-line bg-surface/95 shadow-md backdrop-blur" />
+              </div>
+            </div>
             <BottomNav />
             <NavRail />
             {suspended ? <SuspendedBanner suspendedUntil={profile?.suspended_until ?? null} /> : null}
             <WarningModal />
+            <NotificationPanelHost />
             <main
               id="main"
               tabIndex={-1}
@@ -34,6 +44,7 @@ export function AppShell() {
             </main>
           </div>
         </CreateSheetProvider>
+        </NotificationProvider>
       </ToastProvider>
     </ModalStackProvider>
   )

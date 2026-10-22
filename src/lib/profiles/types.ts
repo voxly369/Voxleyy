@@ -32,6 +32,8 @@ export type PublicProfile = {
   followingCount: number
   creationCount: number
   createdAt: string
+  showLocalTime: boolean
+  timezone: string
 }
 
 export type ProfileUpdate = {

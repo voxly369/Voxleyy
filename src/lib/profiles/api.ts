@@ -68,6 +68,8 @@ function parsePublicProfile(value: unknown): PublicProfile | null {
     followingCount: count(row.following_count),
     creationCount: count(row.creation_count),
     createdAt,
+    showLocalTime: bool(row.show_local_time),
+    timezone: text(row.timezone) ?? 'UTC',
   }
 }
 
