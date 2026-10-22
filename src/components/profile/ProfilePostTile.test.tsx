@@ -14,6 +14,7 @@ const work: PublishedWorkSummary = {
   coverUrl: null,
   likeCount: 0,
   commentCount: 0,
+  viewCount: 0,
   publishedAt: '2026-01-01T00:00:00Z',
   audience: 'public',
 }

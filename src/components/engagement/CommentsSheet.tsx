@@ -17,6 +17,7 @@ import {
 import type { CommentNode } from '../../lib/engagement/commentTree.ts'
 import { parseMentions } from '../../lib/engagement/mentions.ts'
 import { supabase } from '../../lib/supabaseClient.ts'
+import { BadgeRowOnName } from '../badges/BadgeRowOnName.tsx'
 import { MentionText } from './MentionText.tsx'
 import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
 import { listHiddenWords } from '../../lib/safety/hiddenWordsApi.ts'
@@ -358,6 +359,9 @@ function CommentRow({
         ) : (
           <>
             {node.author.displayName || node.author.username}
+            {node.author.feedBadges?.length ? (
+              <BadgeRowOnName badges={node.author.feedBadges} className="ml-1 align-middle" />
+            ) : null}
             {node.author.verified ? ' ✓' : ''}
           </>
         )}

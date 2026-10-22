@@ -15,6 +15,7 @@ import {
   resetModerationMocks,
 } from './moderationMocks.ts'
 import { notificationMockHandleRest, resetNotificationMocks } from './notificationMocks.ts'
+import { badgeMockHandleRest, resetBadgeMocks } from './badgeMocks.ts'
 import { Buffer } from 'node:buffer'
 
 export const PROJECT_REF = 'ktgxdqplvggeyrnuqljx'
@@ -213,6 +214,7 @@ function publishedWorksForAuthor(authorId: string, username: string, display_nam
     created_at: new Date(Date.UTC(2026, 1, index + 1)).toISOString(),
     like_count: 0,
     comment_count: 0,
+    view_count: index + 1,
     body_text: 'Excerpt',
     body_json: null,
     author_id: authorId,
@@ -339,6 +341,8 @@ async function fulfillJson(route: Route, body: unknown, status = 200) {
 }
 
 function handleRest(url: string, method: string, postData: unknown): unknown {
+  const badgeResult = badgeMockHandleRest(url, method, postData)
+  if (badgeResult !== undefined) return badgeResult
   const notificationResult = notificationMockHandleRest(url, method, postData)
   if (notificationResult !== undefined) return notificationResult
   const moderationResult = moderationMockHandleRest(url, method, postData)
@@ -476,6 +480,7 @@ function isSupabaseCloudUrl(url: string): boolean {
 }
 
 export async function installSupabaseMocks(page: Page) {
+  resetBadgeMocks()
   resetNotificationMocks()
   resetModerationMocks()
   const session = sessionResponse(READER.id, READER.email)

@@ -15,6 +15,7 @@ export const NOTIFICATION_TYPES = [
   'moderation_notice',
   'appeal_decision',
   'summary',
+  'badge_awarded',
 ] as const
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]

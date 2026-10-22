@@ -75,6 +75,30 @@ export type Database = {
         }
         Relationships: []
       }
+      badges: {
+        Row: {
+          key: string
+          name: string
+          description: string
+          icon_key: string
+          sort_order: number
+        }
+        Insert: {
+          key: string
+          name: string
+          description: string
+          icon_key: string
+          sort_order?: number
+        }
+        Update: {
+          key?: string
+          name?: string
+          description?: string
+          icon_key?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       blocks: {
         Row: {
           blocked_id: string
@@ -1283,6 +1307,97 @@ export type Database = {
           },
         ]
       }
+      creation_view_events: {
+        Row: {
+          viewer_id: string
+          creation_id: string
+          viewed_at: string
+        }
+        Insert: {
+          viewer_id: string
+          creation_id: string
+          viewed_at?: string
+        }
+        Update: {
+          viewed_at?: string
+        }
+        Relationships: []
+      }
+      profile_featured_book: {
+        Row: {
+          user_id: string
+          book_id: string
+        }
+        Insert: {
+          user_id: string
+          book_id: string
+        }
+        Update: {
+          book_id?: string
+        }
+        Relationships: []
+      }
+      user_badges: {
+        Row: {
+          user_id: string
+          badge_key: string
+          earned_at: string
+        }
+        Insert: {
+          user_id: string
+          badge_key: string
+          earned_at?: string
+        }
+        Update: {
+          earned_at?: string
+        }
+        Relationships: []
+      }
+      user_pinned_badges: {
+        Row: {
+          user_id: string
+          badge_key: string
+          position: number
+        }
+        Insert: {
+          user_id: string
+          badge_key: string
+          position: number
+        }
+        Update: {
+          position?: number
+        }
+        Relationships: []
+      }
+      user_streaks: {
+        Row: {
+          user_id: string
+          writing_current: number
+          writing_longest: number
+          writing_last_active_day: string | null
+          reading_current: number
+          reading_longest: number
+          reading_last_active_day: string | null
+        }
+        Insert: {
+          user_id: string
+          writing_current?: number
+          writing_longest?: number
+          writing_last_active_day?: string | null
+          reading_current?: number
+          reading_longest?: number
+          reading_last_active_day?: string | null
+        }
+        Update: {
+          writing_current?: number
+          writing_longest?: number
+          writing_last_active_day?: string | null
+          reading_current?: number
+          reading_longest?: number
+          reading_last_active_day?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       profiles_public: {
@@ -1626,6 +1741,30 @@ export type Database = {
         Update: Record<string, never>
         Relationships: []
       }
+      profile_feed_badges: {
+        Row: {
+          user_id: string
+          badge_key: string
+          icon_key: string
+          sort_order: number
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
+      user_badges_public: {
+        Row: {
+          user_id: string
+          badge_key: string
+          icon_key: string
+          name: string | null
+          description: string | null
+          earned_at: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
       notification_feed: {
         Row: {
           id: string
@@ -1787,6 +1926,17 @@ export type Database = {
       user_has_book_entitlement: { Args: { p_user: string; p_book: string }; Returns: boolean }
       can_read_book_chapter: { Args: { p_chapter_id: string }; Returns: boolean }
       reorder_book_chapters: { Args: { p_book_id: string; p_chapter_ids: string[] }; Returns: undefined }
+      record_creation_view: { Args: { p_creation_id: string }; Returns: undefined }
+      badge_progress_for_user: { Args: { p_user: string }; Returns: Json }
+      list_user_badges_public: { Args: { p_user: string }; Returns: Json }
+      pin_badge: { Args: { p_badge_key: string; p_position: number }; Returns: undefined }
+      unpin_badge: { Args: { p_badge_key: string }; Returns: undefined }
+      set_featured_book: { Args: { p_book_id: string | null }; Returns: undefined }
+      get_creator_analytics: { Args: Record<string, never>; Returns: Json }
+      close_month: { Args: { p_month: string }; Returns: undefined }
+      try_close_past_months: { Args: Record<string, never>; Returns: undefined }
+      award_featured_badge: { Args: { p_user: string }; Returns: undefined }
+      remove_featured_badge: { Args: { p_user: string }; Returns: undefined }
     }
     Enums: {
       book_entitlement_kind: "free" | "purchase" | "rental" | "subscription" | "author"

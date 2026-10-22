@@ -33,6 +33,7 @@ import { ResumeReaderPrompt } from '../components/reader/ResumeReaderPrompt.tsx'
 import { isReaderEligibleType } from '../lib/reader/readerEligible.ts'
 import { fetchPostProgress } from '../lib/reader/progressApi.ts'
 import { supabase } from '../lib/supabaseClient.ts'
+import { recordCreationView } from '../lib/views/recordView.ts'
 
 type LocationState = {
   published?: boolean
@@ -85,6 +86,9 @@ export default function CreationPage() {
       }
       setProblem(null)
       setWork(result.data)
+      if (result.data.status === 'published' && !result.data.isOwn) {
+        void recordCreationView(result.data.id)
+      }
       if (result.data.status === 'published') {
         const { data: counts } = await supabase
           .from('creations')

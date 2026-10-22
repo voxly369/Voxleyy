@@ -10,6 +10,7 @@ export type CreationAuthor = {
   displayName: string
   avatarUrl: string | null
   verified: boolean
+  feedBadges?: import('../badges/types.ts').FeedBadge[]
 }
 
 export type WorkSummary = {
@@ -111,6 +112,7 @@ export type PublishedWorkSummary = {
   audience: Audience
   likeCount: number
   commentCount: number
+  viewCount: number
   bodyText: string | null
   bodyJson: import('../database.types.ts').Json | null
 }

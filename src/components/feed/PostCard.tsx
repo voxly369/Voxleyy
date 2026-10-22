@@ -8,6 +8,7 @@ import { quoteStyleFromJson } from '../../lib/creations/bodyDocument.ts'
 import { QuoteCardView } from '../creations/QuoteCardView.tsx'
 import { creationTypeLabel } from '../../lib/creations/creationTypeLabel.ts'
 import type { FeedPost } from '../../lib/feed/types.ts'
+import { BadgeRowOnName } from '../badges/BadgeRowOnName.tsx'
 import { VerifiedBadge } from '../profile/VerifiedBadge.tsx'
 import { EngagementBar } from '../engagement/EngagementBar.tsx'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
@@ -76,6 +77,7 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
             className={`inline-flex min-h-11 max-w-full items-center gap-1 font-medium text-ink ${focusRing}`}
           >
             <span className="truncate">{post.author.displayName || post.author.username}</span>
+            {post.author.feedBadges?.length ? <BadgeRowOnName badges={post.author.feedBadges} /> : null}
             {post.author.verified ? <VerifiedBadge /> : null}
           </Link>
           <Link

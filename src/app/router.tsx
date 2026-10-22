@@ -23,6 +23,7 @@ const SettingsPage = lazy(() => import('../pages/SettingsPage.tsx'))
 const EditProfilePage = lazy(() => import('../pages/EditProfilePage.tsx'))
 const OwnProfileRedirect = lazy(() => import('../pages/OwnProfileRedirect.tsx'))
 const ProfilePage = lazy(() => import('../pages/ProfilePage.tsx'))
+const ProfileBadgesPage = lazy(() => import('../pages/ProfileBadgesPage.tsx'))
 const FollowListPage = lazy(() => import('../pages/FollowListPage.tsx'))
 const LibraryPage = lazy(() => import('../pages/LibraryPage.tsx'))
 const SavedPage = lazy(() => import('../pages/SavedPage.tsx'))
@@ -133,6 +134,7 @@ const router = createBrowserRouter(
                 { path: '/library/saved', element: <SavedPage /> },
                 { path: '/profile', element: <OwnProfileRedirect /> },
                 { path: '/u/:username', element: <ProfilePage /> },
+                { path: '/u/:username/badges', element: <ProfileBadgesPage /> },
                 { path: '/u/:username/followers', element: <FollowListPage /> },
                 { path: '/u/:username/following', element: <FollowListPage /> },
                 {

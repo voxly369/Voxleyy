@@ -18,6 +18,8 @@ import {
 import { statusDisplay } from '../lib/safety/moderationDisplay.ts'
 import type { FounderAuditRow, FounderContentRow, FounderReportQueueRow, FounderUserSearchHit } from '../lib/safety/types.ts'
 import { FounderReasonModal } from '../components/safety/FounderReasonModal.tsx'
+import { FounderFeaturedBadgeControl } from '../components/founder/FounderFeaturedBadgeControl.tsx'
+import { FounderCloseMonthModal } from '../components/founder/FounderCloseMonthModal.tsx'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 
 type FounderTab = 'overview' | 'reports' | 'users' | 'content' | 'appeals' | 'audit'
@@ -53,6 +55,8 @@ export default function FounderPage() {
   const [appealDecision, setAppealDecision] = useState<{ id: string; decision: 'upheld' | 'overturned' } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [closeMonthOpen, setCloseMonthOpen] = useState(false)
+  const closeMonthTarget = `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}-01`
 
   const loadReports = useCallback(async (cursor: string | null, append: boolean) => {
     const result = await listFounderReportQueue(cursor)
@@ -132,7 +136,20 @@ export default function FounderPage() {
       ) : null}
 
       {tab === 'overview' ? (
-        <EmptyState title="Overview" message="Overview metrics arrive in a later step." />
+        <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4">
+          <h2 className="font-serif text-xl text-ink">Month close</h2>
+          <p className="text-sm text-muted">
+            Run performance badge rules for the current calendar month after it ends, or close manually for testing.
+          </p>
+          <button
+            type="button"
+            onClick={() => setCloseMonthOpen(true)}
+            className={`min-h-11 self-start rounded-2xl bg-coral px-4 font-semibold text-white ${focusRing}`}
+            data-testid="founder-close-month-open"
+          >
+            Close month…
+          </button>
+        </section>
       ) : null}
 
       {tab === 'reports' ? (
@@ -193,6 +210,7 @@ export default function FounderPage() {
                     Unban
                   </button>
                 ) : null}
+                <FounderFeaturedBadgeControl userId={hit.id} displayName={hit.display_name || hit.username} />
               </li>
             ))}
           </ul>
@@ -375,6 +393,11 @@ export default function FounderPage() {
             }
           })
         }}
+      />
+      <FounderCloseMonthModal
+        open={closeMonthOpen}
+        month={closeMonthTarget}
+        onClose={() => setCloseMonthOpen(false)}
       />
     </PageContainer>
   )

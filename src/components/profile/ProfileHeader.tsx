@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { focusRing } from '../shell/navItems.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
@@ -16,9 +17,10 @@ type ProfileHeaderProps = {
   following: boolean
   followerCount: number
   onFollowingChange: (following: boolean) => void
+  badgeShelf?: ReactNode
 }
 
-export function ProfileHeader({ profile, isOwn, following, followerCount, onFollowingChange }: ProfileHeaderProps) {
+export function ProfileHeader({ profile, isOwn, following, followerCount, onFollowingChange, badgeShelf }: ProfileHeaderProps) {
   const name = profile.displayName || profile.username
   const country = countryName(profile.country)
   const flag = countryFlag(profile.country)
@@ -78,6 +80,7 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
         </div>
         <p className="text-base text-muted">@{profile.username}</p>
         {profile.bio ? <p className="whitespace-pre-wrap text-base text-ink">{profile.bio}</p> : null}
+        {badgeShelf ? <div className="-mx-5 mt-1">{badgeShelf}</div> : null}
         {country ? (
           <p className="text-sm text-muted">
             <span aria-hidden="true">{flag} </span>
