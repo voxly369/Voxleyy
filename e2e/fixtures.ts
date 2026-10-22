@@ -118,6 +118,21 @@ export function setE2eCreationDetailOverride(detail: Record<string, unknown> | n
   e2eCreationDetailOverride = detail
 }
 
+/** Author (reader) sees their own removed creation on /c/:id. */
+export function setE2eOwnRemovedCreation(reason = 'Spam policy') {
+  e2eCreationDetailOverride = {
+    ...creationDetail(SAMPLE_CREATION_ID),
+    author_id: READER.id,
+    author: authorEmbed(READER.id, READER.username, READER.display_name),
+    is_removed: true,
+    removed_reason: reason,
+  }
+}
+
+export function setE2eOtherUserRemovedCreationHidden() {
+  e2eCreationDetailOverride = { __notFound: true }
+}
+
 export function feedPosts() {
   const longTitle = `Long title ${'word '.repeat(40)}`
   const longWord = `unbroken${'x'.repeat(120)}`
@@ -162,6 +177,8 @@ function creationDetail(id: string) {
     type: 'written_post',
     title: 'Readable creation',
     caption: 'Caption',
+    is_removed: false,
+    removed_reason: null,
     body_text: 'Long reading sample '.repeat(20),
     body_json: {
       version: 1,
@@ -415,6 +432,7 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
     const idMatch = url.match(/id=eq\.([^&]+)/)
     const id = idMatch?.[1]
     if (id === SAMPLE_CREATION_ID) {
+      if (e2eCreationDetailOverride && '__notFound' in e2eCreationDetailOverride) return []
       return [e2eCreationDetailOverride ?? creationDetail(SAMPLE_CREATION_ID)]
     }
     if (id === DRAFT_ID) return [editableDraft()]
@@ -515,9 +533,13 @@ export async function seedSignedInSession(page: Page) {
 
 export {
   resetModerationMocks,
+  setModerationAllowPrivateView,
   setModerationIsFounder,
   setModerationOwnProfileStatus,
   setModerationReportDuplicate,
+  setModerationReportsEmpty,
+  setModerationUnseenWarnings,
+  seedModerationAuditLog,
 } from './moderationMocks.ts'
 
 export {

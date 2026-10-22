@@ -24,6 +24,7 @@ import type { CreationDetail } from '../lib/creations/types.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 import { EngagementBar } from '../components/engagement/EngagementBar.tsx'
 import { CommentsSheet } from '../components/engagement/CommentsSheet.tsx'
+import { RemovedContentNotice } from '../components/safety/RemovedContentNotice.tsx'
 import { RichTextView } from '../components/creations/RichTextView.tsx'
 import { quoteStyleFromJson } from '../lib/creations/bodyDocument.ts'
 import { QuoteCardView } from '../components/creations/QuoteCardView.tsx'
@@ -303,7 +304,9 @@ export default function CreationPage() {
         ) : null}
         {readProgress ? <ResumeReaderPrompt creationId={work.id} percent={readProgress.percent} /> : null}
       </header>
-      {work.type === 'quote_card' ? (
+      {work.isRemoved && work.isOwn ? (
+        <RemovedContentNotice reason={work.removedReason} kind="creation" />
+      ) : work.type === 'quote_card' ? (
         work.bodyText ? (
           <QuoteCardView
             text={work.bodyText}

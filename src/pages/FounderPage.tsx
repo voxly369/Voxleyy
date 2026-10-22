@@ -11,6 +11,7 @@ import {
   listFounderAuditLog,
   listFounderContent,
   listFounderReportQueue,
+  removeContent,
   restoreContent,
   unbanUser,
 } from '../lib/safety/founderApi.ts'
@@ -42,10 +43,12 @@ export default function FounderPage() {
   const [auditRows, setAuditRows] = useState<FounderAuditRow[]>([])
   const [_auditCursor, setAuditCursor] = useState<string | null>(null)
   const [auditNext, setAuditNext] = useState<string | null>(null)
+  const [auditActionFilter, setAuditActionFilter] = useState<string>('')
   const [appeals, setAppeals] = useState<Record<string, unknown>[]>([])
   const [userQuery, setUserQuery] = useState('')
   const [userHits, setUserHits] = useState<FounderUserSearchHit[]>([])
   const [restoreTarget, setRestoreTarget] = useState<FounderContentRow | null>(null)
+  const [removeTarget, setRemoveTarget] = useState<FounderContentRow | null>(null)
   const [unbanTarget, setUnbanTarget] = useState<FounderUserSearchHit | null>(null)
   const [appealDecision, setAppealDecision] = useState<{ id: string; decision: 'upheld' | 'overturned' } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -74,7 +77,7 @@ export default function FounderPage() {
   }, [])
 
   const loadAudit = useCallback(async (cursor: string | null, append: boolean) => {
-    const result = await listFounderAuditLog(cursor)
+    const result = await listFounderAuditLog(cursor, auditActionFilter || null)
     if (!result.ok) {
       setError(result.error.message)
       return
@@ -82,7 +85,7 @@ export default function FounderPage() {
     setAuditRows((prev) => (append ? [...prev, ...result.data.rows] : result.data.rows))
     setAuditNext(result.data.nextCursor)
     setAuditCursor(cursor)
-  }, [])
+  }, [auditActionFilter])
 
   useEffect(() => {
     setError(null)
@@ -95,7 +98,7 @@ export default function FounderPage() {
         if (result.ok) setAppeals(result.data)
       })()
     }
-  }, [tab, loadReports, loadContent, loadAudit])
+  }, [tab, loadReports, loadContent, loadAudit, auditActionFilter])
 
   async function searchUsers() {
     const result = await founderUserSearch(userQuery)
@@ -204,15 +207,25 @@ export default function FounderPage() {
                 {row.content_kind} · @{row.author_username} · {row.is_removed ? 'removed' : 'live'}
               </p>
               <p className="mt-2 line-clamp-3 text-sm text-ink">{row.body_excerpt ?? row.title}</p>
-              {row.is_removed ? (
-                <button
-                  type="button"
-                  onClick={() => setRestoreTarget(row)}
-                  className={`mt-2 text-sm font-semibold text-coral ${focusRing}`}
-                >
-                  Restore
-                </button>
-              ) : null}
+              <div className="mt-2 flex flex-wrap gap-2">
+                {row.is_removed ? (
+                  <button
+                    type="button"
+                    onClick={() => setRestoreTarget(row)}
+                    className={`text-sm font-semibold text-coral ${focusRing}`}
+                  >
+                    Restore
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setRemoveTarget(row)}
+                    className={`text-sm font-semibold text-coral ${focusRing}`}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </article>
           ))}
           {contentNext ? (
@@ -254,7 +267,27 @@ export default function FounderPage() {
       ) : null}
 
       {tab === 'audit' ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2" data-testid="founder-audit-log">
+          <label className="flex flex-col gap-1 text-sm">
+            Filter by action
+            <select
+              value={auditActionFilter}
+              onChange={(event) => setAuditActionFilter(event.target.value)}
+              className="min-h-11 rounded-2xl border border-line bg-bg px-3 text-base"
+              data-testid="founder-audit-filter"
+            >
+              <option value="">All actions</option>
+              <option value="dismiss">dismiss</option>
+              <option value="remove">remove</option>
+              <option value="warn">warn</option>
+              <option value="suspend">suspend</option>
+              <option value="ban">ban</option>
+              <option value="restore">restore</option>
+              <option value="unban">unban</option>
+              <option value="appeal_decision">appeal_decision</option>
+              <option value="private_content_view">private_content_view</option>
+            </select>
+          </label>
           {auditRows.map((row) => (
             <div key={row.id} className="rounded-xl border border-line bg-bg px-3 py-2 text-sm">
               <span className="font-semibold">{row.action}</span> · {row.target_type} · {row.reason}
@@ -269,6 +302,24 @@ export default function FounderPage() {
         </div>
       ) : null}
 
+      <FounderReasonModal
+        open={removeTarget !== null}
+        title="Remove content"
+        confirmLabel="Remove"
+        busy={busy}
+        onCancel={() => setRemoveTarget(null)}
+        onConfirm={(reason) => {
+          if (!removeTarget) return
+          setBusy(true)
+          void removeContent(removeTarget.content_kind, removeTarget.content_id, reason).then((result) => {
+            setBusy(false)
+            if (result.ok) {
+              setRemoveTarget(null)
+              void loadContent(contentCursor, false)
+            }
+          })
+        }}
+      />
       <FounderReasonModal
         open={restoreTarget !== null}
         title="Restore content"

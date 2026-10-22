@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../supabaseClient.ts'
 import { AuthContext, type AuthResult, type SignUpInput } from './auth-context.ts'
 import { ACCOUNT_LOAD_FAILED, RATE_LIMITED } from './messages.ts'
+import { founderAccessFromRpc } from './founderAccess.ts'
 import { fetchIsFounder, fetchOwnProfile, type OwnProfile } from './profile.ts'
 
 function redirectTo(path: string): string {
@@ -37,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (profileRequest.current !== request) return
     setProfile(nextProfile)
     setProfileUserId(userId)
-    setIsFounder(Boolean(nextProfile) && founder)
+    setIsFounder(Boolean(nextProfile) && founderAccessFromRpc(founder))
     setError(nextProfile ? null : ACCOUNT_LOAD_FAILED)
   }, [])
 

@@ -4,7 +4,7 @@ import { PageContainer } from '../../components/shell/PageContainer.tsx'
 import { PageHeader } from '../../components/shell/PageHeader.tsx'
 import { focusRing } from '../../components/shell/navItems.ts'
 import { listMyReports } from '../../lib/safety/reportsApi.ts'
-import { reportStatusLabel } from '../../lib/safety/moderationDisplay.ts'
+import { myReportStatusLabel } from '../../lib/safety/moderationDisplay.ts'
 import { REPORT_REASON_LABELS } from '../../lib/safety/reportSchema.ts'
 import type { OwnReportRow } from '../../lib/safety/types.ts'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts'
@@ -36,13 +36,20 @@ export default function MyReportsPage() {
           {error}
         </p>
       ) : null}
-      <ul className="flex flex-col gap-3">
+      {rows.length === 0 && !error ? (
+        <p className="text-sm text-muted" data-testid="my-reports-empty">
+          You have not submitted any reports yet.
+        </p>
+      ) : null}
+      <ul className="flex flex-col gap-3" data-testid="my-reports-list">
         {rows.map((row) => (
           <li key={row.id} className="rounded-2xl border border-line bg-surface p-4">
             <p className="text-sm font-semibold text-ink">
               {row.targetType} · {REPORT_REASON_LABELS[row.reason]}
             </p>
-            <p className="text-sm text-muted">{reportStatusLabel(row.status)}</p>
+            <p className="text-sm text-muted" data-testid={`my-report-status-${row.id}`}>
+              {myReportStatusLabel(row.status)}
+            </p>
             {row.details ? <p className="mt-2 text-sm text-ink">{row.details}</p> : null}
           </li>
         ))}

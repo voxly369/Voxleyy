@@ -1,5 +1,6 @@
 import type { UserRole } from '../auth/profile.ts'
 import type { Json } from '../database.types.ts'
+import { fetchIsFounder } from '../auth/profile.ts'
 import { supabase } from '../supabaseClient.ts'
 import {
   messageForCreationDeleteError,
@@ -43,7 +44,7 @@ const WORK_LIST_COLUMNS =
   `id, type, title, caption, status, audience, cover_url, created_at, author_id, ${AUTHOR_EMBED}` as const
 
 const DETAIL_COLUMNS =
-  `id, type, title, caption, body_text, body_json, status, audience, cover_url, genre, mood, language, created_at, updated_at, author_id, ${AUTHOR_EMBED}` as const
+  `id, type, title, caption, body_text, body_json, status, audience, cover_url, genre, mood, language, created_at, updated_at, is_removed, removed_reason, author_id, ${AUTHOR_EMBED}` as const
 
 const EDIT_COLUMNS =
   'id, type, title, caption, body_text, body_json, cover_url, mood, status, audience, updated_at, is_removed, author_id' as const
@@ -83,6 +84,23 @@ function parseAuthor(value: unknown): CreationAuthor | null {
     displayName: text(row.display_name) ?? '',
     avatarUrl: text(row.avatar_url),
     verified: row.verified === true,
+  }
+}
+
+function detailFromRecord(record: Record<string, unknown>, isOwn: boolean): CreationDetail | null {
+  const work = parseWork(record)
+  if (!work) return null
+  return {
+    ...work,
+    bodyText: text(record.body_text),
+    bodyJson: (record.body_json ?? null) as Json | null,
+    genre: text(record.genre),
+    mood: text(record.mood),
+    language: text(record.language) ?? 'en',
+    updatedAt: text(record.updated_at) ?? new Date().toISOString(),
+    isOwn,
+    isRemoved: record.is_removed === true,
+    removedReason: text(record.removed_reason),
   }
 }
 
@@ -174,20 +192,11 @@ export async function createDraft(input: DraftInput): Promise<CreateDraftResult>
     tagWarning = await syncTags(data.id, tags)
   }
 
-  const work = parseWork(data as Record<string, unknown>)
-  if (!work) return fail('unavailable', 'We could not save this draft. Try again.')
+  const detail = detailFromRecord(data as Record<string, unknown>, true)
+  if (!detail) return fail('unavailable', 'We could not save this draft. Try again.')
   return {
     ok: true,
-    data: {
-      ...work,
-      bodyText: text((data as Record<string, unknown>).body_text),
-      bodyJson: ((data as Record<string, unknown>).body_json ?? null) as Json | null,
-      genre: text((data as Record<string, unknown>).genre),
-      mood: text((data as Record<string, unknown>).mood),
-      language: text((data as Record<string, unknown>).language) ?? 'en',
-      updatedAt: text((data as Record<string, unknown>).updated_at) ?? new Date().toISOString(),
-      isOwn: true,
-    },
+    data: detail,
     ...(tagWarning ? { tagError: { message: TAG_SYNC_WARNING } } : {}),
   }
 }
@@ -217,19 +226,16 @@ export async function getCreationById(id: string): Promise<CreationResult<Creati
 
   const work = parseWork(data as Record<string, unknown>)
   if (!work) return fail('not_found', 'This work is not available.')
-  return {
-    ok: true,
-    data: {
-      ...work,
-      bodyText: text((data as Record<string, unknown>).body_text),
-      bodyJson: ((data as Record<string, unknown>).body_json ?? null) as Json | null,
-      genre: text((data as Record<string, unknown>).genre),
-      mood: text((data as Record<string, unknown>).mood),
-      language: text((data as Record<string, unknown>).language) ?? 'en',
-      updatedAt: text((data as Record<string, unknown>).updated_at) ?? new Date().toISOString(),
-      isOwn: Boolean(userId && userId === work.author.id),
-    },
+  const record = data as Record<string, unknown>
+  const isRemoved = record.is_removed === true
+  const isOwn = Boolean(userId && userId === work.author.id)
+  if (isRemoved && !isOwn) {
+    const isFounder = userId ? await fetchIsFounder() : false
+    if (!isFounder) return fail('not_found', 'This work is not available.')
   }
+  const detail = detailFromRecord(record, isOwn)
+  if (!detail) return fail('not_found', 'This work is not available.')
+  return { ok: true, data: detail }
 }
 
 export async function unpublishCreation(id: string): Promise<CreationResult<true>> {

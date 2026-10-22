@@ -34,3 +34,31 @@ export function reportStatusLabel(status: string): string {
       return status
   }
 }
+
+/** Labels shown to reporters on My reports (12A). */
+export function myReportStatusLabel(status: string): string {
+  switch (status) {
+    case 'open':
+      return 'Sent'
+    case 'dismissed':
+    case 'actioned':
+      return 'Reviewed'
+    default:
+      return status
+  }
+}
+
+export function appealStatusLabel(status: string): string {
+  switch (status) {
+    case 'pending':
+      return 'Pending review'
+    case 'decided':
+      return 'Decided'
+    case 'upheld':
+      return 'Upheld'
+    case 'overturned':
+      return 'Overturned'
+    default:
+      return status
+  }
+}

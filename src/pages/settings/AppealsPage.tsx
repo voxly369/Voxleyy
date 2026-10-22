@@ -4,6 +4,7 @@ import { PageContainer } from '../../components/shell/PageContainer.tsx'
 import { PageHeader } from '../../components/shell/PageHeader.tsx'
 import { focusRing } from '../../components/shell/navItems.ts'
 import { listMyAppeals, submitAppeal } from '../../lib/safety/appealsApi.ts'
+import { appealStatusLabel } from '../../lib/safety/moderationDisplay.ts'
 import type { AppealRow } from '../../lib/safety/types.ts'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts'
 
@@ -87,7 +88,9 @@ export default function AppealsPage() {
       <ul className="flex flex-col gap-3">
         {rows.map((row) => (
           <li key={row.id} className="rounded-2xl border border-line bg-surface p-4 text-sm">
-            <p className="font-medium text-ink">{row.status}</p>
+            <p className="font-medium text-ink" data-testid={`appeal-status-${row.id}`}>
+              {appealStatusLabel(row.status)}
+            </p>
             <p className="text-muted">{row.message}</p>
           </li>
         ))}

@@ -3,7 +3,6 @@ import {
   installSupabaseMocks,
   seedSignedInSession,
   OTHER,
-  READER,
   setModerationOwnProfileStatus,
   setModerationReportDuplicate,
 } from './fixtures.ts'

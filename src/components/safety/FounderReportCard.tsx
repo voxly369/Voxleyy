@@ -6,6 +6,7 @@ import {
   dismissReport,
   removeContent,
   suspendUser,
+  viewReportedPrivateContent,
   warnUser,
 } from '../../lib/safety/founderApi.ts'
 import { REPORT_REASON_LABELS } from '../../lib/safety/reportSchema.ts'
@@ -29,8 +30,11 @@ export function FounderReportCard({ row, onActionComplete }: FounderReportCardPr
   const [warnMessage, setWarnMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [privatePreview, setPrivatePreview] = useState<string | null>(null)
+  const [privateBusy, setPrivateBusy] = useState(false)
 
   const snapshot = row.target_snapshot ?? {}
+  const isPrivateTarget = snapshot.audience === 'private' || snapshot.content_audience === 'private'
   const bodyPreview =
     typeof snapshot.body === 'string'
       ? snapshot.body
@@ -109,8 +113,45 @@ export function FounderReportCard({ row, onActionComplete }: FounderReportCardPr
         </p>
       </header>
       {row.details ? <p className="mt-3 text-sm text-muted">{row.details}</p> : null}
-      {bodyPreview ? (
+      {bodyPreview && !isPrivateTarget ? (
         <p className="mt-3 line-clamp-4 whitespace-pre-wrap text-base text-ink">{bodyPreview}</p>
+      ) : null}
+      {isPrivateTarget ? (
+        <div className="mt-3 rounded-xl border border-line bg-bg p-3">
+          <p className="text-sm text-muted" data-testid="private-content-warning">
+            Viewing reported private content is logged in the audit trail.
+          </p>
+          <button
+            type="button"
+            disabled={privateBusy}
+            data-testid="view-reported-private-content"
+            onClick={() => {
+              setPrivateBusy(true)
+              void viewReportedPrivateContent(row.report_id).then((result) => {
+                setPrivateBusy(false)
+                if (!result.ok) {
+                  setError(result.error.message)
+                  return
+                }
+                const body =
+                  typeof result.data.body === 'string'
+                    ? result.data.body
+                    : typeof result.data.body_text === 'string'
+                      ? result.data.body_text
+                      : JSON.stringify(result.data)
+                setPrivatePreview(body)
+              })
+            }}
+            className={`mt-2 text-sm font-semibold text-coral ${focusRing}`}
+          >
+            View reported private content
+          </button>
+          {privatePreview ? (
+            <p className="mt-2 whitespace-pre-wrap text-sm text-ink" data-testid="private-content-preview">
+              {privatePreview}
+            </p>
+          ) : null}
+        </div>
       ) : null}
       {row.reported_user_id ? (
         <Link
