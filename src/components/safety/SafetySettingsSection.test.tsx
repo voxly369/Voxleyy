@@ -16,6 +16,9 @@ vi.mock('../../lib/safety/hiddenWordsApi.ts', () => ({
   addHiddenWord: vi.fn(),
   removeHiddenWord: vi.fn(),
 }))
+vi.mock('../messages/MessagePrivacySettings.tsx', () => ({
+  MessagePrivacySettings: () => null,
+}))
 
 describe('SafetySettingsSection', () => {
   it('links to reports and appeals', async () => {

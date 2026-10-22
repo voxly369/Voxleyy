@@ -18,7 +18,6 @@ export const profileFormSchema = z
     country: z.string(),
     cityVisible: z.boolean(),
     language: z.string().regex(/^[a-z]{2,8}$/, 'Choose a language.'),
-    whoCanMessage: z.enum(['everyone', 'followers'], { message: 'Choose who can message you.' }),
   })
   .superRefine((value, ctx) => {
     const website = parseWebsite(value.website)

@@ -46,7 +46,7 @@ export type ProfileUpdate = {
   city?: string | null
   city_visible?: boolean
   language?: string
-  who_can_message?: 'everyone' | 'followers'
+  who_can_message?: 'everyone' | 'followers' | 'subscribers'
 }
 
 export type FollowListProfile = {

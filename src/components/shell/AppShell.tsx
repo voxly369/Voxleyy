@@ -11,6 +11,7 @@ import { SkipLink } from './SkipLink.tsx'
 import { ToastProvider } from './ToastProvider.tsx'
 import { focusRing } from './navItems.ts'
 import { NotificationProvider } from '../../lib/notifications/NotificationProvider.tsx'
+import { MessagesProvider } from '../../lib/messages/MessagesProvider.tsx'
 import { NotificationBell } from '../notifications/NotificationBell.tsx'
 import { NotificationPanelHost } from '../notifications/NotificationPanelHost.tsx'
 
@@ -22,6 +23,7 @@ export function AppShell() {
     <ModalStackProvider>
       <ToastProvider>
         <NotificationProvider>
+        <MessagesProvider>
         <CreateSheetProvider>
           <div id={VOXLY_APP_ROOT_ID}>
             <SkipLink />
@@ -44,6 +46,7 @@ export function AppShell() {
             </main>
           </div>
         </CreateSheetProvider>
+        </MessagesProvider>
         </NotificationProvider>
       </ToastProvider>
     </ModalStackProvider>
