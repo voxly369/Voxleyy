@@ -53,6 +53,19 @@ vi.mock('../lib/supabaseClient.ts', () => ({
   supabase: { rpc: vi.fn(async () => ({ data: 'Prompt' })) },
 }))
 
+vi.mock('../lib/shell/FeedbackProvider.tsx', () => ({
+  FeedbackProvider: ({ children }: { children: React.ReactNode }) => children,
+  useFeedback: () => ({ openFeedback: () => {} }),
+}))
+
+vi.mock('../components/home/HomeChecklistCard.tsx', () => ({
+  HomeChecklistCard: () => null,
+}))
+
+vi.mock('../components/home/HomeGreeting.tsx', () => ({
+  HomeGreeting: () => null,
+}))
+
 import { listFeed } from '../lib/feed/listFeed.ts'
 
 describe('HomePage offline', () => {
