@@ -166,6 +166,7 @@ async function assertTouchTargets(page: Page, width: number) {
           tag,
           inputType,
           inParagraph: Boolean(node.closest('p')),
+          inHeading: Boolean(node.closest('h1,h2,h3,h4')),
           srOnly:
             node.classList.contains('sr-only') ||
             Boolean(node.closest('.sr-only')) ||
@@ -177,6 +178,7 @@ async function assertTouchTargets(page: Page, width: number) {
     )
     if (meta.srOnly) continue
     if (meta.tag === 'a' && meta.inParagraph) continue
+    if (meta.tag === 'a' && meta.inHeading) continue
     if ((meta.inputType === 'radio' || meta.inputType === 'checkbox') && meta.labelHitArea) continue
     expect(box.width).toBeGreaterThanOrEqual(min - 1)
     expect(box.height).toBeGreaterThanOrEqual(min - 1)

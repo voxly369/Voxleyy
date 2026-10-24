@@ -564,7 +564,13 @@ export function bookBuilderMockHandleRest(url: string, method: string, postData:
       const idMatch = url.match(/id=eq\.([^&]+)/)
       const id = idMatch?.[1]
       if (id && chapters.has(id) && postData && typeof postData === 'object') {
-        chapters.set(id, { ...chapters.get(id)!, ...(postData as ChapterRow), updated_at: new Date().toISOString() })
+        const updated = {
+          ...chapters.get(id)!,
+          ...(postData as ChapterRow),
+          updated_at: new Date().toISOString(),
+        }
+        chapters.set(id, updated)
+        return [updated]
       }
       return []
     }

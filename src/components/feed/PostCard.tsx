@@ -88,17 +88,19 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
           />
         </Link>
         <div className="min-w-0 flex-1">
-          <Link
-            to={`/u/${post.author.username}`}
-            className={`inline-flex min-h-11 max-w-full items-center gap-1 font-medium text-ink ${focusRing}`}
-          >
-            <span className="truncate">{post.author.displayName || post.author.username}</span>
+          <div className="flex min-h-11 flex-wrap items-center gap-1">
+            <Link
+              to={`/u/${post.author.username}`}
+              className={`flex min-h-11 min-w-11 w-full items-center font-medium text-ink ${focusRing}`}
+            >
+              <span className="truncate">{post.author.displayName || post.author.username}</span>
+            </Link>
             {post.author.feedBadges?.length ? <BadgeRowOnName badges={post.author.feedBadges} /> : null}
             {post.author.verified ? <VerifiedBadge /> : null}
-          </Link>
+          </div>
           <Link
             to={`/u/${post.author.username}`}
-            className={`inline-flex min-h-11 items-center text-sm text-muted ${focusRing}`}
+            className={`flex min-h-11 min-w-11 w-full items-center text-sm text-muted ${focusRing}`}
           >
             @{post.author.username}
           </Link>
@@ -167,7 +169,7 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
             <Link
               key={tag}
               to={tagPagePath(tag)}
-              className={`rounded-full bg-bg px-2 py-1 ${focusRing}`}
+              className={`inline-flex min-h-11 items-center rounded-full bg-bg px-3 py-1 ${focusRing}`}
             >
               #{tag}
             </Link>
