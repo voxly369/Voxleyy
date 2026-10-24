@@ -3559,6 +3559,11 @@ begin
   select writing_current into v_count from public.user_streaks where user_id = v_a;
   perform pg_temp.record('writing streak idempotent same day', v_count = 1, 'current=' || v_count);
 
+  update public.profiles set role = 'writer' where id = v_b;
+  if not exists (select 1 from public.creations c where c.author_id = v_b and c.status = 'published') then
+    insert into public.creations (author_id, type, title, audience, status, published_at)
+    values (v_b, 'poem', 'Analytics smoke poem', 'public', 'published', now());
+  end if;
   perform set_config('request.jwt.claim.sub', v_b::text, true);
   select coalesce((public.get_creator_analytics()->>'views_7d')::integer, 0) into v_count;
   perform pg_temp.record('get_creator_analytics own data', v_count >= 0, 'views_7d=' || v_count);
@@ -4459,6 +4464,122 @@ begin
   exception when others then execute format('set local role %I', session_user); perform pg_temp.record('anon cannot call list_my_conversations', true, sqlerrm); end;
   execute 'set local role authenticated';
 end $messages_16b$;
+
+-- Prompt 17A: founder/creator analytics, activity, daily_metrics.
+do $founder_analytics_17a$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_founder uuid;
+  v_day date := (timezone('utc', now()))::date;
+  v_count bigint;
+  v_json jsonb;
+begin
+  select reader_a, reader_b, founder into v_a, v_b, v_founder from rls_ids limit 1;
+  if v_a is null or v_founder is null then
+    perform pg_temp.record('founder analytics 17A skipped', true, 'missing rls_ids');
+    return;
+  end if;
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform public.touch_activity();
+  perform public.touch_activity();
+  execute format('set local role %I', session_user);
+  select count(*) into v_count from public.user_activity_days where user_id = v_a and day = v_day;
+  execute 'set local role authenticated';
+  perform pg_temp.record('touch_activity idempotent per UTC day', v_count = 1, 'rows=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_json := public.refresh_daily_metrics(v_day, v_day);
+  perform pg_temp.record('refresh_daily_metrics founder ok', v_json->>'status' = 'ok', v_json::text);
+  v_json := public.refresh_daily_metrics(v_day, v_day);
+  perform pg_temp.record('refresh_daily_metrics idempotent rerun', v_json->>'status' = 'ok', v_json::text);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    perform public.refresh_daily_metrics(v_day, v_day);
+    perform pg_temp.record('refresh_daily_metrics non-founder blocked', false, 'ok');
+  exception when others then
+    perform pg_temp.record('refresh_daily_metrics non-founder blocked', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  begin
+    perform public.founder_analytics_overview(v_day - 7, v_day, null, null);
+    perform pg_temp.record('founder_analytics_overview founder ok', true, 'ok');
+  exception when others then
+    perform pg_temp.record('founder_analytics_overview founder ok', false, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    perform public.founder_analytics_overview(v_day - 7, v_day, null, null);
+    perform pg_temp.record('founder_analytics_overview non-founder blocked', false, 'ok');
+  exception when others then
+    perform pg_temp.record('founder_analytics_overview non-founder blocked', true, sqlerrm);
+  end;
+
+  execute 'set local role anon';
+  begin
+    perform public.founder_analytics_overview(v_day - 7, v_day, null, null);
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('founder_analytics_overview anon blocked', false, 'ok');
+  exception when others then
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('founder_analytics_overview anon blocked', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  update public.profiles set role = 'writer' where id = v_b;
+  if not exists (select 1 from public.creations c where c.author_id = v_b and c.status = 'published') then
+    insert into public.creations (author_id, type, title, audience, status, published_at)
+    values (v_b, 'poem', 'Creator dash smoke', 'public', 'published', now());
+  end if;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  v_json := public.get_creator_dashboard_overview(v_day - 7, v_day);
+  perform pg_temp.record('get_creator_dashboard_overview writer ok', v_json is not null, 'ok');
+
+  execute format('set local role %I', session_user);
+  update public.profiles set role = 'reader' where id = v_a;
+  delete from public.creations where author_id = v_a and status = 'published';
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    perform public.get_creator_dashboard_overview(v_day - 7, v_day);
+    perform pg_temp.record('get_creator_dashboard_overview non-writer blocked', false, 'ok');
+  exception when others then
+    perform pg_temp.record('get_creator_dashboard_overview non-writer blocked', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_json := public.founder_analytics_export('overview', v_day - 7, v_day, null, null);
+  perform pg_temp.record('founder_analytics_export capped and audited', coalesce((v_json->>'row_count')::int, 0) >= 1, v_json::text);
+  execute format('set local role %I', session_user);
+  select count(*) into v_count from public.analytics_export_audit where exported_by = v_founder;
+  execute 'set local role authenticated';
+  perform pg_temp.record('founder_analytics_export writes audit row', v_count >= 1, 'rows=' || v_count);
+
+  execute format('set local role %I', session_user);
+  insert into public.user_activity_days (user_id, day)
+  values (v_a, v_day - 30)
+  on conflict do nothing;
+  insert into public.user_activity_days (user_id, day)
+  values (v_a, v_day - 29)
+  on conflict do nothing;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_json := public.founder_analytics_retention(v_day - 60, v_day, null, null);
+  perform pg_temp.record('founder_analytics_retention returns json', v_json ? 'day1_rate', v_json::text);
+
+  begin
+    perform public.founder_analytics_overview(v_day - 500, v_day, null, null);
+    perform pg_temp.record('founder analytics date range max 400 days', false, 'ok');
+  exception when others then
+    perform pg_temp.record('founder analytics date range max 400 days', true, sqlerrm);
+  end;
+end $founder_analytics_17a$;
 
 do $$
 declare

@@ -18,6 +18,7 @@ export default function PrivacyPage() {
           <li>Account data such as email, username, and profile details you choose to share.</li>
           <li>Content you create, save, or publish on Voxly.</li>
           <li>Usage and security logs needed to keep the service reliable and safe.</li>
+          <li>One activity day per UTC day when you use the app, to measure active use and retention.</li>
         </ul>
       </section>
       <section>

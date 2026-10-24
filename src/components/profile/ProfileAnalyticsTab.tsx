@@ -68,6 +68,13 @@ export function ProfileAnalyticsTab({ data, loading, error }: ProfileAnalyticsTa
 
   return (
     <div className="flex flex-col gap-6" data-testid="profile-analytics-tab">
+      <Link
+        to="/creator"
+        className={`inline-flex min-h-11 items-center self-start rounded-2xl bg-raised px-4 text-sm font-semibold text-ink ${focusRing}`}
+        data-testid="open-creator-dashboard"
+      >
+        Open Creator Dashboard
+      </Link>
       <MiniBarChart series={series} />
       <div className="overflow-x-auto">
         <table className="min-w-full text-left text-sm" data-testid="analytics-table">

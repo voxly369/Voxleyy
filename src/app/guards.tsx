@@ -135,3 +135,10 @@ export function RequireFounder() {
   if (!isFounder) return <Navigate to="/" replace />
   return <Outlet />
 }
+
+export function RequireWriter() {
+  const { profile, loading } = useAuth()
+  if (loading) return <PageSkeleton />
+  if (!profile || profile.role !== 'writer') return <Navigate to="/" replace />
+  return <Outlet />
+}

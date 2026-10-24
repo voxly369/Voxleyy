@@ -113,6 +113,11 @@ export type E2eFeedRow = ReturnType<typeof feedPosts>[number]
 
 let e2eFeedOverride: E2eFeedRow[] | null = null
 let e2eCreationDetailOverride: Record<string, unknown> | null = null
+let e2eOwnProfileRole: 'reader' | 'writer' = 'writer'
+
+export function setE2eOwnProfileRole(role: 'reader' | 'writer') {
+  e2eOwnProfileRole = role
+}
 
 /** Replace default feed rows for a single e2e file; pass null to reset. */
 export function setE2eFeedOverride(posts: E2eFeedRow[] | null) {
@@ -368,7 +373,7 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
       return [ownProfile(OTHER.id, OTHER.username, OTHER.display_name, 12)]
     }
     if (url.includes('username=eq.readerone') || url.includes(`id=eq.${READER.id}`)) {
-      const row = ownProfile(READER.id, READER.username, READER.display_name, 0)
+      const row = { ...ownProfile(READER.id, READER.username, READER.display_name, 0), role: e2eOwnProfileRole }
       const status = moderationOwnProfileStatus()
       if (status) {
         return [{ ...row, status, suspended_until: status === 'suspended' ? '2030-01-01T00:00:00.000Z' : null }]
@@ -380,7 +385,7 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
         ownProfile(`33333333-3333-3333-3333-${String(i + 1).padStart(12, '0')}`, `writer${i}`, `Writer ${i}`),
       )
     }
-    return [ownProfile(READER.id, READER.username, READER.display_name)]
+    return [{ ...ownProfile(READER.id, READER.username, READER.display_name), role: e2eOwnProfileRole }]
   }
 
   if (url.includes('/rest/v1/feed_creations') || url.includes('/rest/v1/following_feed')) {
@@ -475,6 +480,19 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
     return []
   }
 
+  if (url.includes('/rest/v1/rpc/touch_activity')) return null
+  if (url.includes('/rest/v1/rpc/founder_prepare_daily_metrics')) return { refreshes: [] }
+  if (url.includes('/rest/v1/rpc/founder_analytics_')) {
+    return {
+      total_users: 0,
+      signups_series: [],
+      dau_series: [],
+      cohorts_by_week: [],
+      posts: [],
+    }
+  }
+  if (url.includes('/rest/v1/rpc/get_creator_dashboard_')) return { views: 0, posts: [], drafts: [] }
+
   return []
 }
 
@@ -493,6 +511,7 @@ export async function installSupabaseMocks(page: Page) {
   resetModerationMocks()
   resetPreBetaMocks()
   resetAuthMocks()
+  e2eOwnProfileRole = 'writer'
   const session = sessionResponse(READER.id, READER.email)
 
   await page.route('**/*', async (route) => {
@@ -576,6 +595,11 @@ export async function seedSignedInSession(page: Page) {
   await page.addInitScript(({ key, value }) => {
     localStorage.setItem(key, JSON.stringify(value))
   }, { key: AUTH_STORAGE_KEY, value: session })
+}
+
+export async function gotoFounderReportQueue(page: Page) {
+  await page.goto('/founder', { waitUntil: 'networkidle' })
+  await page.getByRole('navigation', { name: 'Founder sections' }).getByRole('button', { name: 'Report queue' }).click()
 }
 
 export {
