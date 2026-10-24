@@ -4440,6 +4440,9 @@ begin
   select (e->>'can_message')::boolean into v_can from jsonb_array_elements(v_json) e where (e->>'id')::uuid = v_b limit 1;
   perform pg_temp.record('search_dm_writers can_message false without revealing block reason', v_can = false, 'can_message=' || v_can);
 
+  execute format('set local role %I', session_user);
+  update public.profiles set who_can_message = 'everyone' where id = v_b;
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
   v_conv := public.get_or_create_dm(v_b);
   insert into public.creations (id, author_id, type, title, audience, status, body_text, is_removed)
   values (gen_random_uuid(), v_b, 'poem', 'Removed', 'public', 'published', 'x', true) returning id into v_priv;
@@ -4447,8 +4450,11 @@ begin
   exception when others then perform pg_temp.record('send refused removed shared post', true, sqlerrm); end;
 
   execute 'set local role anon';
+  perform set_config('request.jwt.claim.sub', '', true);
   begin perform public.send_message(gen_random_uuid(), 'x'); execute format('set local role %I', session_user); perform pg_temp.record('anon cannot call send_message', false, 'ok');
   exception when others then execute format('set local role %I', session_user); perform pg_temp.record('anon cannot call send_message', true, sqlerrm); end;
+  execute 'set local role anon';
+  perform set_config('request.jwt.claim.sub', '', true);
   begin perform public.list_my_conversations(); execute format('set local role %I', session_user); perform pg_temp.record('anon cannot call list_my_conversations', false, 'ok');
   exception when others then execute format('set local role %I', session_user); perform pg_temp.record('anon cannot call list_my_conversations', true, sqlerrm); end;
   execute 'set local role authenticated';
