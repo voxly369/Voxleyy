@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
@@ -11,7 +11,7 @@ import { ThemeChoiceGroup } from '../components/shell/ThemeChoiceGroup.tsx'
 import { useTheme } from '../lib/useTheme.ts'
 import { downloadJsonExport, exportMyData } from '../lib/account/dataExport.ts'
 import { useFeedback } from '../lib/shell/FeedbackProvider.tsx'
-import { reopenOnboarding } from '../lib/onboarding/api.ts'
+import { fetchMyProfilePreferences, patchMyProfilePreferences, reopenOnboarding } from '../lib/onboarding/api.ts'
 
 const appVersion = import.meta.env.VITE_APP_VERSION ?? '0.0.0'
 
@@ -52,6 +52,14 @@ export default function SettingsPage() {
   const [exportBusy, setExportBusy] = useState(false)
   const [exportError, setExportError] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [showEntranceScreen, setShowEntranceScreen] = useState(true)
+  const [entranceBusy, setEntranceBusy] = useState(false)
+
+  useEffect(() => {
+    void fetchMyProfilePreferences().then((result) => {
+      if (result.ok) setShowEntranceScreen(result.data.show_entrance_screen)
+    })
+  }, [])
 
   function closeNotice() {
     if (user) dismissNotice(user.id)
@@ -248,6 +256,29 @@ export default function SettingsPage() {
             Delete account
           </button>
         </div>
+      </section>
+      <section className="rounded-2xl border border-line bg-surface p-5" data-testid="settings-experience-section">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Experience</h2>
+        <label className="mt-4 flex min-h-11 cursor-pointer items-center justify-between gap-4 text-sm">
+          <span className="text-ink">Show the entrance screen</span>
+          <input
+            type="checkbox"
+            checked={showEntranceScreen}
+            disabled={entranceBusy}
+            onChange={(event) => {
+              const next = event.target.checked
+              setShowEntranceScreen(next)
+              setEntranceBusy(true)
+              void patchMyProfilePreferences({ show_entrance_screen: next }).then((result) => {
+                setEntranceBusy(false)
+                if (!result.ok) setShowEntranceScreen(!next)
+              })
+            }}
+            className="size-5 accent-coral"
+            data-testid="settings-show-entrance"
+          />
+        </label>
+        <p className="mt-2 text-sm text-muted">Once per day when you open Voxly, see your greeting, quote, and word of the day.</p>
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 id="theme-label" className="text-xs font-semibold uppercase tracking-wide text-muted">

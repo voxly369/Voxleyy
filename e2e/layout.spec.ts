@@ -4,6 +4,7 @@ import {
   seedSignedInSession,
   SAMPLE_CREATION_ID,
 } from './fixtures.ts'
+import { setE2eEntranceVisible, setE2eOnboardingComplete } from './betaReadiness18bMocks.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -28,10 +29,32 @@ type ScreenDef = {
   skipReadingLine?: boolean
   skipRightRail?: boolean
   skipNav?: boolean
+  beforeGoto?: () => void
 }
 
 const screens: ScreenDef[] = [
-  { name: 'home', path: '/', signedIn: true },
+  {
+    name: 'entrance',
+    path: '/',
+    signedIn: true,
+    skipNav: true,
+    skipRightRail: true,
+    skipReadingLine: true,
+    beforeGoto: () => {
+      setE2eOnboardingComplete()
+      setE2eEntranceVisible(true)
+    },
+  },
+  {
+    name: 'home-greeting',
+    path: '/',
+    signedIn: true,
+    beforeGoto: () => {
+      setE2eOnboardingComplete()
+      setE2eEntranceVisible(false)
+    },
+  },
+  { name: 'home', path: '/', signedIn: true, beforeGoto: () => setE2eEntranceVisible(false) },
   {
     name: 'following',
     path: '/',
@@ -227,6 +250,7 @@ async function assertDialogFocus(page: Page, screen: ScreenDef) {
 
 async function visitScreen(page: Page, screen: ScreenDef) {
   if (screen.signedIn) await seedSignedInSession(page)
+  screen.beforeGoto?.()
   await page.goto(screen.path, { waitUntil: 'networkidle' })
   if (screen.setup) await screen.setup(page)
   if (screen.signedIn) {

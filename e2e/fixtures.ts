@@ -91,7 +91,7 @@ function ownProfile(id: string, username: string, display_name: string, creation
     avatar_url: null,
     banner_url: null,
     website: null,
-    country: null,
+    country: 'ZA',
     city: null,
     city_visible: false,
     timezone: 'UTC',

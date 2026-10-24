@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
 import { timeAwareGreeting } from '../../lib/home/greeting.ts'
+import { countryFlag, countryName } from '../../lib/profiles/countries.ts'
 import { focusRing } from '../shell/navItems.ts'
 
 type HomeGreetingProps = {
   displayName: string
   timezone: string
+  countryCode: string | null
   role: 'reader' | 'writer'
   writingStreak: number | null
   dailyPrompt: string | null
@@ -14,16 +16,23 @@ type HomeGreetingProps = {
 export function HomeGreeting({
   displayName,
   timezone,
+  countryCode,
   role,
   writingStreak,
   dailyPrompt,
   continueReadingCount,
 }: HomeGreetingProps) {
   const greeting = timeAwareGreeting(timezone, displayName)
+  const cName = countryName(countryCode)
 
   return (
     <section className="flex flex-col gap-2 rounded-2xl border border-line bg-surface p-5" data-testid="home-greeting">
       <h1 className="font-serif text-2xl text-ink">{greeting}</h1>
+      {cName ? (
+        <p className="text-sm text-muted" data-testid="home-greeting-country">
+          {countryFlag(countryCode)} {cName}
+        </p>
+      ) : null}
       {role === 'writer' ? (
         <div className="flex flex-col gap-1 text-sm text-muted">
           {writingStreak !== null && writingStreak > 0 ? (

@@ -2147,6 +2147,22 @@ export type Database = {
         Returns: Json
       }
       quote_of_the_day: { Args: { p_day?: string; p_tz?: string }; Returns: Json }
+      founder_list_daily_quotes: {
+        Args: { p_cursor?: string | null; p_limit?: number }
+        Returns: Json
+      }
+      founder_upsert_daily_quote: {
+        Args: {
+          p_id?: string | null
+          p_text?: string | null
+          p_author?: string | null
+          p_source?: string | null
+          p_kind?: string | null
+          p_active?: boolean | null
+        }
+        Returns: string
+      }
+      founder_active_daily_quote_count: { Args: Record<string, never>; Returns: number }
       writing_prompt_for_date: { Args: { p_on?: string }; Returns: string }
       tag_public_post_count: { Args: { p_tag: string }; Returns: number }
       compute_engagement_score: {

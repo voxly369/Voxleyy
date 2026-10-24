@@ -5,6 +5,9 @@ let onboardingStep = 0
 let feedbackCount = 0
 let founderWelcomeSent = false
 let feedbackSubmitCount = 0
+let lastEntranceLocalDate: string | null = null
+let showEntranceScreen = true
+let welcomeMomentSeenAt: string | null = '2026-01-01T00:00:00.000Z'
 
 export function setE2eOnboardingIncomplete(step = 0) {
   onboardingCompleted = false
@@ -22,6 +25,30 @@ export function resetBetaReadiness18bMocks() {
   feedbackCount = 0
   founderWelcomeSent = false
   feedbackSubmitCount = 0
+  lastEntranceLocalDate = null
+  showEntranceScreen = true
+  welcomeMomentSeenAt = '2026-01-01T00:00:00.000Z'
+}
+
+export function setE2eEntranceVisible(visible: boolean) {
+  if (visible) {
+    lastEntranceLocalDate = null
+    showEntranceScreen = true
+    try {
+      localStorage.removeItem('voxly-last-visit-v1')
+    } catch {
+      /* ignore */
+    }
+  } else {
+    lastEntranceLocalDate = '2099-01-01'
+    showEntranceScreen = false
+  }
+}
+
+export function setE2eOnboardingForEntranceE2e() {
+  onboardingCompleted = false
+  onboardingStep = 0
+  welcomeMomentSeenAt = '2026-01-01T00:00:00.000Z'
 }
 
 export function betaReadiness18bMockHandleRest(url: string, method: string, postData: unknown): unknown | undefined {
@@ -33,7 +60,9 @@ export function betaReadiness18bMockHandleRest(url: string, method: string, post
       writer_roles: ['poet'],
       favorite_genres: ['poetry'],
       languages: ['en'],
-      welcome_moment_seen_at: '2026-01-01T00:00:00.000Z',
+      welcome_moment_seen_at: welcomeMomentSeenAt,
+      last_entrance_local_date: lastEntranceLocalDate,
+      show_entrance_screen: showEntranceScreen,
       checklist_dismissed_at: null,
       checklist_progress: {},
     }
@@ -42,6 +71,8 @@ export function betaReadiness18bMockHandleRest(url: string, method: string, post
     const patch = (postData as { p_patch?: Record<string, unknown> } | null)?.p_patch ?? {}
     if (typeof patch.onboarding_step === 'number') onboardingStep = patch.onboarding_step
     if (patch.onboarding_completed_at === null) onboardingCompleted = false
+    if (typeof patch.last_entrance_local_date === 'string') lastEntranceLocalDate = patch.last_entrance_local_date
+    if (typeof patch.show_entrance_screen === 'boolean') showEntranceScreen = patch.show_entrance_screen
     return {
       user_id: READER_ID,
       onboarding_completed_at: onboardingCompleted ? '2026-01-02T00:00:00.000Z' : null,
@@ -49,11 +80,35 @@ export function betaReadiness18bMockHandleRest(url: string, method: string, post
       writer_roles: [],
       favorite_genres: [],
       languages: ['en'],
-      welcome_moment_seen_at: '2026-01-01T00:00:00.000Z',
+      welcome_moment_seen_at: welcomeMomentSeenAt,
+      last_entrance_local_date: lastEntranceLocalDate,
+      show_entrance_screen: showEntranceScreen,
       checklist_dismissed_at: null,
       checklist_progress: {},
     }
   }
+  if (url.includes('/rest/v1/rpc/quote_of_the_day')) {
+    return { text: 'Quiet ink can still change a room.', author: 'Voxly', source: null, kind: 'original' }
+  }
+  if (url.includes('/rest/v1/rpc/writing_prompt_for_date')) return 'Threshold'
+  if (url.includes('/rest/v1/rpc/founder_list_daily_quotes')) {
+    return {
+      rows: [
+        {
+          id: '00000000-0000-0000-0000-000000000099',
+          text: 'Seed quote',
+          author: 'Voxly',
+          source: null,
+          active: true,
+          kind: 'original',
+          created_at: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      next_cursor: null,
+    }
+  }
+  if (url.includes('/rest/v1/rpc/founder_active_daily_quote_count')) return 120
+  if (url.includes('/rest/v1/rpc/founder_upsert_daily_quote')) return '00000000-0000-0000-0000-000000000099'
   if (url.includes('/rest/v1/rpc/complete_my_onboarding')) {
     onboardingCompleted = true
     onboardingStep = 99

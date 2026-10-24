@@ -154,6 +154,7 @@ export default function HomePage() {
         <HomeGreeting
           displayName={profile.display_name?.trim() || profile.username}
           timezone={profile.timezone ?? 'UTC'}
+          countryCode={profile.country ?? null}
           role={profile.role === 'writer' ? 'writer' : 'reader'}
           writingStreak={writingStreak}
           dailyPrompt={dailyPrompt}

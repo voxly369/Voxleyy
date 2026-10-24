@@ -5073,6 +5073,20 @@ begin
     not public.user_beta_access_ok(v_other),
     'user_beta_access_ok=' || public.user_beta_access_ok(v_other)::text
   );
+
+  select count(*) into v_count from public.daily_quotes where active;
+  perform pg_temp.record('daily_quotes active seed count', v_count >= 120, 'rows=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  v_json := public.quote_of_the_day(current_date, 'UTC');
+  perform pg_temp.record('quote_of_the_day returns object', v_json ? 'text' and v_json ? 'author', 'json ok');
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_json := public.founder_list_daily_quotes(null, 5);
+  select jsonb_array_length(v_json->'rows') into v_count;
+  perform pg_temp.record('founder_list_daily_quotes returns rows', v_count >= 1, 'rows=' || v_count);
+  v_count := public.founder_active_daily_quote_count();
+  perform pg_temp.record('founder_active_daily_quote_count', v_count >= 120, 'active=' || v_count);
 end $beta_readiness_18b$;
 
 do $$
