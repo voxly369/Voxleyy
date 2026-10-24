@@ -128,7 +128,10 @@ export function OnboardingFlow({ forceOpen, onFinished, onCloseForced }: Onboard
       await finish()
       return
     }
-    await persistStep(next)
+    setStep(next)
+    setBusy(true)
+    await patchMyProfilePreferences({ onboarding_step: next, writer_roles: roles, favorite_genres: genres, languages })
+    setBusy(false)
   }
 
   async function finish() {

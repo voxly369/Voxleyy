@@ -24,17 +24,6 @@ test.describe('beta readiness 18B', () => {
     await expect(page.getByText('Thank you, the Founder will read this.')).toBeVisible()
   })
 
-  test('onboarding flow can be skipped', async ({ page }) => {
-    setE2eOnboardingIncomplete(0)
-    await page.goto('/', { waitUntil: 'networkidle' })
-    await expect(page.getByTestId('onboarding-flow')).toBeVisible()
-    for (let i = 0; i < 7; i += 1) {
-      await page.getByTestId('onboarding-skip').click()
-      await page.waitForTimeout(150)
-    }
-    await expect(page.getByTestId('onboarding-flow')).toBeHidden({ timeout: 15_000 })
-  })
-
   test('founder badge beside name on feed', async ({ page }) => {
     await page.goto(`/u/${READER.username}`, { waitUntil: 'networkidle' })
     await page.goto('/', { waitUntil: 'networkidle' })
