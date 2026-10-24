@@ -22,7 +22,7 @@ for (const width of WIDTHS) {
     await seedSignedInSession(page)
     setModerationIsFounder(true)
     await page.goto('/founder', { waitUntil: 'networkidle' })
-    await expect(page.getByTestId('founder-report-queue')).toBeVisible()
+    await expect(page.getByTestId('founder-analytics-overview')).toBeVisible()
     const nav = page.getByRole('navigation', { name: 'Founder sections' })
     const box = await nav.boundingBox()
     expect(box).toBeTruthy()

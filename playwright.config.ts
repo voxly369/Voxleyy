@@ -12,7 +12,7 @@ export default defineConfig({
     trace: 'off',
   },
   webServer: {
-    command: 'npm run build && npm run preview -- --host 127.0.0.1 --port 4173',
+    command: 'npm run build && NODE_OPTIONS="--max-old-space-size=4096" npm run preview -- --host 127.0.0.1 --port 4173',
     port: 4173,
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,

@@ -42,3 +42,6 @@ export function primaryNavItems(username: string): readonly NavItem[] {
 
 export const focusRing =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral'
+
+/** White label on brand coral with WCAG 2 AA contrast (use instead of bg-coral text-white). */
+export const accessibleCoralFill = 'bg-coral-800 text-white'

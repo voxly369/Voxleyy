@@ -337,14 +337,26 @@ function editableDraft() {
   }
 }
 
+function postgrestBody(route: Route, body: unknown): unknown {
+  const accept = route.request().headers()['accept'] ?? ''
+  const wantsObject = accept.includes('application/vnd.pgrst.object+json')
+  if (!wantsObject) return body
+  if (Array.isArray(body)) {
+    if (body.length === 0) return null
+    if (body.length === 1) return body[0]
+  }
+  return body
+}
+
 async function fulfillJson(route: Route, body: unknown, status = 200) {
   const method = route.request().method()
   const code =
     method === 'POST' && status === 200 && route.request().url().includes('/rest/v1/reports') ? 201 : status
+  const payload = postgrestBody(route, body)
   await route.fulfill({
     status: code,
     contentType: 'application/json',
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   })
 }
 

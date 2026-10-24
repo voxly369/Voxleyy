@@ -73,7 +73,7 @@ export default function CreatorDashboardPage() {
             type="button"
             aria-current={section === item.id ? 'page' : undefined}
             onClick={() => setSection(item.id)}
-            className={`min-h-11 rounded-2xl px-4 text-sm font-semibold ${section === item.id ? 'bg-coral text-white' : 'bg-raised text-ink'} ${focusRing}`}
+            className={`min-h-11 rounded-2xl px-4 text-sm font-semibold ${section === item.id ? 'bg-surface text-coral ring-2 ring-inset ring-coral' : 'bg-raised text-ink'} ${focusRing}`}
           >
             {item.label}
           </button>
@@ -97,7 +97,7 @@ export default function CreatorDashboardPage() {
               type="button"
               aria-pressed={postWindow === w}
               onClick={() => setPostWindow(w)}
-              className={`min-h-11 rounded-2xl px-3 text-sm font-semibold ${postWindow === w ? 'bg-coral text-white' : 'bg-raised'} ${focusRing}`}
+              className={`min-h-11 rounded-2xl px-3 text-sm font-semibold ${postWindow === w ? 'bg-surface text-coral ring-2 ring-inset ring-coral' : 'bg-raised'} ${focusRing}`}
             >
               {w === 'all' ? 'All time' : `${w} days`}
             </button>

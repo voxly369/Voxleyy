@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { focusRing } from '../shell/navItems.ts'
+import { accessibleCoralFill, focusRing } from '../shell/navItems.ts'
 import {
   banUser,
   dismissReport,
@@ -233,7 +233,7 @@ export function FounderReportCard({ row, onActionComplete }: FounderReportCardPr
         <button
           type="button"
           onClick={() => setPending({ kind: 'ban' })}
-          className={`min-h-11 rounded-2xl bg-coral px-3 text-sm font-semibold text-white ${focusRing}`}
+          className={`min-h-11 rounded-2xl px-3 text-sm font-semibold ${accessibleCoralFill} ${focusRing}`}
         >
           Ban
         </button>

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { PageContainer } from '../components/shell/PageContainer.tsx'
-import { focusRing } from '../components/shell/navItems.ts'
+import { accessibleCoralFill, focusRing } from '../components/shell/navItems.ts'
 import { EmptyState } from '../components/states/EmptyState.tsx'
 import { FounderReportCard } from '../components/safety/FounderReportCard.tsx'
 import {
@@ -154,7 +154,7 @@ export default function FounderPage() {
             type="button"
             aria-current={tab === item.id ? 'page' : undefined}
             onClick={() => setTab(item.id)}
-            className={`min-h-11 rounded-2xl px-4 text-sm font-semibold ${tab === item.id ? 'bg-coral text-white' : 'bg-raised text-ink'} ${focusRing}`}
+            className={`min-h-11 rounded-2xl px-4 text-sm font-semibold ${tab === item.id ? 'bg-surface text-coral ring-2 ring-inset ring-coral' : 'bg-raised text-ink'} ${focusRing}`}
           >
             {item.label}
           </button>
@@ -208,7 +208,7 @@ export default function FounderPage() {
               placeholder="Search name, username, or email"
               className="min-h-11 flex-1 rounded-2xl border border-line bg-bg px-3 text-base"
             />
-            <button type="submit" className={`min-h-11 rounded-2xl bg-coral px-4 font-semibold text-white ${focusRing}`}>
+            <button type="submit" className={`min-h-11 rounded-2xl px-4 font-semibold ${accessibleCoralFill} ${focusRing}`}>
               Search
             </button>
           </form>
@@ -277,7 +277,9 @@ export default function FounderPage() {
       {tab === 'appeals' ? (
         <ul className="flex flex-col gap-3">
           {appeals.length === 0 ? (
-            <EmptyState title="Appeals" message="No pending appeals." />
+            <li className="list-none">
+              <EmptyState title="Appeals" message="No pending appeals." />
+            </li>
           ) : (
             appeals.map((row) => (
               <li key={String(row.id)} className="rounded-2xl border border-line bg-surface p-4">
@@ -293,7 +295,7 @@ export default function FounderPage() {
                   <button
                     type="button"
                     onClick={() => setAppealDecision({ id: String(row.id), decision: 'overturned' })}
-                    className={`min-h-11 rounded-2xl bg-coral px-3 text-sm font-semibold text-white ${focusRing}`}
+                    className={`min-h-11 rounded-2xl px-3 text-sm font-semibold ${accessibleCoralFill} ${focusRing}`}
                   >
                     Overturn
                   </button>

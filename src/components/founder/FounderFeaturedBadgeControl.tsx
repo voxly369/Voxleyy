@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { awardFeaturedBadge, removeFeaturedBadge } from '../../lib/badges/api.ts'
-import { focusRing } from '../shell/navItems.ts'
+import { accessibleCoralFill, focusRing } from '../shell/navItems.ts'
 import { ConfirmDialog } from '../states/ConfirmDialog.tsx'
 
 type FounderFeaturedBadgeControlProps = {
@@ -70,7 +70,7 @@ export function FounderFeaturedBadgeControl({
           type="button"
           disabled={busy}
           onClick={() => void grant()}
-          className={`min-h-11 self-start rounded-2xl bg-coral px-4 text-sm font-semibold text-white ${focusRing}`}
+          className={`min-h-11 self-start rounded-2xl px-4 text-sm font-semibold ${accessibleCoralFill} ${focusRing}`}
         >
           Award Featured
         </button>

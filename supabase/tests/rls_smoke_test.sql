@@ -4581,6 +4581,186 @@ begin
   end;
 end $founder_analytics_17a$;
 
+-- Prompt 17B: exact daily_metrics, touch flood limits, top_books, creator parity.
+do $founder_analytics_17b$
+declare
+  v_founder uuid;
+  v_writer uuid;
+  v_reader uuid;
+  v_day date := '2017-06-15'::date;
+  v_metric bigint;
+  v_json jsonb;
+  v_books jsonb;
+  i integer;
+  v_touch bigint;
+  v_overview jsonb;
+  v_analytics jsonb;
+  v_ret jsonb;
+  v_views_before bigint;
+  today date := (timezone('utc', now()))::date;
+  v_cohort uuid := '77777777-7777-7777-7777-777777777777'::uuid;
+begin
+  select founder, reader_a, reader_b into v_founder, v_reader, v_writer from rls_ids limit 1;
+  if v_founder is null then
+    perform pg_temp.record('founder analytics 17B skipped', true, 'missing rls_ids');
+    return;
+  end if;
+
+  execute format('set local role %I', session_user);
+  delete from public.daily_metrics where day between v_day and v_day + 7;
+  delete from public.user_activity_days where day between v_day and v_day + 7;
+  delete from public.user_activity_touch_log where user_id in (v_reader, v_writer, v_cohort);
+
+  update public.profiles
+    set created_at = '2010-01-01'::timestamptz
+    where id not in (v_reader, v_writer, v_founder)
+      and created_at >= v_day::timestamptz
+      and created_at < (v_day + 1)::timestamptz;
+
+  update public.profiles set created_at = v_day::timestamptz + interval '10 hours', country = 'ZA', role = 'reader', status = 'active'
+    where id = v_reader;
+  update public.profiles set created_at = v_day::timestamptz + interval '11 hours', country = 'GB', role = 'writer', status = 'active'
+    where id = v_writer;
+
+  perform pg_temp.create_test_user(v_cohort, 'cohort17b@voxly.test', v_day::timestamptz + interval '9 hours');
+  update public.profiles
+    set username = 'cohort17b', display_name = 'Cohort 17B', role = 'reader', status = 'active', country = 'ZA',
+        created_at = v_day::timestamptz + interval '9 hours'
+    where id = v_cohort;
+
+  insert into public.user_activity_days (user_id, day)
+  values (v_reader, v_day), (v_writer, v_day), (v_cohort, v_day + 1), (v_cohort, v_day + 7)
+  on conflict do nothing;
+
+  delete from public.creations where author_id = v_writer and published_at < v_day::timestamptz;
+
+  insert into public.creations (id, author_id, type, title, audience, status, published_at, is_removed)
+  values ('77777777-7777-7777-7777-777777777701', v_writer, 'poem', 'Metric seed post', 'public', 'published', v_day::timestamptz + interval '12 hours', false)
+  on conflict (id) do update set published_at = excluded.published_at, is_removed = false, status = 'published';
+
+  insert into public.comments (id, creation_id, author_id, body, created_at, is_removed)
+  values ('77777777-7777-7777-7777-777777777711', '77777777-7777-7777-7777-777777777701', v_reader, 'seed comment', v_day::timestamptz + interval '13 hours', false)
+  on conflict (id) do nothing;
+
+  insert into public.likes (user_id, creation_id, created_at)
+  values (v_reader, '77777777-7777-7777-7777-777777777701', v_day::timestamptz + interval '13 hours')
+  on conflict do nothing;
+
+  insert into public.saves (user_id, creation_id, created_at)
+  values (v_reader, '77777777-7777-7777-7777-777777777701', v_day::timestamptz + interval '13 hours')
+  on conflict do nothing;
+
+  insert into public.follows (follower_id, followee_id, created_at)
+  values (v_reader, v_writer, v_day::timestamptz + interval '14 hours')
+  on conflict do nothing;
+
+  insert into public.creation_view_events (creation_id, viewer_id, viewed_at)
+  values ('77777777-7777-7777-7777-777777777701', v_reader, v_day::timestamptz + interval '15 hours');
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.refresh_daily_metrics(v_day, v_day);
+
+  execute format('set local role %I', session_user);
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'signups' and dimension = '';
+  perform pg_temp.record('refresh_daily_metrics signups total exact', v_metric = 3, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'signups' and dimension = 'country:ZA';
+  perform pg_temp.record('refresh_daily_metrics signups country ZA exact', v_metric = 2, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'signups' and dimension = 'country:GB';
+  perform pg_temp.record('refresh_daily_metrics signups country GB exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'signups' and dimension = 'role:reader';
+  perform pg_temp.record('refresh_daily_metrics signups role reader exact', v_metric = 2, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'signups' and dimension = 'role:writer';
+  perform pg_temp.record('refresh_daily_metrics signups role writer exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'dau' and dimension = '';
+  perform pg_temp.record('refresh_daily_metrics dau exact', v_metric = 2, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'posts_published' and dimension = '';
+  perform pg_temp.record('refresh_daily_metrics posts_published exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'comments' and dimension = '';
+  perform pg_temp.record('refresh_daily_metrics comments exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'likes' and dimension = '';
+  perform pg_temp.record('refresh_daily_metrics likes exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'saves' and dimension = '';
+  perform pg_temp.record('refresh_daily_metrics saves exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'follows' and dimension = '';
+  perform pg_temp.record('refresh_daily_metrics follows exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'views' and dimension = '';
+  perform pg_temp.record('refresh_daily_metrics views exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'new_writers' and dimension = '';
+  perform pg_temp.record('refresh_daily_metrics new_writers exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_views_before from public.daily_metrics where day = v_day and metric_key = 'views' and dimension = '';
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.refresh_daily_metrics(v_day, v_day);
+  execute format('set local role %I', session_user);
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'views' and dimension = '';
+  perform pg_temp.record('refresh_daily_metrics idempotent views unchanged', v_metric = v_views_before, 'value=' || coalesce(v_metric::text, 'null'));
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_ret := public.founder_analytics_retention(v_day, v_day, null, null);
+  perform pg_temp.record(
+    'founder_analytics_retention day1 returns exact',
+    coalesce((v_ret->>'day1_returns')::integer, -1) = 1,
+    v_ret->>'day1_returns'
+  );
+  perform pg_temp.record(
+    'founder_analytics_retention day7 returns exact',
+    coalesce((v_ret->>'day7_returns')::integer, -1) = 1,
+    v_ret->>'day7_returns'
+  );
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_reader::text, true);
+  for i in 1..80 loop
+    perform public.touch_activity();
+  end loop;
+  execute format('set local role %I', session_user);
+  select count(*) into v_touch from public.user_activity_touch_log where user_id = v_reader;
+  perform pg_temp.record('touch_activity hourly flood capped', v_touch <= 60, 'log_rows=' || v_touch);
+  select count(*) into v_touch from public.user_activity_days where user_id = v_reader and day = today;
+  perform pg_temp.record('touch_activity still records daily row', v_touch = 1, 'day_rows=' || v_touch);
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_json := public.founder_analytics_top_content(v_day - 30, v_day, 'all', null, 'views', 10);
+  v_books := v_json->'top_books';
+  perform pg_temp.record('founder_analytics_top_content top_books array', jsonb_typeof(v_books) = 'array', v_books::text);
+
+  execute format('set local role %I', session_user);
+  update public.profiles set role = 'writer' where id = v_writer;
+  if not exists (select 1 from public.creations c where c.author_id = v_writer and c.status = 'published') then
+    insert into public.creations (author_id, type, title, audience, status, published_at)
+    values (v_writer, 'poem', 'Parity post', 'public', 'published', now());
+  end if;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_writer::text, true);
+  v_analytics := public.get_creator_analytics();
+  v_overview := public.get_creator_dashboard_overview(today - 6, today);
+  perform pg_temp.record(
+    'get_creator_analytics matches dashboard 7d views',
+    coalesce((v_analytics->>'views_7d')::integer, -1) = coalesce((v_overview->>'views')::integer, -2),
+    'analytics=' || coalesce(v_analytics->>'views_7d', 'null') || ' overview=' || coalesce(v_overview->>'views', 'null')
+  );
+  perform pg_temp.record(
+    'get_creator_analytics matches dashboard 7d likes',
+    coalesce((v_analytics->>'likes_7d')::integer, -1) = coalesce((v_overview->>'likes')::integer, -2),
+    'analytics=' || coalesce(v_analytics->>'likes_7d', 'null') || ' overview=' || coalesce(v_overview->>'likes', 'null')
+  );
+end $founder_analytics_17b$;
+
 do $$
 declare
   n integer;

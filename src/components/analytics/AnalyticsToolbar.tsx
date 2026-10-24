@@ -57,7 +57,7 @@ export function AnalyticsToolbar({
               start.setUTCDate(start.getUTCDate() - days)
               onRangeChange({ from: start.toISOString().slice(0, 10), to: end, preset: preset.id })
             }}
-            className={`min-h-11 rounded-2xl px-3 text-sm font-semibold ${range.preset === preset.id ? 'bg-coral text-white' : 'bg-raised text-ink'} ${focusRing}`}
+            className={`min-h-11 rounded-2xl px-3 text-sm font-semibold ${range.preset === preset.id ? 'bg-surface text-coral ring-2 ring-inset ring-coral' : 'bg-raised text-ink'} ${focusRing}`}
           >
             {preset.label}
           </button>

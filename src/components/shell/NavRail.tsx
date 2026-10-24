@@ -1,7 +1,7 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../lib/auth/auth-context.ts'
 import { useCreateSheet } from '../../lib/shell/useCreateSheet.ts'
-import { focusRing, railNavItems } from './navItems.ts'
+import { accessibleCoralFill, focusRing, railNavItems } from './navItems.ts'
 import { MoreMenu } from './MoreMenu.tsx'
 import { NotificationBell } from '../notifications/NotificationBell.tsx'
 import { useMessagesUnreadBadge } from '../../lib/messages/useMessages.ts'
@@ -53,7 +53,7 @@ export function NavRail() {
                   onClick={(event) => openCreateSheet(event.currentTarget)}
                   className={`group relative flex min-h-11 w-full justify-center rounded-2xl xl:justify-start xl:px-3 ${active ? 'ring-2 ring-ink ring-offset-2 ring-offset-surface' : ''} ${focusRing}`}
                 >
-                  <span className="inline-flex size-11 items-center justify-center gap-3 rounded-2xl bg-coral font-semibold text-white xl:w-auto xl:px-3">
+                  <span className={`inline-flex size-11 items-center justify-center gap-3 rounded-2xl font-semibold xl:w-auto xl:px-3 ${accessibleCoralFill}`}>
                     <Icon filled={active} className="size-6 shrink-0" />
                     <span className="hidden xl:inline xl:text-base">Create</span>
                   </span>
@@ -63,16 +63,13 @@ export function NavRail() {
             )
           }
           const showMessagesBadge = item.to === '/messages' && messagesUnread > 0
-          const messagesAria =
-            item.to === '/messages' && messagesUnread > 0
-              ? `Messages, ${messagesUnread} unread`
-              : item.label
+          const iconOnlyLabel =
+            item.label + (showMessagesBadge ? `, ${messagesUnread} unread` : '')
           return (
             <li key={item.to} className="w-full">
               <NavLink
                 to={item.to}
                 end={item.end}
-                aria-label={messagesAria}
                 className={({ isActive }) =>
                   `group relative flex min-h-11 w-full items-center justify-center rounded-2xl xl:justify-start xl:px-3 ${isActive ? 'bg-raised font-semibold text-coral' : 'font-medium text-muted'} ${focusRing}`
                 }
@@ -80,13 +77,15 @@ export function NavRail() {
                 {({ isActive }) => (
                   <>
                     <span className="relative inline-flex size-11 shrink-0 items-center justify-center gap-3 xl:w-auto xl:justify-start">
-                      <Icon filled={isActive} className="size-6 shrink-0" />
+                      <Icon filled={isActive} className="size-6 shrink-0" aria-hidden />
                       <span className={`hidden xl:inline xl:text-base ${isActive ? 'font-semibold' : 'font-medium'}`}>
                         {item.label}
                       </span>
+                      <span className="sr-only xl:hidden">{iconOnlyLabel}</span>
                       {showMessagesBadge ? (
                         <span
-                          className="absolute right-0 top-0 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-coral px-1 text-[10px] font-bold leading-4 text-white xl:right-2"
+                          aria-hidden
+                          className="absolute right-0 top-0 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-coral-800 bg-surface px-1 text-[11px] font-bold leading-none text-coral-800 xl:right-2"
                           data-testid="messages-badge-rail"
                         >
                           {messagesBadgeLabel(messagesUnread)}

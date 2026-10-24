@@ -6,6 +6,7 @@ import {
   SAMPLE_CREATION_ID,
   setModerationIsFounder,
   setModerationOwnProfileStatus,
+  gotoFounderReportQueue,
 } from './fixtures.ts'
 
 test.describe('moderation 12A extended', () => {
@@ -74,7 +75,7 @@ test.describe('moderation 12A extended', () => {
 
   test('Founder dismisses report with required reason', async ({ page }) => {
     setModerationIsFounder(true)
-    await page.goto('/founder', { waitUntil: 'networkidle' })
+    await gotoFounderReportQueue(page)
     await expect(page.getByTestId('founder-report-queue')).toBeVisible()
     await page.getByRole('button', { name: 'Dismiss' }).first().click()
     await page.getByLabel('Reason (required)').fill('Not a policy violation after review.')

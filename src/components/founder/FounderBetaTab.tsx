@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react'
-import { focusRing } from '../shell/navItems.ts'
+import { accessibleCoralFill, focusRing } from '../shell/navItems.ts'
 import { Modal } from '../shell/Modal.tsx'
 import { founderCreateInviteCode, founderSetPlatformFlag } from '../../lib/founder/platformFlags.ts'
 import { founderListInviteCodes, founderRevokeInviteCode, type FounderInviteCodeRow } from '../../lib/founder/inviteCodes.ts'
@@ -112,7 +112,7 @@ export function FounderBetaTab() {
                 disabled={busy}
                 data-testid={`founder-beta-flag-${flag.key}`}
                 onClick={() => setPending({ key: flag.key, next: !flags[flag.key] })}
-                className={`min-h-11 rounded-2xl px-4 text-sm font-semibold ${flags[flag.key] ? 'bg-coral text-white' : 'bg-raised text-ink'} ${focusRing}`}
+                className={`min-h-11 rounded-2xl px-4 text-sm font-semibold ${flags[flag.key] ? accessibleCoralFill : 'bg-raised text-ink'} ${focusRing}`}
               >
                 {flags[flag.key] ? 'On' : 'Off'}
               </button>
@@ -201,7 +201,7 @@ export function FounderBetaTab() {
             type="button"
             disabled={busy || !pending}
             onClick={() => pending && void applyFlag(pending.key, pending.next)}
-            className={`min-h-11 rounded-2xl bg-coral px-4 text-sm font-semibold text-white ${focusRing}`}
+            className={`min-h-11 rounded-2xl px-4 text-sm font-semibold ${accessibleCoralFill} ${focusRing}`}
             data-testid="founder-beta-flag-confirm"
           >
             Confirm

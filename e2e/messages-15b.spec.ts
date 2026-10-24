@@ -4,6 +4,7 @@ import {
   installSupabaseMocks,
   messageReportQueueRow,
   prependFounderQueueRow,
+  gotoFounderReportQueue,
   seedSignedInSession,
   setMessageSendFails,
   setModerationIsFounder,
@@ -59,7 +60,7 @@ test.describe('messages 15B', () => {
   test('founder views reported message context', async ({ page }) => {
     setModerationIsFounder(true)
     prependFounderQueueRow(messageReportQueueRow())
-    await page.goto('/founder', { waitUntil: 'networkidle' })
+    await gotoFounderReportQueue(page)
     await page.getByTestId('view-reported-message').click()
     await expect(page.getByTestId('reported-message-preview')).toContainText('Hello from Writer Two')
   })
