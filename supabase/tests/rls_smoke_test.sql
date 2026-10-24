@@ -4595,7 +4595,10 @@ declare
   v_touch bigint;
   v_overview jsonb;
   v_analytics jsonb;
+  v_ret jsonb;
+  v_views_before bigint;
   today date := (timezone('utc', now()))::date;
+  v_cohort uuid := '77777777-7777-7777-7777-777777777777'::uuid;
 begin
   select founder, reader_a, reader_b into v_founder, v_reader, v_writer from rls_ids limit 1;
   if v_founder is null then
@@ -4604,17 +4607,32 @@ begin
   end if;
 
   execute format('set local role %I', session_user);
-  delete from public.daily_metrics where day = v_day;
-  delete from public.user_activity_days where day = v_day;
-  delete from public.user_activity_touch_log where user_id in (v_reader, v_writer);
+  delete from public.daily_metrics where day between v_day and v_day + 7;
+  delete from public.user_activity_days where day between v_day and v_day + 7;
+  delete from public.user_activity_touch_log where user_id in (v_reader, v_writer, v_cohort);
 
-  update public.profiles set created_at = v_day::timestamptz + interval '10 hours', country = 'ZA', role = 'reader'
+  update public.profiles
+    set created_at = '2010-01-01'::timestamptz
+    where id not in (v_reader, v_writer, v_founder)
+      and created_at >= v_day::timestamptz
+      and created_at < (v_day + 1)::timestamptz;
+
+  update public.profiles set created_at = v_day::timestamptz + interval '10 hours', country = 'ZA', role = 'reader', status = 'active'
     where id = v_reader;
-  update public.profiles set created_at = v_day::timestamptz + interval '11 hours', country = 'GB', role = 'writer'
+  update public.profiles set created_at = v_day::timestamptz + interval '11 hours', country = 'GB', role = 'writer', status = 'active'
     where id = v_writer;
 
-  insert into public.user_activity_days (user_id, day) values (v_reader, v_day), (v_writer, v_day)
+  perform pg_temp.create_test_user(v_cohort, 'cohort17b@voxly.test', v_day::timestamptz + interval '9 hours');
+  update public.profiles
+    set username = 'cohort17b', display_name = 'Cohort 17B', role = 'reader', status = 'active', country = 'ZA',
+        created_at = v_day::timestamptz + interval '9 hours'
+    where id = v_cohort;
+
+  insert into public.user_activity_days (user_id, day)
+  values (v_reader, v_day), (v_writer, v_day), (v_cohort, v_day + 1), (v_cohort, v_day + 7)
   on conflict do nothing;
+
+  delete from public.creations where author_id = v_writer and published_at < v_day::timestamptz;
 
   insert into public.creations (id, author_id, type, title, audience, status, published_at, is_removed)
   values ('77777777-7777-7777-7777-777777777701', v_writer, 'poem', 'Metric seed post', 'public', 'published', v_day::timestamptz + interval '12 hours', false)
@@ -4645,44 +4663,65 @@ begin
 
   execute format('set local role %I', session_user);
   select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'signups' and dimension = '';
-  perform pg_temp.record('refresh_daily_metrics signups total', v_metric >= 2, 'value=' || coalesce(v_metric::text, 'null'));
+  perform pg_temp.record('refresh_daily_metrics signups total exact', v_metric = 3, 'value=' || coalesce(v_metric::text, 'null'));
 
   select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'signups' and dimension = 'country:ZA';
-  perform pg_temp.record('refresh_daily_metrics signups country ZA', v_metric >= 1, 'value=' || coalesce(v_metric::text, 'null'));
+  perform pg_temp.record('refresh_daily_metrics signups country ZA exact', v_metric = 2, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'signups' and dimension = 'country:GB';
+  perform pg_temp.record('refresh_daily_metrics signups country GB exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'signups' and dimension = 'role:reader';
+  perform pg_temp.record('refresh_daily_metrics signups role reader exact', v_metric = 2, 'value=' || coalesce(v_metric::text, 'null'));
 
   select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'signups' and dimension = 'role:writer';
-  perform pg_temp.record('refresh_daily_metrics signups role writer', v_metric >= 1, 'value=' || coalesce(v_metric::text, 'null'));
+  perform pg_temp.record('refresh_daily_metrics signups role writer exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
 
   select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'dau' and dimension = '';
-  perform pg_temp.record('refresh_daily_metrics dau', v_metric >= 2, 'value=' || coalesce(v_metric::text, 'null'));
+  perform pg_temp.record('refresh_daily_metrics dau exact', v_metric = 2, 'value=' || coalesce(v_metric::text, 'null'));
 
   select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'posts_published' and dimension = '';
-  perform pg_temp.record('refresh_daily_metrics posts_published', v_metric >= 1, 'value=' || coalesce(v_metric::text, 'null'));
+  perform pg_temp.record('refresh_daily_metrics posts_published exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
 
   select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'comments' and dimension = '';
-  perform pg_temp.record('refresh_daily_metrics comments', v_metric >= 1, 'value=' || coalesce(v_metric::text, 'null'));
+  perform pg_temp.record('refresh_daily_metrics comments exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
 
   select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'likes' and dimension = '';
-  perform pg_temp.record('refresh_daily_metrics likes', v_metric >= 1, 'value=' || coalesce(v_metric::text, 'null'));
+  perform pg_temp.record('refresh_daily_metrics likes exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
 
   select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'saves' and dimension = '';
-  perform pg_temp.record('refresh_daily_metrics saves', v_metric >= 1, 'value=' || coalesce(v_metric::text, 'null'));
+  perform pg_temp.record('refresh_daily_metrics saves exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
 
   select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'follows' and dimension = '';
-  perform pg_temp.record('refresh_daily_metrics follows', v_metric >= 1, 'value=' || coalesce(v_metric::text, 'null'));
+  perform pg_temp.record('refresh_daily_metrics follows exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
 
   select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'views' and dimension = '';
-  perform pg_temp.record('refresh_daily_metrics views', v_metric >= 1, 'value=' || coalesce(v_metric::text, 'null'));
+  perform pg_temp.record('refresh_daily_metrics views exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
 
   select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'new_writers' and dimension = '';
-  perform pg_temp.record('refresh_daily_metrics new_writers', v_metric >= 0, 'value=' || coalesce(v_metric::text, 'null'));
+  perform pg_temp.record('refresh_daily_metrics new_writers exact', v_metric = 1, 'value=' || coalesce(v_metric::text, 'null'));
+
+  select value into v_views_before from public.daily_metrics where day = v_day and metric_key = 'views' and dimension = '';
 
   execute 'set local role authenticated';
   perform set_config('request.jwt.claim.sub', v_founder::text, true);
   perform public.refresh_daily_metrics(v_day, v_day);
   execute format('set local role %I', session_user);
   select value into v_metric from public.daily_metrics where day = v_day and metric_key = 'views' and dimension = '';
-  perform pg_temp.record('refresh_daily_metrics idempotent views unchanged', v_metric >= 1, 'value=' || coalesce(v_metric::text, 'null'));
+  perform pg_temp.record('refresh_daily_metrics idempotent views unchanged', v_metric = v_views_before, 'value=' || coalesce(v_metric::text, 'null'));
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_ret := public.founder_analytics_retention(v_day, v_day, null, null);
+  perform pg_temp.record(
+    'founder_analytics_retention day1 returns exact',
+    coalesce((v_ret->>'day1_returns')::integer, -1) = 1,
+    v_ret->>'day1_returns'
+  );
+  perform pg_temp.record(
+    'founder_analytics_retention day7 returns exact',
+    coalesce((v_ret->>'day7_returns')::integer, -1) = 1,
+    v_ret->>'day7_returns'
+  );
 
   execute 'set local role authenticated';
   perform set_config('request.jwt.claim.sub', v_reader::text, true);

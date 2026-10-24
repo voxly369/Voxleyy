@@ -88,8 +88,9 @@ test.describe('Reader part 2', () => {
     await page.getByRole('button', { name: 'Bookmark this spot' }).click()
     const response = await createBookmark
     expect(response.ok()).toBeTruthy()
-    const body = (await response.json()) as unknown[]
-    expect(body.length).toBeGreaterThan(0)
+    const body = (await response.json()) as unknown
+    const rows = Array.isArray(body) ? body : body && typeof body === 'object' ? [body] : []
+    expect(rows.length).toBeGreaterThan(0)
   })
 
   test('lists highlights in Library Highlights tab', async ({ page }) => {

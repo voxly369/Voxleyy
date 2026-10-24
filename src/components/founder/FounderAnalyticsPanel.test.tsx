@@ -60,6 +60,23 @@ describe('FounderAnalyticsPanel', () => {
     await waitFor(() => expect(screen.getByTestId('metric-total-users')).toBeInTheDocument())
   })
 
+  it('retention tab shows empty cohort table headers when payload has no rows', async () => {
+    founderAnalyticsRetention.mockResolvedValue({
+      ok: true,
+      data: {
+        day1_rate: 0,
+        day7_rate: 0,
+        day30_rate: 0,
+        active_users: 0,
+        inactive_users: 0,
+        cohorts_by_week: [],
+      },
+    })
+    render(<FounderAnalyticsPanel tab="retention" />)
+    await waitFor(() => expect(screen.getByTestId('cohort-table')).toBeInTheDocument())
+    expect(screen.getByTestId('cohort-table')).toHaveTextContent('Week')
+  })
+
   it('retention tab renders cohort table when populated', async () => {
     founderAnalyticsRetention.mockResolvedValue({
       ok: true,

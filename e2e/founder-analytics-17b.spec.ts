@@ -64,11 +64,17 @@ test.describe('founder analytics 17B', () => {
   }
 
   for (const width of [375, 1280] as const) {
-    test(`founder axe at ${width}px on overview`, async ({ page }) => {
-      await page.setViewportSize({ width, height: 900 })
-      await page.goto('/founder', { waitUntil: 'networkidle' })
-      await axeSerious(page, '[data-testid="founder-analytics-overview"]')
-    })
+    for (const tab of FOUNDER_TABS) {
+      test(`founder axe ${tab} at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await page.goto('/founder', { waitUntil: 'networkidle' })
+        await page
+          .getByRole('navigation', { name: 'Founder sections' })
+          .getByRole('button', { name: tab, exact: true })
+          .click()
+        await axeSerious(page)
+      })
+    }
   }
 
   for (const tab of FOUNDER_TABS) {
@@ -82,6 +88,39 @@ test.describe('founder analytics 17B', () => {
       await assertNoHorizontalScroll(page)
     })
   }
+
+  test('founder role filter changes overview total users', async ({ page }) => {
+    await page.route('**/rest/v1/rpc/founder_analytics_overview**', async (route) => {
+      let role: string | null = null
+      try {
+        const body = route.request().postDataJSON() as { p_role?: string | null }
+        role = body?.p_role ?? null
+      } catch {
+        role = null
+      }
+      await route.fulfill({
+        json: {
+          total_users: role === 'writer' ? 11 : 100,
+          total_writers: 40,
+          new_users_7d: 5,
+          new_users_30d: 20,
+          prev_new_users_7d: 4,
+          prev_new_users_30d: 18,
+          dau_latest: 12,
+          total_follows: 300,
+          total_posts: 500,
+          total_comments: 800,
+          open_reports: 2,
+          signups_series: [],
+          dau_series: [],
+        },
+      })
+    })
+    await page.goto('/founder', { waitUntil: 'networkidle' })
+    await expect(page.getByTestId('metric-total-users')).toContainText('100')
+    await page.getByLabel('Role (optional)').selectOption('writer')
+    await expect(page.getByTestId('metric-total-users')).toContainText('11', { timeout: 20_000 })
+  })
 
   test('founder country filter changes overview total users', async ({ page }) => {
     await page.route('**/rest/v1/rpc/founder_analytics_overview**', async (route) => {
@@ -139,6 +178,20 @@ test.describe('founder analytics 17B', () => {
     })
     expect(text.split('\n')[0]).toContain('day1_rate')
   })
+
+  test('founder export overview CSV has total_users column', async ({ page }) => {
+    await page.goto('/founder', { waitUntil: 'networkidle' })
+    const downloadPromise = page.waitForEvent('download')
+    await page.getByTestId('analytics-export').click()
+    const download = await downloadPromise
+    expect(download.suggestedFilename()).toMatch(/overview/)
+    const text = await download.createReadStream().then(async (stream) => {
+      const chunks: Buffer[] = []
+      for await (const chunk of stream) chunks.push(Buffer.from(chunk))
+      return Buffer.concat(chunks).toString('utf8')
+    })
+    expect(text.split('\n')[0]).toContain('total_users')
+  })
 })
 
 test.describe('creator dashboard 17B', () => {
@@ -149,21 +202,24 @@ test.describe('creator dashboard 17B', () => {
     installCreatorDashboardMocks(page)
   })
 
+  for (const width of [375, 1280] as const) {
+    for (const section of ['Overview', 'Top posts', 'Audience', 'Work in progress', 'Books'] as const) {
+      test(`creator axe ${section} at ${width}px`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await page.goto('/creator', { waitUntil: 'networkidle' })
+        await page.getByRole('button', { name: section }).click()
+        await axeSerious(page, '[data-testid="creator-dashboard"]')
+      })
+    }
+  }
+
   for (const width of LAYOUT_WIDTHS) {
-    test(`creator layout at ${width}px`, async ({ page }) => {
+    test(`creator layout sections at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
       await page.goto('/creator', { waitUntil: 'networkidle' })
       await assertNoHorizontalScroll(page)
     })
   }
-
-  test('creator axe at 375 and 1280 on overview', async ({ page }) => {
-    for (const width of [375, 1280] as const) {
-      await page.setViewportSize({ width, height: 900 })
-      await page.goto('/creator', { waitUntil: 'networkidle' })
-      await axeSerious(page, '[data-testid="creator-dashboard"]')
-    }
-  })
 
   test('creator top posts time filter refetches', async ({ page }) => {
     let lastWindow = ''

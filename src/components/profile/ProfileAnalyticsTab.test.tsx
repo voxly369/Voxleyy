@@ -9,6 +9,23 @@ describe('ProfileAnalyticsTab', () => {
     expect(screen.getByText(/No analytics yet/i)).toBeInTheDocument()
   })
 
+  it('shows last-7 views aligned with dashboard-style totals', () => {
+    render(
+      <MemoryRouter>
+        <ProfileAnalyticsTab
+          loading={false}
+          error={null}
+          data={{
+            last7: { views: 40, likes: 10, saves: 2, comments: 4, followers: 3 },
+            last30: { views: 40, likes: 10, saves: 2, comments: 4, followers: 3 },
+            bestPiece: null,
+          }}
+        />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('row', { name: /Views/i })).toHaveTextContent('40')
+  })
+
   it('shows chart and table when populated', () => {
     render(
       <MemoryRouter>
