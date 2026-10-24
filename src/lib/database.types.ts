@@ -2030,6 +2030,11 @@ export type Database = {
       delete_my_account: { Args: Record<string, never>; Returns: undefined }
       export_my_data: { Args: Record<string, never>; Returns: Json }
       founder_create_invite_code: { Args: Record<string, never>; Returns: string }
+      founder_client_errors_grouped: { Args: { p_limit?: number }; Returns: Json }
+      founder_dismiss_client_error: { Args: { p_message: string }; Returns: undefined }
+      founder_list_invite_codes: { Args: Record<string, never>; Returns: Json }
+      founder_revoke_invite_code: { Args: { p_code: string }; Returns: undefined }
+      get_my_beta_status: { Args: Record<string, never>; Returns: Json }
       founder_set_platform_flag: {
         Args: { p_flag: string; p_enabled: boolean }
         Returns: undefined

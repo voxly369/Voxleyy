@@ -118,7 +118,6 @@ export function DeleteAccountModal({ open, onClose }: DeleteAccountModalProps) {
           value={password}
           onChange={setPassword}
           autoComplete="current-password"
-          className="mt-4"
         />
         <label className="mt-4 flex flex-col gap-1 text-sm text-ink" htmlFor="delete-account-confirm">
           Type your username <span className="font-semibold">@{username}</span> to confirm

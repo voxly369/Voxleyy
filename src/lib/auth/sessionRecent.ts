@@ -1,14 +1,11 @@
 const DEFAULT_MAX_AGE_SECONDS = 15 * 60
 
-function base64UrlToJson(segment: string): unknown {
+function base64UrlToJson(segment: string): unknown | null {
   const padded = segment.replace(/-/g, '+').replace(/_/g, '/')
   const padLen = (4 - (padded.length % 4)) % 4
   const base64 = padded + '='.repeat(padLen)
-  const decoded =
-    typeof atob === 'function'
-      ? atob(base64)
-      : Buffer.from(base64, 'base64').toString('utf8')
-  return JSON.parse(decoded) as unknown
+  if (typeof atob !== 'function') return null
+  return JSON.parse(atob(base64)) as unknown
 }
 
 /** Read issued-at (seconds) from a Supabase access token JWT payload. */
