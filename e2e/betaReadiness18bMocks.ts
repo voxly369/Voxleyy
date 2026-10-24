@@ -26,8 +26,8 @@ export function resetBetaReadiness18bMocks() {
   feedbackCount = 0
   founderWelcomeSent = false
   feedbackSubmitCount = 0
-  lastEntranceLocalDate = null
-  showEntranceScreen = true
+  lastEntranceLocalDate = '2099-01-01'
+  showEntranceScreen = false
   welcomeMomentSeenAt = '2026-01-01T00:00:00.000Z'
   quoteOfDayBroken = false
 }
