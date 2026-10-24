@@ -17,6 +17,7 @@ import {
   redeemInviteCode,
   type BetaSignupConfig,
 } from '../../lib/beta/signupConfig.ts'
+import { isFounderSignupEmail } from '../../lib/beta/founderSignup.ts'
 import { LEGAL_DOCUMENT_VERSIONS } from '../../config/organization.ts'
 import { recordUserConsents } from '../../lib/consent/recordConsent.ts'
 
@@ -66,11 +67,14 @@ export default function SignUpPage() {
 
   const inviteRequired = betaConfig?.invite_only === true
   const signupsOpen = betaConfig?.signups_open !== false
-  const waitlistOpen = betaConfig?.waitlist_open === true && !signupsOpen
+  const founderSignup = isFounderSignupEmail(email)
+  const showSignupForm = signupsOpen || founderSignup
+  const waitlistOpen = betaConfig?.waitlist_open === true && !signupsOpen && !founderSignup
+  const inviteRequiredForUser = inviteRequired && !founderSignup
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (lock.current || !signupsOpen || coolingDown) return
+    if (lock.current || !showSignupForm || coolingDown) return
     const parsed = signUpSchema.safeParse({
       email: email.trim(),
       username: username.trim(),
@@ -83,7 +87,7 @@ export default function SignUpPage() {
       setFormError('')
       return
     }
-    if (inviteRequired && !inviteCode.trim()) {
+    if (inviteRequiredForUser && !inviteCode.trim()) {
       setErrors((current) => ({ ...current, inviteCode: 'Enter your beta invite code.' }))
       return
     }
@@ -112,7 +116,7 @@ export default function SignUpPage() {
       }
       return
     }
-    if (inviteRequired) {
+    if (inviteRequiredForUser) {
       const redeemed = await redeemInviteCode(inviteCode)
       if (!redeemed.ok) {
         setPending(false)
@@ -157,7 +161,7 @@ export default function SignUpPage() {
     )
   }
 
-  if (!signupsOpen) {
+  if (!showSignupForm) {
     return (
       <div className="flex flex-col gap-5" data-testid="signup-closed">
         <h1 className="text-3xl text-ink">Sign-ups are closed</h1>
@@ -205,7 +209,7 @@ export default function SignUpPage() {
   return (
     <form onSubmit={(event) => void onSubmit(event)} className="flex flex-col gap-5" noValidate data-testid="signup-form">
       <h1 className="text-3xl text-ink">Create your account</h1>
-      {inviteRequired ? (
+      {inviteRequiredForUser ? (
         <p className="text-sm text-muted" data-testid="signup-closed-beta-note">
           Voxly is in invite-only beta. You need a code from the team to register.
         </p>
@@ -224,7 +228,7 @@ export default function SignUpPage() {
         onChange={(event) => setEmail(event.target.value)}
         error={errors.email}
       />
-      {inviteRequired ? (
+      {inviteRequiredForUser ? (
         <TextField
           id="signup-invite"
           name="inviteCode"

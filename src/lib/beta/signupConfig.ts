@@ -43,6 +43,6 @@ export async function redeemInviteCode(code: string): Promise<{ ok: true } | { o
   if (formatError) return { ok: false, message: formatError }
   const normalized = normalizeInviteCode(code)
   const { error } = await supabase.rpc('redeem_invite_code', { p_code: normalized })
-  if (error) return { ok: false, message: 'That invite code is not valid or has already been used.' }
+  if (error) return { ok: false, message: 'That invite code isn\'t valid.' }
   return { ok: true }
 }
