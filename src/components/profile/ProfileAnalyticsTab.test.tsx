@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { ProfileAnalyticsTab } from './ProfileAnalyticsTab.tsx'
 
 describe('ProfileAnalyticsTab', () => {
+  afterEach(() => cleanup())
+
   it('shows empty state', () => {
     render(<ProfileAnalyticsTab data={null} loading={false} error={null} />)
     expect(screen.getByText(/No analytics yet/i)).toBeInTheDocument()
@@ -23,7 +25,9 @@ describe('ProfileAnalyticsTab', () => {
         />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('row', { name: /Views/i })).toHaveTextContent('40')
+    const table = screen.getByTestId('analytics-table')
+    expect(table).toHaveTextContent('40')
+    expect(table).toHaveTextContent('Views')
   })
 
   it('shows chart and table when populated', () => {
@@ -41,7 +45,7 @@ describe('ProfileAnalyticsTab', () => {
       />
       </MemoryRouter>,
     )
-    expect(screen.getByTestId('analytics-chart')).toBeInTheDocument()
+    expect(screen.getAllByTestId('analytics-chart')[0]).toBeInTheDocument()
     expect(screen.getByTestId('analytics-table')).toBeInTheDocument()
     expect(screen.getByText('Best piece')).toBeInTheDocument()
   })

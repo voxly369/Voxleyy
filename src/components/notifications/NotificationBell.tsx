@@ -43,7 +43,7 @@ export function NotificationBell({ className = '', variant = 'rail' }: Notificat
         {variant === 'rail' ? <span className="hidden xl:ml-3 xl:inline xl:text-base xl:font-medium">Notifications</span> : null}
         {unreadCount > 0 ? (
           <span
-            className="absolute right-1 top-1 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-coral px-1 text-[10px] font-bold leading-4 text-white"
+            className="absolute right-1 top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full border-2 border-coral bg-surface px-1 text-[11px] font-bold leading-none text-coral"
             data-testid={variant === 'mobile' ? 'notification-badge-mobile' : 'notification-badge-rail'}
           >
             {badgeLabel(unreadCount)}
