@@ -4301,6 +4301,165 @@ begin
   end;
 end $pre_beta_16a$;
 
+do $pre_beta_16b$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_founder uuid;
+  v_pending uuid := gen_random_uuid();
+  v_inv text;
+  v_pub uuid;
+  v_json jsonb;
+  v_count integer;
+begin
+  select reader_a, reader_b, founder into v_a, v_b, v_founder from rls_ids limit 1;
+
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_pending, v_pending::text || '@pending.test', now());
+  update public.profiles set beta_access_granted = false where id = v_pending;
+  select id into v_pub from public.creations where audience = 'public' and status = 'published' limit 1;
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_pending::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_pending::text, 'role', 'authenticated', 'iat', extract(epoch from now())::bigint)::text, true);
+
+  begin insert into public.likes (user_id, creation_id) values (v_pending, v_pub); perform pg_temp.record('beta gate blocks like insert', false, 'ok');
+  exception when others then perform pg_temp.record('beta gate blocks like insert', true, sqlerrm); end;
+  begin insert into public.comments (creation_id, author_id, body) values (v_pub, v_pending, 'x'); perform pg_temp.record('beta gate blocks comment insert', false, 'ok');
+  exception when others then perform pg_temp.record('beta gate blocks comment insert', true, sqlerrm); end;
+  begin insert into public.follows (follower_id, followee_id) values (v_pending, v_b); perform pg_temp.record('beta gate blocks follow insert', false, 'ok');
+  exception when others then perform pg_temp.record('beta gate blocks follow insert', true, sqlerrm); end;
+  begin perform public.get_or_create_dm(v_b); perform pg_temp.record('beta gate blocks get_or_create_dm', false, 'ok');
+  exception when others then perform pg_temp.record('beta gate blocks get_or_create_dm', true, sqlerrm); end;
+
+  begin insert into public.reports (target_type, target_id, reported_user_id, reason) values ('profile', v_b, v_b, 'spam'); perform pg_temp.record('beta gate allows report insert', true, 'ok');
+  exception when others then perform pg_temp.record('beta gate allows report insert', false, sqlerrm); end;
+  begin perform public.export_my_data(); perform pg_temp.record('beta gate allows export_my_data', true, 'ok');
+  exception when others then perform pg_temp.record('beta gate allows export_my_data', false, sqlerrm); end;
+  begin perform public.record_user_consent('terms', '2026-10-24'); perform pg_temp.record('beta gate allows record_user_consent', true, 'ok');
+  exception when others then perform pg_temp.record('beta gate allows record_user_consent', false, sqlerrm); end;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_inv := public.founder_create_invite_code(1, now() + interval '1 day', 'smoke16b');
+  perform set_config('request.jwt.claim.sub', v_pending::text, true);
+  begin perform public.redeem_invite_code('ABCDEFGHJK'); perform pg_temp.record('invite wrong code generic refusal', false, 'accepted');
+  exception when others then perform pg_temp.record('invite wrong code generic refusal', true, sqlerrm); end;
+  perform public.redeem_invite_code(v_inv);
+  perform pg_temp.record('invite redeem unlocks beta access', public.user_beta_access_ok(v_pending), 'ok');
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform public.founder_revoke_invite_code(v_inv);
+  v_inv := public.founder_create_invite_code(2, now() + interval '1 day', 'multi');
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform public.redeem_invite_code(v_inv);
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform public.redeem_invite_code(v_inv);
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_json := public.founder_list_invite_codes();
+  select (e->>'uses')::integer into v_count
+  from jsonb_array_elements(v_json) e where e->>'code' = v_inv limit 1;
+  perform pg_temp.record('invite code multi-use counting', v_count = 2, 'uses=' || v_count);
+
+  execute 'set local role anon';
+  begin select count(*) into v_count from public.invite_codes; execute format('set local role %I', session_user); perform pg_temp.record('anon cannot read invite_codes', false, 'rows=' || v_count);
+  exception when others then execute format('set local role %I', session_user); perform pg_temp.record('anon cannot read invite_codes', true, sqlerrm); end;
+
+  begin perform public.join_beta_waitlist('not-an-email'); execute format('set local role %I', session_user); perform pg_temp.record('waitlist rejects invalid email', false, 'ok');
+  exception when others then execute format('set local role %I', session_user); perform pg_temp.record('waitlist rejects invalid email', true, sqlerrm); end;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_json := public.founder_list_waitlist(10);
+  perform pg_temp.record('founder can list waitlist', v_json is not null, 'json ok');
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform public.report_client_error('group-me', 's', '/r', '1', 'ua');
+  perform public.report_client_error('group-me', 's', '/r', '1', 'ua');
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_json := public.founder_client_errors_grouped(20);
+  select (e->>'count')::integer into v_count from jsonb_array_elements(v_json) e where e->>'message' = 'group-me' limit 1;
+  perform pg_temp.record('founder_client_errors_grouped counts duplicates', v_count >= 2, 'count=' || v_count);
+  perform public.founder_dismiss_client_error('group-me');
+  v_json := public.founder_client_errors_grouped(20);
+  select count(*) into v_count from jsonb_array_elements(v_json) e where e->>'message' = 'group-me' and (e->>'dismissed')::boolean;
+  perform pg_temp.record('founder_dismiss_client_error marks dismissed', v_count >= 1, 'rows=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin perform public.delete_my_account(); perform pg_temp.record('delete_my_account requires recent session', false, 'deleted');
+  exception when others then perform pg_temp.record('delete_my_account requires recent session', true, sqlerrm); end;
+
+  execute 'set local role anon';
+  begin perform public.export_my_data(); execute format('set local role %I', session_user); perform pg_temp.record('anon cannot export_my_data', false, 'ok');
+  exception when others then execute format('set local role %I', session_user); perform pg_temp.record('anon cannot export_my_data', true, sqlerrm); end;
+  execute 'set local role authenticated';
+end $pre_beta_16b$;
+
+do $messages_16b$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_c uuid;
+  v_json jsonb;
+  v_count integer;
+  v_can boolean;
+  v_conv uuid;
+  v_msg uuid;
+  v_priv uuid;
+begin
+  select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
+  v_c := gen_random_uuid();
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_c, v_c::text || '@suspended-dm.test', now());
+  update public.profiles set status = 'suspended', suspended_until = now() + interval '1 day' where id = v_c;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  v_json := public.search_dm_writers('reader');
+  select count(*) into v_count from jsonb_array_elements(v_json) e where (e->>'id')::uuid = v_c;
+  perform pg_temp.record('search_dm_writers excludes suspended account', v_count = 0, 'rows=' || v_count);
+
+  execute format('set local role %I', session_user);
+  update public.profiles set status = 'active', suspended_until = null where id = v_c;
+  update public.profiles set status = 'banned' where id = v_c;
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  v_json := public.search_dm_writers('suspended');
+  select count(*) into v_count from jsonb_array_elements(v_json) e where (e->>'id')::uuid = v_c;
+  perform pg_temp.record('search_dm_writers excludes banned account', v_count = 0, 'rows=' || v_count);
+
+  execute format('set local role %I', session_user);
+  insert into public.blocks (blocker_id, blocked_id) values (v_a, v_c) on conflict do nothing;
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  v_json := public.search_dm_writers('suspended');
+  select count(*) into v_count from jsonb_array_elements(v_json) e where (e->>'id')::uuid = v_c;
+  perform pg_temp.record('search_dm_writers excludes blocked user', v_count = 0, 'rows=' || v_count);
+  delete from public.blocks where blocker_id = v_a and blocked_id = v_c;
+
+  execute format('set local role %I', session_user);
+  delete from public.follows where follower_id = v_a and followee_id = v_b;
+  update public.profiles set who_can_message = 'followers', status = 'active' where id = v_b;
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  v_json := public.search_dm_writers('reader');
+  select (e->>'can_message')::boolean into v_can from jsonb_array_elements(v_json) e where (e->>'id')::uuid = v_b limit 1;
+  perform pg_temp.record('search_dm_writers can_message false without revealing block reason', v_can = false, 'can_message=' || v_can);
+
+  execute format('set local role %I', session_user);
+  update public.profiles set who_can_message = 'everyone' where id = v_b;
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  v_conv := public.get_or_create_dm(v_b);
+  insert into public.creations (id, author_id, type, title, audience, status, body_text, is_removed)
+  values (gen_random_uuid(), v_b, 'poem', 'Removed', 'public', 'published', 'x', true) returning id into v_priv;
+  begin perform public.send_message(v_conv, 'share removed', v_priv); perform pg_temp.record('send refused removed shared post', false, 'sent');
+  exception when others then perform pg_temp.record('send refused removed shared post', true, sqlerrm); end;
+
+  execute 'set local role anon';
+  perform set_config('request.jwt.claim.sub', '', true);
+  begin perform public.send_message(gen_random_uuid(), 'x'); execute format('set local role %I', session_user); perform pg_temp.record('anon cannot call send_message', false, 'ok');
+  exception when others then execute format('set local role %I', session_user); perform pg_temp.record('anon cannot call send_message', true, sqlerrm); end;
+  execute 'set local role anon';
+  perform set_config('request.jwt.claim.sub', '', true);
+  begin perform public.list_my_conversations(); execute format('set local role %I', session_user); perform pg_temp.record('anon cannot call list_my_conversations', false, 'ok');
+  exception when others then execute format('set local role %I', session_user); perform pg_temp.record('anon cannot call list_my_conversations', true, sqlerrm); end;
+  execute 'set local role authenticated';
+end $messages_16b$;
+
 do $$
 declare
   n integer;

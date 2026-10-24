@@ -60,7 +60,7 @@ export function ConversationList({
         />
       </div>
       {error ? (
-        <p role="alert" className="p-3 text-sm text-coral">
+        <p role="alert" className="p-3 text-sm text-coral" data-testid="conversation-list-error">
           {error}
         </p>
       ) : null}

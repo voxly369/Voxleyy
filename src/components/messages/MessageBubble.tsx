@@ -64,7 +64,9 @@ export function MessageBubble({
         } ${failed ? 'ring-2 ring-coral/60' : ''}`}
       >
         {deleted ? (
-          <p className="italic opacity-80">Message deleted</p>
+          <p className="italic opacity-80" data-testid="message-tombstone">
+            Message deleted
+          </p>
         ) : (
           <>
             {message.body ? <p className="whitespace-pre-wrap break-words">{message.body}</p> : null}

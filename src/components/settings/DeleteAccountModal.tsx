@@ -3,6 +3,9 @@ import { Modal } from '../shell/Modal.tsx'
 import { focusRing } from '../shell/navItems.ts'
 import { deleteMyAccount, downloadJsonExport, exportMyData } from '../../lib/account/dataExport.ts'
 import { useAuth } from '../../lib/auth/auth-context.ts'
+import { PasswordField } from '../auth/PasswordField.tsx'
+import { supabase } from '../../lib/supabaseClient.ts'
+import { mapAuthError } from '../../lib/errors/mapAuthError.ts'
 
 type DeleteAccountModalProps = {
   open: boolean
@@ -13,14 +16,18 @@ export function DeleteAccountModal({ open, onClose }: DeleteAccountModalProps) {
   const titleId = useId()
   const descId = useId()
   const returnFocusRef = useRef<HTMLButtonElement>(null)
-  const { signOut, profile } = useAuth()
+  const { signOut, profile, session } = useAuth()
   const [confirmText, setConfirmText] = useState('')
+  const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [exportDone, setExportDone] = useState(false)
 
   const username = profile?.username ?? ''
-  const canDelete = confirmText.trim().toLowerCase() === username.toLowerCase() && username.length > 0
+  const canDelete =
+    confirmText.trim().toLowerCase() === username.toLowerCase() &&
+    username.length > 0 &&
+    password.length >= 8
 
   function resetState() {
     setConfirmText('')
@@ -52,6 +59,18 @@ export function DeleteAccountModal({ open, onClose }: DeleteAccountModalProps) {
     if (!canDelete || busy) return
     setBusy(true)
     setError('')
+    const email = session?.user.email
+    if (!email) {
+      setBusy(false)
+      setError('Sign in again before deleting your account.')
+      return
+    }
+    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    if (authError) {
+      setBusy(false)
+      setError(mapAuthError(authError))
+      return
+    }
     const result = await deleteMyAccount()
     if (!result.ok) {
       setBusy(false)
@@ -93,6 +112,13 @@ export function DeleteAccountModal({ open, onClose }: DeleteAccountModalProps) {
             {exportDone ? 'Downloaded export' : 'Download my data first'}
           </button>
         </div>
+        <PasswordField
+          id="delete-account-password"
+          label="Re-enter your password"
+          value={password}
+          onChange={setPassword}
+          autoComplete="current-password"
+        />
         <label className="mt-4 flex flex-col gap-1 text-sm text-ink" htmlFor="delete-account-confirm">
           Type your username <span className="font-semibold">@{username}</span> to confirm
           <input

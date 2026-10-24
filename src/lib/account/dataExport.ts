@@ -1,14 +1,15 @@
 import { supabase } from '../supabaseClient.ts'
+import { mapDeleteAccountErrorMessage, mapExportErrorMessage } from './exportGuard.ts'
 
 export async function exportMyData(): Promise<{ ok: true; payload: unknown } | { ok: false; message: string }> {
   const { data, error } = await supabase.rpc('export_my_data')
-  if (error) return { ok: false, message: 'We could not prepare your export. Try again in a moment.' }
+  if (error) return { ok: false, message: mapExportErrorMessage(error.message) }
   return { ok: true, payload: data }
 }
 
 export async function deleteMyAccount(): Promise<{ ok: true } | { ok: false; message: string }> {
   const { error } = await supabase.rpc('delete_my_account')
-  if (error) return { ok: false, message: 'We could not delete your account. Try again or contact support.' }
+  if (error) return { ok: false, message: mapDeleteAccountErrorMessage(error.message) }
   return { ok: true }
 }
 

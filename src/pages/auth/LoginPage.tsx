@@ -5,13 +5,14 @@ import { PasswordField } from '../../components/auth/PasswordField.tsx'
 import { SubmitButton } from '../../components/auth/SubmitButton.tsx'
 import { TextField } from '../../components/auth/TextField.tsx'
 import { useAuth } from '../../lib/auth/auth-context.ts'
-import { LOGIN_FAILED, SESSION_ENDED } from '../../lib/auth/messages.ts'
+import { LOGIN_FAILED, RATE_LIMITED, SESSION_ENDED } from '../../lib/auth/messages.ts'
 import { safeNextPath } from '../../lib/auth/safeNextPath.ts'
 import { fieldErrors, loginSchema } from '../../lib/auth/schemas.ts'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts'
 
 const FAILURE_LIMIT = 5
 const COOLDOWN_MS = 30_000
+const RESEND_COOLDOWN_MS = 60_000
 
 export default function LoginPage() {
   useDocumentTitle('Sign in')
@@ -65,7 +66,11 @@ export default function LoginPage() {
       } else {
         setFailures(nextFailures)
       }
-      setFormError(LOGIN_FAILED)
+      setFormError(result.message ?? LOGIN_FAILED)
+      if (result.message === RATE_LIMITED) {
+        setCooldownUntil(Date.now() + RESEND_COOLDOWN_MS)
+        setNow(Date.now())
+      }
       return
     }
     setFailures(0)

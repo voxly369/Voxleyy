@@ -40,6 +40,10 @@ Document enforced limits for beta ops. Adjust when product or infrastructure cha
 | Export format | JSON via `export_my_data` | User-initiated from Settings |
 | Account deletion | Irreversible | Requires typing username in modal |
 
+## Query plans (EXPLAIN)
+
+Pending 16B measurement: run `EXPLAIN (ANALYZE, BUFFERS)` on hot RPCs (`list_my_conversations`, `search_dm_writers`, `export_my_data`, `founder_client_errors_grouped`) against staging once beta traffic patterns are known. Record results here before launch.
+
 ## Infrastructure smoke
 
 | Check | Command | Notes |

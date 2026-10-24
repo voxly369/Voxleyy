@@ -5,7 +5,7 @@ import { PasswordField } from '../../components/auth/PasswordField.tsx'
 import { SubmitButton } from '../../components/auth/SubmitButton.tsx'
 import { TextField } from '../../components/auth/TextField.tsx'
 import { useAuth } from '../../lib/auth/auth-context.ts'
-import { SIGNUP_FAILED } from '../../lib/auth/messages.ts'
+import { RATE_LIMITED, SIGNUP_FAILED } from '../../lib/auth/messages.ts'
 import { mapAuthError } from '../../lib/errors/mapAuthError.ts'
 import { PasswordChecklist } from '../../components/auth/PasswordChecklist.tsx'
 import { fieldErrors, signUpSchema } from '../../lib/auth/schemas.ts'
@@ -45,6 +45,18 @@ export default function SignUpPage() {
   const [waitlistPending, setWaitlistPending] = useState(false)
   const [waitlistDone, setWaitlistDone] = useState(false)
   const lock = useRef(false)
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    if (cooldownUntil === null) return
+    const timer = window.setInterval(() => setNow(Date.now()), 250)
+    return () => window.clearInterval(timer)
+  }, [cooldownUntil])
+
+  const cooldownRemaining =
+    cooldownUntil === null ? 0 : Math.max(0, Math.ceil((cooldownUntil - now) / 1000))
+  const coolingDown = cooldownRemaining > 0
   const availability = useUsernameAvailability(username)
   const availabilityText = availabilityMessage(availability)
 
@@ -58,7 +70,7 @@ export default function SignUpPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (lock.current || !signupsOpen) return
+    if (lock.current || !signupsOpen || coolingDown) return
     const parsed = signUpSchema.safeParse({
       email: email.trim(),
       username: username.trim(),
@@ -92,7 +104,12 @@ export default function SignUpPage() {
     if (!result.ok) {
       setPending(false)
       lock.current = false
-      setFormError(mapAuthError({ message: result.message }, SIGNUP_FAILED))
+      const mapped = mapAuthError({ message: result.message }, SIGNUP_FAILED)
+      setFormError(mapped)
+      if (mapped === RATE_LIMITED) {
+        setCooldownUntil(Date.now() + 60_000)
+        setNow(Date.now())
+      }
       return
     }
     if (inviteRequired) {
@@ -287,9 +304,12 @@ export default function SignUpPage() {
         ) : null}
       </div>
       <p role="alert" aria-live="polite" className="min-h-5 text-sm text-coral">
-        {formError}
+        {coolingDown ? `Try again in ${cooldownRemaining} seconds.` : formError}
       </p>
-      <SubmitButton pending={pending} disabled={availability === 'checking' || availability === 'taken'}>
+      <SubmitButton
+        pending={pending}
+        disabled={coolingDown || availability === 'checking' || availability === 'taken'}
+      >
         Create account
       </SubmitButton>
       <p className="text-sm text-muted">

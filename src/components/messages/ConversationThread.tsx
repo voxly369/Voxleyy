@@ -38,7 +38,7 @@ export function ConversationThread({
   sharedCreationId: sharedCreationIdFromUrl = null,
   onSent,
 }: ConversationThreadProps) {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const { refresh, refreshUnread, patchConversation } = useMessages()
   const [messages, setMessages] = useState<ThreadMessage[]>([])
   const [loading, setLoading] = useState(true)
@@ -211,6 +211,7 @@ export function ConversationThread({
   }
 
   const headerName = other?.otherDisplayName || other?.otherUsername || 'Conversation'
+  const composerSuspended = profile?.status === 'suspended'
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="conversation-thread">
@@ -252,6 +253,7 @@ export function ConversationThread({
         <button
           type="button"
           onClick={() => void toggleMute()}
+          data-testid="conversation-mute-toggle"
           className={`min-h-11 rounded-2xl border border-line px-3 text-sm font-medium text-ink ${focusRing}`}
         >
           {conversation?.muted ? 'Unmute' : 'Mute'}
@@ -283,21 +285,27 @@ export function ConversationThread({
         <div ref={bottomRef} />
       </div>
 
-      <MessageComposer
-        busy={sendBusy}
-        sharedCreationId={composerShareId}
-        sharedPostLabel={composerShareLabel}
-        onSharedCreationChange={(id, label) => {
-          setComposerShareId(id)
-          setComposerShareLabel(label ?? null)
-        }}
-        onSend={(payload) =>
-          requestSend({
-            ...payload,
-            sharedCreationId: payload.sharedCreationId ?? composerShareId,
-          })
-        }
-      />
+      {composerSuspended ? (
+        <p className="border-t border-line p-3 text-sm text-muted" role="status" data-testid="message-composer-disabled">
+          Your account is suspended and cannot send messages.
+        </p>
+      ) : (
+        <MessageComposer
+          busy={sendBusy}
+          sharedCreationId={composerShareId}
+          sharedPostLabel={composerShareLabel}
+          onSharedCreationChange={(id, label) => {
+            setComposerShareId(id)
+            setComposerShareLabel(label ?? null)
+          }}
+          onSend={(payload) =>
+            requestSend({
+              ...payload,
+              sharedCreationId: payload.sharedCreationId ?? composerShareId,
+            })
+          }
+        />
+      )}
 
       {quietStatus ? (
         <ConsiderateSendingModal
