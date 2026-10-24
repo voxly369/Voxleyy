@@ -79,6 +79,13 @@ export default function LoginPage() {
     }
     setFailures(0)
     setCooldownUntil(null)
+    if (result.needsMfa) {
+      const target = nextPath
+        ? `/auth/mfa-challenge?next=${encodeURIComponent(nextPath)}`
+        : '/auth/mfa-challenge'
+      navigate(target, { replace: true })
+      return
+    }
     navigate(nextPath ?? '/', { replace: true })
   }
 

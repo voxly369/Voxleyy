@@ -49,6 +49,7 @@ const ResetPasswordPage = lazy(() => import('../pages/auth/ResetPasswordPage.tsx
 const CheckEmailPage = lazy(() => import('../pages/auth/CheckEmailPage.tsx'))
 const AuthCallbackPage = lazy(() => import('../pages/auth/AuthCallbackPage.tsx'))
 const AuthConfirmPage = lazy(() => import('../pages/auth/AuthConfirmPage.tsx'))
+const MfaChallengePage = lazy(() => import('../pages/auth/MfaChallengePage.tsx'))
 const JoinPage = lazy(() => import('../pages/auth/JoinPage.tsx'))
 const TermsPage = lazy(() => import('../pages/auth/TermsPage.tsx'))
 const PrivacyPage = lazy(() => import('../pages/auth/PrivacyPage.tsx'))
@@ -90,6 +91,7 @@ const router = createBrowserRouter(
             { path: '/reset-password', element: <ResetPasswordPage /> },
             { path: '/auth/callback', element: <AuthCallbackPage /> },
             { path: '/auth/confirm', element: <AuthConfirmPage /> },
+            { path: '/auth/mfa-challenge', element: <MfaChallengePage /> },
             { path: '/terms', element: <TermsPage /> },
             { path: '/privacy', element: <PrivacyPage /> },
             { path: '/community-guidelines', element: <CommunityGuidelinesPage /> },

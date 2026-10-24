@@ -25,6 +25,12 @@ import {
   setE2eOnboardingComplete,
 } from './betaReadiness18bMocks.ts'
 import { authMockMaybeRejectResend, authMockMaybeRejectToken, resetAuthMocks } from './authMocks.ts'
+import {
+  e2eMfaAssuranceLevel,
+  e2eMfaUserFactors,
+  mfaMockHandleAuth,
+  resetMfaMocks,
+} from './mfaMocks.ts'
 import { Buffer } from 'node:buffer'
 
 export const PROJECT_REF = 'ktgxdqplvggeyrnuqljx'
@@ -51,7 +57,7 @@ function base64url(value: object): string {
 }
 
 /** Unsigned JWT-shaped token (supabase-js accepts structure + future exp). */
-export function fakeAccessToken(userId: string, email: string): string {
+export function fakeAccessToken(userId: string, email: string, aal = e2eMfaAssuranceLevel()): string {
   const exp = Math.floor(Date.now() / 1000) + 86_400
   const header = base64url({ alg: 'HS256', typ: 'JWT' })
   const payload = base64url({
@@ -59,6 +65,7 @@ export function fakeAccessToken(userId: string, email: string): string {
     email,
     role: 'authenticated',
     aud: 'authenticated',
+    aal,
     exp,
     iat: Math.floor(Date.now() / 1000),
   })
@@ -82,6 +89,7 @@ function sessionResponse(userId: string, email: string) {
       user_metadata: {},
       aud: 'authenticated',
       created_at: '2026-01-01T00:00:00Z',
+      factors: e2eMfaUserFactors(),
     },
   }
 }
@@ -534,13 +542,36 @@ export async function installSupabaseMocks(page: Page) {
   setE2eOnboardingComplete()
   setE2eEntranceVisible(false)
   resetAuthMocks()
+  resetMfaMocks()
   e2eOwnProfileRole = 'writer'
-  const session = sessionResponse(READER.id, READER.email)
 
   await page.route('**/*', async (route) => {
+    const session = sessionResponse(READER.id, READER.email)
     const url = route.request().url()
     if (!isSupabaseCloudUrl(url)) {
       await route.continue()
+      return
+    }
+
+    if (url.includes('/auth/v1/factors')) {
+      const method = route.request().method()
+      let postData: unknown = null
+      try {
+        postData = route.request().postDataJSON()
+      } catch {
+        postData = null
+      }
+      const body = mfaMockHandleAuth(url, method, postData)
+      if (body && typeof body === 'object' && '__httpError' in body) {
+        const err = (body as { __httpError: { status: number; message: string } }).__httpError
+        await fulfillJson(route, { message: err.message, code: 'invalid_code' }, err.status)
+        return
+      }
+      if (method === 'POST' && url.includes('/verify')) {
+        await fulfillJson(route, sessionResponse(READER.id, READER.email))
+        return
+      }
+      await fulfillJson(route, body ?? {})
       return
     }
 
@@ -576,7 +607,12 @@ export async function installSupabaseMocks(page: Page) {
       return
     }
 
-    if (url.includes('/auth/v1/user') || url.includes('/auth/v1/session')) {
+    if (url.includes('/auth/v1/user')) {
+      await fulfillJson(route, session.user)
+      return
+    }
+
+    if (url.includes('/auth/v1/session')) {
       await fulfillJson(route, session)
       return
     }
@@ -639,6 +675,7 @@ export {
 } from './moderationMocks.ts'
 
 export { resetAuthMocks, setE2ePasswordSignInError, setE2eResendRateLimitAfterFirstSuccess } from './authMocks.ts'
+export { setE2eMfaEnrolled, setE2eMfaWrongCode } from './mfaMocks.ts'
 
 export {
   setE2eBetaAccessGranted,

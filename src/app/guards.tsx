@@ -14,6 +14,7 @@ import { supabase } from '../lib/supabaseClient.ts'
 import { OnboardingGate } from './OnboardingGate.tsx'
 import { CreateSheetProvider } from '../lib/shell/CreateSheetProvider.tsx'
 import { ModalStackProvider } from '../lib/shell/modalStack.tsx'
+import { fetchMfaAssurance } from '../lib/auth/mfa/assurance.ts'
 
 function pathAllowedDuringInviteGate(pathname: string): boolean {
   return /^\/(settings|terms|privacy|contact|copyright|community-guidelines)(\/|$)/.test(pathname)
@@ -68,20 +69,27 @@ export function RequireAuth() {
   const { session, profile, loading, error, refreshProfile, signOut, isFounder } = useAuth()
   const location = useLocation()
   const [inviteGate, setInviteGate] = useState<boolean | null>(null)
+  const [mfaPending, setMfaPending] = useState<boolean | null>(null)
 
   useEffect(() => {
     if (!session?.user.id) {
       setInviteGate(null)
+      setMfaPending(null)
       return
     }
     let cancelled = false
+    void fetchMfaAssurance().then((assurance) => {
+      if (!cancelled) setMfaPending(assurance.needsChallenge)
+    })
+    let cancelledBeta = false
     void supabase.rpc('get_my_beta_status').then(({ data }) => {
-      if (cancelled) return
+      if (cancelledBeta) return
       const row = data as { invite_only?: boolean; access_granted?: boolean } | null
       setInviteGate(Boolean(row?.invite_only) && !row?.access_granted)
     })
     return () => {
       cancelled = true
+      cancelledBeta = true
     }
   }, [session?.user.id, profile?.updated_at])
 
@@ -90,6 +98,16 @@ export function RequireAuth() {
   if (!session) {
     const next = safeNextPath(`${location.pathname}${location.search}`)
     const target = next ? `/login?next=${encodeURIComponent(next)}` : '/login'
+    return <Navigate to={target} replace />
+  }
+
+  if (mfaPending === null) return <PageSkeleton />
+
+  if (mfaPending) {
+    const next = safeNextPath(`${location.pathname}${location.search}`)
+    const target = next
+      ? `/auth/mfa-challenge?next=${encodeURIComponent(next)}`
+      : '/auth/mfa-challenge'
     return <Navigate to={target} replace />
   }
 
@@ -133,7 +151,24 @@ export function RequireAuth() {
 
 export function RequireGuest() {
   const { session, loading } = useAuth()
-  if (loading) return <PageSkeleton />
+  const [mfaPending, setMfaPending] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    if (!session) {
+      setMfaPending(null)
+      return
+    }
+    let cancelled = false
+    void fetchMfaAssurance().then((assurance) => {
+      if (!cancelled) setMfaPending(assurance.needsChallenge)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [session])
+
+  if (loading || (session && mfaPending === null)) return <PageSkeleton />
+  if (session && mfaPending) return <Navigate to="/auth/mfa-challenge" replace />
   if (session) return <Navigate to="/" replace />
   return <Outlet />
 }

@@ -9,6 +9,7 @@ import { founderAccessFromRpc } from './founderAccess.ts'
 import { fetchIsFounder, fetchOwnProfile, type OwnProfile } from './profile.ts'
 import { touchActivityOncePerSession } from '../activity/touchActivity.ts'
 import { LEGAL_DOCUMENT_VERSIONS } from '../../config/organization.ts'
+import { fetchMfaAssurance } from './mfa/assurance.ts'
 
 function redirectTo(path: string): string {
   return new URL(path, window.location.origin).toString()
@@ -120,8 +121,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-    if (!signInError) return { ok: true }
-    return { ok: false, message: mapAuthError(signInError, LOGIN_FAILED) }
+    if (signInError) {
+      return { ok: false, message: mapAuthError(signInError, LOGIN_FAILED) }
+    }
+    const assurance = await fetchMfaAssurance()
+    if (assurance.needsChallenge) return { ok: true, needsMfa: true }
+    return { ok: true }
   }, [])
 
   const signOut = useCallback(async () => {
