@@ -7,6 +7,7 @@ import {
   setModerationIsFounder,
   setModerationUnseenWarnings,
   SAMPLE_CREATION_ID,
+  gotoFounderReportQueue,
 } from './fixtures.ts'
 
 async function expectNoSeriousViolations(page: import('@playwright/test').Page, context: string) {
@@ -44,7 +45,7 @@ for (const width of [375, 1280]) {
 
     test(`founder queue modal at ${width}px`, async ({ page }) => {
       setModerationIsFounder(true)
-      await page.goto('/founder', { waitUntil: 'networkidle' })
+      await gotoFounderReportQueue(page)
       await page.getByRole('button', { name: 'Dismiss' }).first().click()
       await expectNoSeriousViolations(page, 'founder reason modal')
     })
@@ -53,7 +54,7 @@ for (const width of [375, 1280]) {
       setModerationIsFounder(true)
       await page.goto('/founder', { waitUntil: 'networkidle' })
       for (const tab of ['Users', 'Content', 'Appeals', 'Audit log']) {
-        await page.getByRole('button', { name: tab }).click()
+        await page.getByRole('button', { name: tab, exact: true }).click()
         await expectNoSeriousViolations(page, `founder ${tab}`)
       }
     })
