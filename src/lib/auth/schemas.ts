@@ -39,13 +39,29 @@ export const forgotPasswordSchema = z.object({
   email: emailSchema,
 })
 
+const displayNameSchema = z
+  .string()
+  .trim()
+  .min(1, 'Enter a display name (1 to 50 characters).')
+  .max(50, 'Display name can be at most 50 characters.')
+
+const countrySchema = z
+  .string()
+  .trim()
+  .length(2, 'Choose your country.')
+  .regex(/^[A-Z]{2}$/, 'Choose your country.')
+
 export const signUpSchema = z
   .object({
     email: emailSchema,
+    displayName: displayNameSchema,
     username: usernameSchema,
+    country: countrySchema,
+    timezone: z.string().trim().min(1).max(64),
     password: passwordSchema,
     confirmPassword: z.string(),
     acceptedTerms: z.boolean(),
+    confirmedAge: z.boolean(),
   })
   .superRefine((value, ctx) => {
     if (value.password !== value.confirmPassword) {
@@ -60,6 +76,13 @@ export const signUpSchema = z
         code: 'custom',
         path: ['acceptedTerms'],
         message: 'Accept the Terms and Privacy Policy to continue.',
+      })
+    }
+    if (!value.confirmedAge) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['confirmedAge'],
+        message: 'Confirm that you are 18 or older.',
       })
     }
   })

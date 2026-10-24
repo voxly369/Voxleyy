@@ -18,7 +18,12 @@ import { notificationMockHandleRest, resetNotificationMocks } from './notificati
 import { messageMockHandleRest, resetMessageMocks } from './messageMocks.ts'
 import { badgeMockHandleRest, resetBadgeMocks } from './badgeMocks.ts'
 import { preBetaMockHandleRest, resetPreBetaMocks } from './preBetaMocks.ts'
-import { betaReadiness18bMockHandleRest, resetBetaReadiness18bMocks } from './betaReadiness18bMocks.ts'
+import {
+  betaReadiness18bMockHandleRest,
+  resetBetaReadiness18bMocks,
+  setE2eEntranceVisible,
+  setE2eOnboardingComplete,
+} from './betaReadiness18bMocks.ts'
 import { authMockMaybeRejectResend, authMockMaybeRejectToken, resetAuthMocks } from './authMocks.ts'
 import { Buffer } from 'node:buffer'
 
@@ -91,7 +96,7 @@ function ownProfile(id: string, username: string, display_name: string, creation
     avatar_url: null,
     banner_url: null,
     website: null,
-    country: null,
+    country: 'ZA',
     city: null,
     city_visible: false,
     timezone: 'UTC',
@@ -526,6 +531,8 @@ export async function installSupabaseMocks(page: Page) {
   resetModerationMocks()
   resetPreBetaMocks()
   resetBetaReadiness18bMocks()
+  setE2eOnboardingComplete()
+  setE2eEntranceVisible(false)
   resetAuthMocks()
   e2eOwnProfileRole = 'writer'
   const session = sessionResponse(READER.id, READER.email)
@@ -637,6 +644,7 @@ export {
   setE2eBetaAccessGranted,
   setE2eConsentsOutdated,
   setE2eInviteOnlyPlatform,
+  setE2eInviteCodeValid,
 } from './preBetaMocks.ts'
 
 export {

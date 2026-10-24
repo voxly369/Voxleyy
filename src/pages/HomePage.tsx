@@ -7,6 +7,8 @@ import { fetchMyProfilePreferences, patchMyProfilePreferences } from '../lib/onb
 import { fetchChecklistSignals } from '../lib/home/checklistSignals.ts'
 import { getUserStreaks } from '../lib/streaks/api.ts'
 import { liveCurrentStreak } from '../lib/streaks/liveCurrentStreak.ts'
+import { fetchDailyQuoteForDay } from '../lib/entrance/dailyQuoteView.ts'
+import { localDateKey } from '../lib/home/greeting.ts'
 import { supabase } from '../lib/supabaseClient.ts'
 import { FeedSwitcher, type FeedTab } from '../components/feed/FeedSwitcher.tsx'
 import { PostCard } from '../components/feed/PostCard.tsx'
@@ -31,6 +33,7 @@ export default function HomePage() {
   const { profile, isFounder } = useAuth()
   const [tab, setTab] = useState<FeedTab>('home')
   const [dailyPrompt, setDailyPrompt] = useState<string | null>(null)
+  const [dailyQuote, setDailyQuote] = useState<{ text: string; author: string } | null>(null)
   const [writingStreak, setWritingStreak] = useState<number | null>(null)
   const [continueCount, setContinueCount] = useState(0)
   const [checklistDismissed, setChecklistDismissed] = useState(true)
@@ -60,6 +63,9 @@ export default function HomePage() {
     if (!profile?.id) return
     void supabase.rpc('writing_prompt_for_date').then(({ data }) => {
       if (typeof data === 'string') setDailyPrompt(data)
+    })
+    void fetchDailyQuoteForDay(localDateKey(profile.timezone ?? 'UTC'), profile.timezone ?? 'UTC').then((quote) => {
+      setDailyQuote({ text: quote.text, author: quote.author })
     })
     if (profile.role === 'writer') {
       void getUserStreaks(profile.id).then((result) => {
@@ -154,9 +160,11 @@ export default function HomePage() {
         <HomeGreeting
           displayName={profile.display_name?.trim() || profile.username}
           timezone={profile.timezone ?? 'UTC'}
+          countryCode={profile.country ?? null}
           role={profile.role === 'writer' ? 'writer' : 'reader'}
           writingStreak={writingStreak}
           dailyPrompt={dailyPrompt}
+          dailyQuote={dailyQuote}
           continueReadingCount={continueCount}
         />
       ) : null}

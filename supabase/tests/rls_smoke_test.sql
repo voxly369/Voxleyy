@@ -7,6 +7,12 @@
 
 begin;
 
+-- Seed auth users before invite-only blocks are asserted later in this script.
+insert into public.platform_settings (key, value)
+values ('beta', jsonb_build_object('invite_only', false, 'signups_open', true))
+on conflict (key) do update
+set value = jsonb_set(coalesce(public.platform_settings.value, '{}'::jsonb), '{invite_only}', 'false'::jsonb);
+
 create temp table rls_ids (
   founder uuid,
   reader_a uuid,
@@ -43,13 +49,17 @@ create or replace function pg_temp.create_test_user(
   p_id uuid,
   p_email text,
   p_confirmed timestamptz,
-  p_meta jsonb default '{}'::jsonb
+  p_meta jsonb default '{}'::jsonb,
+  p_fixture boolean default true
 )
 returns void
 language plpgsql
 set search_path = public, auth
 as $$
 declare
+  v_meta jsonb;
+  v_invite_only boolean;
+  v_beta_saved jsonb;
   pairs text[] := array[
     'instance_id', quote_literal('00000000-0000-0000-0000-000000000000') || '::uuid',
     'id', quote_literal(p_id::text) || '::uuid',
@@ -59,7 +69,6 @@ declare
     'encrypted_password', quote_literal(''),
     'email_confirmed_at', quote_nullable(p_confirmed) || '::timestamptz',
     'raw_app_meta_data', quote_literal('{"provider":"email","providers":["email"]}') || '::jsonb',
-    'raw_user_meta_data', quote_literal(coalesce(p_meta, '{}'::jsonb)::text) || '::jsonb',
     'created_at', 'now()',
     'updated_at', 'now()',
     'confirmation_token', quote_literal(p_id::text),
@@ -74,7 +83,30 @@ declare
   cols text := '';
   vals text := '';
   i integer;
+  v_local text := regexp_replace(lower(split_part(coalesce(p_email, ''), '@', 1)), '[^a-z0-9_]', '', 'g');
 begin
+  v_meta := coalesce(p_meta, '{}'::jsonb);
+  if not (v_meta ? 'display_name') then
+    v_meta := v_meta || jsonb_build_object('display_name', left(coalesce(nullif(v_local, ''), 'writer'), 50));
+  end if;
+  if not (v_meta ? 'country') then
+    v_meta := v_meta || jsonb_build_object('country', 'ZA');
+  end if;
+  if not (v_meta ? 'timezone') then
+    v_meta := v_meta || jsonb_build_object('timezone', 'Africa/Johannesburg');
+  end if;
+  if not (v_meta ? 'username') and char_length(v_local) >= 3 then
+    v_meta := v_meta || jsonb_build_object('username', left(v_local, 30));
+  end if;
+
+  v_invite_only := coalesce((public.platform_setting_json('beta')->>'invite_only')::boolean, false);
+  if p_fixture and v_invite_only then
+    select value into v_beta_saved from public.platform_settings where key = 'beta';
+    update public.platform_settings
+    set value = jsonb_set(coalesce(value, '{}'::jsonb), '{invite_only}', 'false'::jsonb)
+    where key = 'beta';
+  end if;
+
   -- Only write columns this project actually has, so a newer or older auth.users shape still loads.
   for i in 1..array_length(pairs, 1) by 2 loop
     if exists (
@@ -86,7 +118,25 @@ begin
     end if;
   end loop;
 
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'auth' and table_name = 'users' and column_name = 'raw_user_meta_data'
+  ) then
+    cols := cols || case when cols = '' then '' else ', ' end || 'raw_user_meta_data';
+    vals := vals || case when vals = '' then '' else ', ' end || quote_literal(v_meta::text) || '::jsonb';
+  end if;
+
   execute format('insert into auth.users (%s) values (%s)', cols, vals);
+
+  if p_fixture and v_invite_only then
+    if v_beta_saved is not null then
+      update public.platform_settings set value = v_beta_saved where key = 'beta';
+    else
+      update public.platform_settings
+      set value = jsonb_set(coalesce(value, '{}'::jsonb), '{invite_only}', 'true'::jsonb)
+      where key = 'beta';
+    end if;
+  end if;
 
   -- Some projects also require an identity row. A mismatch here must not hide a failed user insert.
   begin
@@ -4265,6 +4315,10 @@ begin
   execute format('set local role %I', session_user);
   perform pg_temp.create_test_user(v_uid, v_uid::text || '@beta-pending.test', now());
   update public.profiles set beta_access_granted = false where id = v_uid;
+  execute format('set local role %I', session_user);
+  update public.platform_settings
+  set value = jsonb_set(value, '{invite_only}', 'true'::jsonb)
+  where key = 'beta';
   execute 'set local role authenticated';
   perform set_config('request.jwt.claim.sub', v_uid::text, true);
   begin
@@ -4276,9 +4330,6 @@ begin
   end;
 
   execute format('set local role %I', session_user);
-  update public.platform_settings
-  set value = jsonb_set(value, '{invite_only}', 'true'::jsonb)
-  where key = 'beta';
   execute 'set local role authenticated';
   perform set_config('request.jwt.claim.sub', v_founder::text, true);
   v_inv := public.founder_create_invite_code(1, now() + interval '7 days', 'smoke');
@@ -4954,6 +5005,88 @@ begin
   v_json := public.export_my_data();
   perform pg_temp.record('export_my_data profile key present', v_json ? 'profile', 'keys ok');
   perform pg_temp.record('export_my_data only own profile id', (v_json->'profile'->>'id')::uuid = v_b, 'id ok');
+
+  select count(*) into v_count from public.countries;
+  perform pg_temp.record('countries seed count', v_count >= 200, 'rows=' || v_count);
+
+  select verified into v_bool from public.profiles where id = v_founder;
+  perform pg_temp.record('founder profile verified true', v_bool is true, 'verified=' || coalesce(v_bool::text, 'null'));
+
+  begin
+    update public.profiles set verified = false where id = v_founder;
+    perform pg_temp.record('founder verified flag cannot be cleared', false, 'cleared');
+  exception when others then
+    perform pg_temp.record('founder verified flag cannot be cleared', true, sqlerrm);
+  end;
+
+  begin
+    select public.check_invite_code('NOTVALID00') into v_bool;
+    perform pg_temp.record('check_invite_code invalid returns false', v_bool = false, 'val=' || coalesce(v_bool::text, 'null'));
+  exception when others then
+    perform pg_temp.record('check_invite_code invalid returns false', false, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    update public.profiles set country = 'XX' where id = v_a;
+    perform pg_temp.record('profiles country FK rejects invalid code', false, 'updated');
+  exception when others then
+    perform pg_temp.record('profiles country FK rejects invalid code', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  update public.platform_settings
+  set value = jsonb_set(coalesce(value, '{}'::jsonb), '{invite_only}', 'true'::jsonb)
+  where key = 'beta';
+
+  begin
+    perform pg_temp.create_test_user(gen_random_uuid(), 'noreply@fixture.test', now(), '{}'::jsonb, false);
+    perform pg_temp.record('signup dot test email no invite rejected', false, 'created');
+  exception when others then
+    perform pg_temp.record('signup dot test email no invite rejected', true, sqlerrm);
+  end;
+
+  begin
+    perform pg_temp.create_test_user(
+      gen_random_uuid(),
+      'stranger+' || gen_random_uuid()::text || '@example.com',
+      now(),
+      '{}'::jsonb,
+      false
+    );
+    perform pg_temp.record('signup non-founder no invite rejected', false, 'created');
+  exception when others then
+    perform pg_temp.record('signup non-founder no invite rejected', true, sqlerrm);
+  end;
+
+  perform pg_temp.record(
+    'founder email bypasses invite gate for beta access',
+    public.user_beta_access_ok(v_founder),
+    'user_beta_access_ok=' || public.user_beta_access_ok(v_founder)::text
+  );
+
+  v_other := gen_random_uuid();
+  perform pg_temp.create_test_user(v_other, v_other::text || '@no-beta-invite.test', now());
+  update public.profiles set beta_access_granted = false where id = v_other;
+  perform pg_temp.record(
+    'non-founder without beta_access fails user_beta_access_ok when invite_only',
+    not public.user_beta_access_ok(v_other),
+    'user_beta_access_ok=' || public.user_beta_access_ok(v_other)::text
+  );
+
+  select count(*) into v_count from public.daily_quotes where active;
+  perform pg_temp.record('daily_quotes active seed count', v_count >= 120, 'rows=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  v_json := public.quote_of_the_day(current_date, 'UTC');
+  perform pg_temp.record('quote_of_the_day returns object', v_json ? 'text' and v_json ? 'author', 'json ok');
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_json := public.founder_list_daily_quotes(null, 5);
+  select jsonb_array_length(v_json->'rows') into v_count;
+  perform pg_temp.record('founder_list_daily_quotes returns rows', v_count >= 1, 'rows=' || v_count);
+  v_count := public.founder_active_daily_quote_count();
+  perform pg_temp.record('founder_active_daily_quote_count', v_count >= 120, 'active=' || v_count);
 end $beta_readiness_18b$;
 
 do $$

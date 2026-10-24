@@ -17,6 +17,7 @@ const LABELS: Record<LegalDocumentKey, string> = {
   privacy: 'Privacy Policy',
   community: 'Community Guidelines',
   copyright: 'Copyright Policy',
+  age_18: 'Age confirmation',
 }
 
 export function ConsentReacceptModal({ open, documents, busy = false, onAccepted }: ConsentReacceptModalProps) {

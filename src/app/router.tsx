@@ -48,6 +48,8 @@ const ForgotPasswordPage = lazy(() => import('../pages/auth/ForgotPasswordPage.t
 const ResetPasswordPage = lazy(() => import('../pages/auth/ResetPasswordPage.tsx'))
 const CheckEmailPage = lazy(() => import('../pages/auth/CheckEmailPage.tsx'))
 const AuthCallbackPage = lazy(() => import('../pages/auth/AuthCallbackPage.tsx'))
+const AuthConfirmPage = lazy(() => import('../pages/auth/AuthConfirmPage.tsx'))
+const JoinPage = lazy(() => import('../pages/auth/JoinPage.tsx'))
 const TermsPage = lazy(() => import('../pages/auth/TermsPage.tsx'))
 const PrivacyPage = lazy(() => import('../pages/auth/PrivacyPage.tsx'))
 const CommunityGuidelinesPage = lazy(() => import('../pages/auth/CommunityGuidelinesPage.tsx'))
@@ -80,12 +82,14 @@ const router = createBrowserRouter(
               children: [
                 { path: '/login', element: <LoginPage /> },
                 { path: '/signup', element: <SignUpPage /> },
+                { path: '/join', element: <JoinPage /> },
                 { path: '/forgot-password', element: <ForgotPasswordPage /> },
                 { path: '/check-email', element: <CheckEmailPage /> },
               ],
             },
             { path: '/reset-password', element: <ResetPasswordPage /> },
             { path: '/auth/callback', element: <AuthCallbackPage /> },
+            { path: '/auth/confirm', element: <AuthConfirmPage /> },
             { path: '/terms', element: <TermsPage /> },
             { path: '/privacy', element: <PrivacyPage /> },
             { path: '/community-guidelines', element: <CommunityGuidelinesPage /> },

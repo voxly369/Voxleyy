@@ -79,7 +79,11 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
   return (
     <article className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
       <header className="mb-3 flex items-center gap-3">
-        <Link to={`/u/${post.author.username}`} className={`inline-flex min-h-11 min-w-11 items-center justify-center ${focusRing}`}>
+        <Link
+          to={`/u/${post.author.username}`}
+          aria-label={`View ${post.author.displayName || post.author.username}'s profile`}
+          className={`inline-flex min-h-11 min-w-11 items-center justify-center ${focusRing}`}
+        >
           <ImageWithFallback
             src={post.author.avatarUrl ?? undefined}
             alt=""
@@ -95,7 +99,9 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
             >
               <span className="truncate">{post.author.displayName || post.author.username}</span>
             </Link>
-            {post.author.feedBadges?.length ? <BadgeRowOnName badges={post.author.feedBadges} /> : null}
+            {post.author.feedBadges?.length ? (
+              <BadgeRowOnName badges={post.author.feedBadges} verified={post.author.verified} />
+            ) : null}
             {post.author.verified ? <VerifiedBadge /> : null}
           </div>
           <Link

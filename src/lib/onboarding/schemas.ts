@@ -18,5 +18,7 @@ export type OnboardingPatch = {
   favorite_genres?: string[]
   languages?: string[]
   welcome_moment_seen_at?: string
+  last_entrance_local_date?: string
+  show_entrance_screen?: boolean
   checklist_progress?: Record<string, boolean>
 }

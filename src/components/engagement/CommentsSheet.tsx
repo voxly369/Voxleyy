@@ -360,7 +360,11 @@ function CommentRow({
           <>
             {node.author.displayName || node.author.username}
             {node.author.feedBadges?.length ? (
-              <BadgeRowOnName badges={node.author.feedBadges} className="ml-1 align-middle" />
+              <BadgeRowOnName
+                badges={node.author.feedBadges}
+                verified={node.author.verified}
+                className="ml-1 align-middle"
+              />
             ) : null}
             {node.author.verified ? ' ✓' : ''}
           </>

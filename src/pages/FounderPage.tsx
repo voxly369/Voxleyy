@@ -22,6 +22,7 @@ import { FounderFeaturedBadgeControl } from '../components/founder/FounderFeatur
 import { FounderBetaTab } from '../components/founder/FounderBetaTab.tsx'
 import { FounderErrorsTab } from '../components/founder/FounderErrorsTab.tsx'
 import { FounderFeedbackTab } from '../components/founder/FounderFeedbackTab.tsx'
+import { FounderQuotesTab } from '../components/founder/FounderQuotesTab.tsx'
 import { founderFeedbackUnreadCount } from '../lib/founder/feedback.ts'
 import { FounderAnalyticsPanel, type FounderAnalyticsTabId } from '../components/founder/FounderAnalyticsPanel.tsx'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
@@ -36,6 +37,7 @@ type FounderTab =
   | 'beta'
   | 'errors'
   | 'feedback'
+  | 'quotes'
 
 const TABS: { id: FounderTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -51,6 +53,7 @@ const TABS: { id: FounderTab; label: string }[] = [
   { id: 'beta', label: 'Beta' },
   { id: 'errors', label: 'Errors' },
   { id: 'feedback', label: 'Feedback' },
+  { id: 'quotes', label: 'Quotes' },
   { id: 'reports', label: 'Report queue' },
   { id: 'users', label: 'Users' },
   { id: 'content', label: 'Content' },
@@ -184,6 +187,7 @@ export default function FounderPage() {
       {tab === 'errors' ? <FounderErrorsTab /> : null}
 
       {tab === 'feedback' ? <FounderFeedbackTab /> : null}
+      {tab === 'quotes' ? <FounderQuotesTab /> : null}
 
       {ANALYTICS_TABS.has(tab) ? <FounderAnalyticsPanel tab={tab as FounderAnalyticsTabId} /> : null}
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { OnboardingFlow } from '../components/onboarding/OnboardingFlow.tsx'
-import { WelcomeMoment } from '../components/onboarding/WelcomeMoment.tsx'
+import { EntranceScreen } from '../components/entrance/EntranceScreen.tsx'
 import { fetchMyProfilePreferences, type ProfilePreferencesRow } from '../lib/onboarding/api.ts'
 import { onboardingNeedsFlow } from '../lib/onboarding/stepMachine.ts'
 import { useAuth } from '../lib/auth/auth-context.ts'
@@ -44,9 +44,11 @@ export function OnboardingGate() {
   return (
     <>
       {!isFounder && prefs ? (
-        <WelcomeMoment
-          serverSeenAt={prefs.welcome_moment_seen_at}
-          onDismissed={() => void refresh()}
+        <EntranceScreen
+          serverLastEntranceDate={prefs.last_entrance_local_date}
+          showEntranceScreen={prefs.show_entrance_screen}
+          firstEntranceEver={!prefs.welcome_moment_seen_at && !prefs.last_entrance_local_date}
+          onFinished={() => void refresh()}
         />
       ) : null}
       {showOnboarding ? (

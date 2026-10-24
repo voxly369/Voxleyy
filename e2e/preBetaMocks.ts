@@ -21,6 +21,16 @@ let consentRecords: Array<{ document: string; version: string; accepted_at: stri
   { document: 'privacy', version: CURRENT_CONSENT_VERSION, accepted_at: '2026-01-01T00:00:00.000Z' },
 ]
 
+const inviteCodeValid: Record<string, boolean> = {}
+
+export function setE2eInviteCodeValid(code: string, valid: boolean) {
+  inviteCodeValid[code.trim().toUpperCase()] = valid
+}
+
+export function resetE2eInviteCodeValidity() {
+  for (const key of Object.keys(inviteCodeValid)) delete inviteCodeValid[key]
+}
+
 let inviteCodes: Array<Record<string, unknown>> = [
   {
     code: 'ABCDEFGHJK',
@@ -59,6 +69,7 @@ export function setE2eConsentsOutdated() {
 }
 
 export function resetPreBetaMocks() {
+  resetE2eInviteCodeValidity()
   betaSignupConfig = {
     signups_open: true,
     invite_only: false,
@@ -101,6 +112,13 @@ export function preBetaMockHandleRest(url: string, _method: string, postData: un
   }
   if (url.includes('/rest/v1/rpc/join_beta_waitlist')) {
     return null
+  }
+  if (url.includes('/rest/v1/rpc/check_invite_code')) {
+    const code = String((postData as { p_code?: string } | null)?.p_code ?? '').trim().toUpperCase()
+    if (code in inviteCodeValid) return inviteCodeValid[code]
+    if (code === 'USEDCODE11') return false
+    if (code === 'EXPIRED111') return false
+    return code === 'ABCDEFGHJK'
   }
   if (url.includes('/rest/v1/rpc/redeem_invite_code')) {
     const code = (postData as { p_code?: string } | null)?.p_code

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { focusRing } from '../../components/shell/navItems.ts'
 import { PasswordField } from '../../components/auth/PasswordField.tsx'
 import { SubmitButton } from '../../components/auth/SubmitButton.tsx'
 import { TextField } from '../../components/auth/TextField.tsx'
+import { CountryPicker } from '../../components/auth/CountryPicker.tsx'
+import { SignatureQuote } from '../../components/auth/SignatureQuote.tsx'
 import { useAuth } from '../../lib/auth/auth-context.ts'
 import { RATE_LIMITED, SIGNUP_FAILED } from '../../lib/auth/messages.ts'
 import { mapAuthError } from '../../lib/errors/mapAuthError.ts'
@@ -14,12 +16,14 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.ts'
 import {
   fetchBetaSignupConfig,
   joinBetaWaitlist,
-  redeemInviteCode,
+  checkInviteCodeValid,
   type BetaSignupConfig,
 } from '../../lib/beta/signupConfig.ts'
 import { isFounderSignupEmail } from '../../lib/beta/founderSignup.ts'
+import { normalizeInviteCode } from '../../lib/beta/inviteCode.ts'
 import { LEGAL_DOCUMENT_VERSIONS } from '../../config/organization.ts'
 import { recordUserConsents } from '../../lib/consent/recordConsent.ts'
+import { defaultSignupCountryAndZone } from '../../lib/signup/countryPrefill.ts'
 
 function availabilityMessage(state: ReturnType<typeof useUsernameAvailability>): string {
   if (state === 'checking') return 'Checking that username…'
@@ -33,13 +37,21 @@ export default function SignUpPage() {
   useDocumentTitle('Sign up')
   const { signUp } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const joinBanner = searchParams.get('from') === 'join'
+  const linkedCode = searchParams.get('code') ?? ''
   const [betaConfig, setBetaConfig] = useState<BetaSignupConfig | null>(null)
   const [email, setEmail] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [username, setUsername] = useState('')
+  const [country, setCountry] = useState('')
+  const [timezone, setTimezone] = useState('UTC')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [inviteCode, setInviteCode] = useState('')
+  const [inviteLocked, setInviteLocked] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
+  const [confirmedAge, setConfirmedAge] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState('')
   const [pending, setPending] = useState(false)
@@ -48,6 +60,23 @@ export default function SignUpPage() {
   const lock = useRef(false)
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const defaults = defaultSignupCountryAndZone()
+    setTimezone(defaults.timezone)
+    if (defaults.country) setCountry(defaults.country)
+  }, [])
+
+  useEffect(() => {
+    if (!linkedCode) return
+    try {
+      setInviteCode(normalizeInviteCode(linkedCode))
+      setInviteLocked(true)
+    } catch {
+      setInviteCode(linkedCode.trim())
+      setInviteLocked(Boolean(linkedCode.trim()))
+    }
+  }, [linkedCode])
 
   useEffect(() => {
     if (cooldownUntil === null) return
@@ -77,10 +106,14 @@ export default function SignUpPage() {
     if (lock.current || !showSignupForm || coolingDown) return
     const parsed = signUpSchema.safeParse({
       email: email.trim(),
+      displayName: displayName.trim(),
       username: username.trim(),
+      country: country.trim().toUpperCase(),
+      timezone: timezone.trim(),
       password,
       confirmPassword,
       acceptedTerms,
+      confirmedAge,
     })
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error))
@@ -100,15 +133,32 @@ export default function SignUpPage() {
     setFormError('')
     lock.current = true
     setPending(true)
+
+    let normalizedInvite: string | undefined
+    if (inviteRequiredForUser) {
+      const checked = await checkInviteCodeValid(inviteCode)
+      if (!checked.ok) {
+        setPending(false)
+        lock.current = false
+        setFormError(checked.message)
+        return
+      }
+      normalizedInvite = normalizeInviteCode(inviteCode)
+    }
+
     const result = await signUp({
       email: parsed.data.email,
       password: parsed.data.password,
       username: parsed.data.username,
+      displayName: parsed.data.displayName,
+      country: parsed.data.country,
+      timezone: parsed.data.timezone,
+      inviteCode: normalizedInvite,
     })
     if (!result.ok) {
       setPending(false)
       lock.current = false
-      const mapped = mapAuthError({ message: result.message }, SIGNUP_FAILED)
+      const mapped = result.message ?? mapAuthError({ message: result.message }, SIGNUP_FAILED)
       setFormError(mapped)
       if (mapped === RATE_LIMITED) {
         setCooldownUntil(Date.now() + 60_000)
@@ -116,18 +166,10 @@ export default function SignUpPage() {
       }
       return
     }
-    if (inviteRequiredForUser) {
-      const redeemed = await redeemInviteCode(inviteCode)
-      if (!redeemed.ok) {
-        setPending(false)
-        lock.current = false
-        setFormError(redeemed.message)
-        return
-      }
-    }
     await recordUserConsents([
       { document: 'terms', version: LEGAL_DOCUMENT_VERSIONS.terms },
       { document: 'privacy', version: LEGAL_DOCUMENT_VERSIONS.privacy },
+      { document: 'age_18', version: LEGAL_DOCUMENT_VERSIONS.age_18 },
     ])
     setPending(false)
     lock.current = false
@@ -209,6 +251,12 @@ export default function SignUpPage() {
   return (
     <form onSubmit={(event) => void onSubmit(event)} className="flex flex-col gap-5" noValidate data-testid="signup-form">
       <h1 className="text-3xl text-ink">Create your account</h1>
+      <SignatureQuote />
+      {joinBanner ? (
+        <p role="status" className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-ink" data-testid="signup-invite-banner">
+          You&apos;ve been invited to Voxly.
+        </p>
+      ) : null}
       {inviteRequiredForUser ? (
         <p className="text-sm text-muted" data-testid="signup-closed-beta-note">
           Voxly is in invite-only beta. You need a code from the team to register.
@@ -228,20 +276,51 @@ export default function SignUpPage() {
         onChange={(event) => setEmail(event.target.value)}
         error={errors.email}
       />
+      <TextField
+        id="signup-display-name"
+        name="displayName"
+        label="Display name"
+        type="text"
+        autoComplete="name"
+        value={displayName}
+        onChange={(event) => setDisplayName(event.target.value)}
+        error={errors.displayName}
+        hint="1 to 50 characters. This is how you appear across Voxly."
+      />
       {inviteRequiredForUser ? (
-        <TextField
-          id="signup-invite"
-          name="inviteCode"
-          label="Invite code"
-          type="text"
-          autoComplete="off"
-          autoCapitalize="characters"
-          value={inviteCode}
-          onChange={(event) => setInviteCode(event.target.value)}
-          error={errors.inviteCode}
-          data-testid="signup-invite-code"
-        />
+        <div className="flex flex-col gap-2">
+          <TextField
+            id="signup-invite"
+            name="inviteCode"
+            label="Invite code"
+            type="text"
+            autoComplete="off"
+            autoCapitalize="characters"
+            value={inviteCode}
+            onChange={(event) => setInviteCode(event.target.value)}
+            error={errors.inviteCode}
+            data-testid="signup-invite-code"
+            readOnly={inviteLocked}
+          />
+          {inviteLocked ? (
+            <button
+              type="button"
+              className={`self-start text-sm text-coral underline underline-offset-2 ${focusRing}`}
+              onClick={() => setInviteLocked(false)}
+              data-testid="signup-invite-unlock"
+            >
+              Enter a different code
+            </button>
+          ) : null}
+        </div>
       ) : null}
+      <CountryPicker
+        id="signup-country"
+        label="Country"
+        value={country}
+        onChange={setCountry}
+        error={errors.country}
+      />
       <TextField
         id="signup-username"
         name="username"
@@ -278,6 +357,25 @@ export default function SignUpPage() {
         onChange={setConfirmPassword}
         error={errors.confirmPassword}
       />
+      <div className="flex flex-col gap-2">
+        <label className="flex min-h-11 items-start gap-3 text-sm text-ink" htmlFor="signup-age">
+          <input
+            id="signup-age"
+            name="age"
+            type="checkbox"
+            checked={confirmedAge}
+            onChange={(event) => setConfirmedAge(event.target.checked)}
+            className={`mt-1 size-5 accent-coral ${focusRing}`}
+            data-testid="signup-age-consent"
+          />
+          <span>I am 18 or older.</span>
+        </label>
+        {errors.confirmedAge ? (
+          <p role="alert" className="text-sm text-coral">
+            {errors.confirmedAge}
+          </p>
+        ) : null}
+      </div>
       <div className="flex flex-col gap-2">
         <label className="flex min-h-11 items-start gap-3 text-sm text-ink" htmlFor="signup-terms">
           <input

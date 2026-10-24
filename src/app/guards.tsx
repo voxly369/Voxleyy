@@ -12,6 +12,8 @@ import { documentsNeedingReaccept, parseStoredConsents } from '../lib/consent/co
 import type { LegalDocumentKey } from '../config/organization.ts'
 import { supabase } from '../lib/supabaseClient.ts'
 import { OnboardingGate } from './OnboardingGate.tsx'
+import { CreateSheetProvider } from '../lib/shell/CreateSheetProvider.tsx'
+import { ModalStackProvider } from '../lib/shell/modalStack.tsx'
 
 function pathAllowedDuringInviteGate(pathname: string): boolean {
   return /^\/(settings|terms|privacy|contact|copyright|community-guidelines)(\/|$)/.test(pathname)
@@ -53,7 +55,13 @@ function ConsentReacceptGate() {
     )
   }
 
-  return <OnboardingGate />
+  return (
+    <ModalStackProvider>
+      <CreateSheetProvider>
+        <OnboardingGate />
+      </CreateSheetProvider>
+    </ModalStackProvider>
+  )
 }
 
 export function RequireAuth() {

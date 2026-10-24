@@ -4,6 +4,8 @@ import {
   seedSignedInSession,
   SAMPLE_CREATION_ID,
 } from './fixtures.ts'
+import { setE2eEntranceVisible, setE2eOnboardingComplete } from './betaReadiness18bMocks.ts'
+import { setE2eBetaSignupConfig } from './preBetaMocks.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -28,10 +30,63 @@ type ScreenDef = {
   skipReadingLine?: boolean
   skipRightRail?: boolean
   skipNav?: boolean
+  beforeGoto?: () => void
 }
 
 const screens: ScreenDef[] = [
-  { name: 'home', path: '/', signedIn: true },
+  {
+    name: 'entrance',
+    path: '/',
+    signedIn: true,
+    skipNav: true,
+    skipRightRail: true,
+    skipReadingLine: true,
+    beforeGoto: () => {
+      setE2eOnboardingComplete()
+      setE2eEntranceVisible(true)
+    },
+  },
+  {
+    name: 'home-greeting',
+    path: '/',
+    signedIn: true,
+    beforeGoto: () => {
+      setE2eOnboardingComplete()
+      setE2eEntranceVisible(false)
+    },
+  },
+  { name: 'home', path: '/', signedIn: true, beforeGoto: () => setE2eEntranceVisible(false) },
+  {
+    name: 'signup',
+    path: '/signup',
+    signedIn: false,
+    skipNav: true,
+    skipRightRail: true,
+    skipReadingLine: true,
+    beforeGoto: () => setE2eBetaSignupConfig({ signups_open: true, invite_only: true }),
+  },
+  {
+    name: 'check-email',
+    path: '/check-email',
+    signedIn: false,
+    skipNav: true,
+    skipRightRail: true,
+    skipReadingLine: true,
+    setup: async (page) => {
+      await page.evaluate(() => {
+        window.history.replaceState({ usr: { email: 'pending@example.com' } }, '', '/check-email')
+      })
+      await page.reload({ waitUntil: 'networkidle' })
+    },
+  },
+  {
+    name: 'auth-confirm-expired',
+    path: '/auth/confirm?error=access_denied&error_code=otp_expired',
+    signedIn: false,
+    skipNav: true,
+    skipRightRail: true,
+    skipReadingLine: true,
+  },
   {
     name: 'following',
     path: '/',
@@ -135,6 +190,7 @@ async function assertRightRail(page: Page, width: number, screenName: string) {
   const rail = page.getByRole('complementary', { name: 'Suggestions' })
   const onFeed =
     screenName === 'home' ||
+    screenName === 'home-greeting' ||
     screenName === 'following' ||
     screenName === 'create-sheet' ||
     screenName === 'comments' ||
@@ -227,6 +283,7 @@ async function assertDialogFocus(page: Page, screen: ScreenDef) {
 
 async function visitScreen(page: Page, screen: ScreenDef) {
   if (screen.signedIn) await seedSignedInSession(page)
+  screen.beforeGoto?.()
   await page.goto(screen.path, { waitUntil: 'networkidle' })
   if (screen.setup) await screen.setup(page)
   if (screen.signedIn) {

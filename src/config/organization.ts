@@ -15,6 +15,7 @@ export const LEGAL_DOCUMENT_VERSIONS = {
   privacy: 'draft-2026-01',
   community: 'draft-2026-01',
   copyright: 'draft-2026-01',
+  age_18: 'confirmed',
 } as const
 
 export type LegalDocumentKey = keyof typeof LEGAL_DOCUMENT_VERSIONS
