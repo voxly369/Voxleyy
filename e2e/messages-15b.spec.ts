@@ -1,7 +1,6 @@
 import { test, expect } from '@playwright/test'
 import {
   E2E_CONVERSATION_ID,
-  E2E_SCHEDULED_MESSAGE_ID,
   installSupabaseMocks,
   messageReportQueueRow,
   prependFounderQueueRow,
