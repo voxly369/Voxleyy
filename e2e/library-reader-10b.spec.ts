@@ -53,8 +53,8 @@ test.describe('Library and reader 10B', () => {
     resetLibraryReadingMocks()
     seedCreationDetail()
     seedLibrarySave()
-    await seedSignedInSession(page)
     await installSupabaseMocks(page)
+    await seedSignedInSession(page)
   })
 
   test.afterEach(() => {

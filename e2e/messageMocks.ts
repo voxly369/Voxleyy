@@ -310,7 +310,13 @@ export function messageMockHandleRest(url: string, method: string, postData: unk
     }
   }
 
-  if (url.includes('/rest/v1/creations') && url.includes(SAMPLE_CREATION_ID)) {
+  // Shared-post preview only (fetchSharedCreationPreview); do not intercept full reader/detail selects.
+  if (
+    url.includes('/rest/v1/creations') &&
+    url.includes(SAMPLE_CREATION_ID) &&
+    url.includes('profiles!creations_author_id_fkey') &&
+    !url.includes('body_json')
+  ) {
     return [
       {
         id: SAMPLE_CREATION_ID,

@@ -63,16 +63,13 @@ export function NavRail() {
             )
           }
           const showMessagesBadge = item.to === '/messages' && messagesUnread > 0
-          const messagesAria =
-            item.to === '/messages' && messagesUnread > 0
-              ? `Messages, ${messagesUnread} unread`
-              : item.label
+          const iconOnlyLabel =
+            item.label + (showMessagesBadge ? `, ${messagesUnread} unread` : '')
           return (
             <li key={item.to} className="w-full">
               <NavLink
                 to={item.to}
                 end={item.end}
-                aria-label={messagesAria}
                 className={({ isActive }) =>
                   `group relative flex min-h-11 w-full items-center justify-center rounded-2xl xl:justify-start xl:px-3 ${isActive ? 'bg-raised font-semibold text-coral' : 'font-medium text-muted'} ${focusRing}`
                 }
@@ -80,12 +77,14 @@ export function NavRail() {
                 {({ isActive }) => (
                   <>
                     <span className="relative inline-flex size-11 shrink-0 items-center justify-center gap-3 xl:w-auto xl:justify-start">
-                      <Icon filled={isActive} className="size-6 shrink-0" />
+                      <Icon filled={isActive} className="size-6 shrink-0" aria-hidden />
                       <span className={`hidden xl:inline xl:text-base ${isActive ? 'font-semibold' : 'font-medium'}`}>
                         {item.label}
                       </span>
+                      <span className="sr-only xl:hidden">{iconOnlyLabel}</span>
                       {showMessagesBadge ? (
                         <span
+                          aria-hidden
                           className="absolute right-0 top-0 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-coral px-1 text-[10px] font-bold leading-4 text-white xl:right-2"
                           data-testid="messages-badge-rail"
                         >
