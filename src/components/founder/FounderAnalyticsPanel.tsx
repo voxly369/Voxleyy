@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { focusRing } from '../shell/navItems.ts'
+import { accessibleCoralFill, focusRing } from '../shell/navItems.ts'
 import { EmptyState } from '../states/EmptyState.tsx'
 import { AnalyticsToolbar, toolbarFilterParams } from '../analytics/AnalyticsToolbar.tsx'
 import { MetricCard } from '../analytics/MetricCard.tsx'
@@ -177,7 +177,7 @@ export function FounderAnalyticsPanel({ tab }: FounderAnalyticsPanelProps) {
           <button
             type="button"
             onClick={() => setCloseMonthOpen(true)}
-            className={`mt-3 min-h-11 rounded-2xl bg-coral px-4 font-semibold text-white ${focusRing}`}
+            className={`mt-3 min-h-11 rounded-2xl px-4 font-semibold ${accessibleCoralFill} ${focusRing}`}
           >
             Close month…
           </button>
@@ -326,7 +326,9 @@ export function FounderAnalyticsPanel({ tab }: FounderAnalyticsPanelProps) {
               </li>
             ))
           ) : (
-            <EmptyState title="No posts" message="No published posts match this filter." />
+            <li className="list-none">
+              <EmptyState title="No posts" message="No published posts match this filter." />
+            </li>
           )}
         </ul>
       ) : null}

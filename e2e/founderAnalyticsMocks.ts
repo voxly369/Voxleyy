@@ -17,6 +17,10 @@ const overviewPayload = {
 }
 
 export function installFounderAnalyticsMocks(page: Page) {
+  // Wildcard first; specific RPC handlers registered after so they take precedence (Playwright LIFO).
+  page.route('**/rest/v1/rpc/founder_analytics_*', async (route) => {
+    await route.fulfill({ json: {} })
+  })
   page.route('**/rest/v1/rpc/founder_prepare_daily_metrics**', async (route) => {
     await route.fulfill({ json: { refreshes: [], last_completed_day: '2026-01-01' } })
   })
@@ -35,9 +39,6 @@ export function installFounderAnalyticsMocks(page: Page) {
   })
   page.route('**/rest/v1/rpc/founder_analytics_export**', async (route) => {
     await route.fulfill({ json: { section: 'overview', rows: [overviewPayload], row_count: 1 } })
-  })
-  page.route('**/rest/v1/rpc/founder_analytics_*', async (route) => {
-    await route.fulfill({ json: {} })
   })
 }
 
