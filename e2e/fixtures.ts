@@ -17,6 +17,7 @@ import {
 import { notificationMockHandleRest, resetNotificationMocks } from './notificationMocks.ts'
 import { messageMockHandleRest, resetMessageMocks } from './messageMocks.ts'
 import { badgeMockHandleRest, resetBadgeMocks } from './badgeMocks.ts'
+import { preBetaMockHandleRest, resetPreBetaMocks } from './preBetaMocks.ts'
 import { Buffer } from 'node:buffer'
 
 export const PROJECT_REF = 'ktgxdqplvggeyrnuqljx'
@@ -356,6 +357,8 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
   if (libraryResult !== undefined) return libraryResult
   const bookResult = bookBuilderMockHandleRest(url, method, postData)
   if (bookResult !== undefined) return bookResult
+  const preBetaResult = preBetaMockHandleRest(url, method, postData)
+  if (preBetaResult !== undefined) return preBetaResult
 
   const posts = e2eFeedOverride ?? feedPosts()
 
@@ -487,6 +490,7 @@ export async function installSupabaseMocks(page: Page) {
   resetNotificationMocks()
   resetMessageMocks()
   resetModerationMocks()
+  resetPreBetaMocks()
   const session = sessionResponse(READER.id, READER.email)
 
   await page.route('**/*', async (route) => {
@@ -497,6 +501,11 @@ export async function installSupabaseMocks(page: Page) {
     }
 
     if (url.includes('/auth/v1/token')) {
+      await fulfillJson(route, session)
+      return
+    }
+
+    if (url.includes('/auth/v1/signup')) {
       await fulfillJson(route, session)
       return
     }
