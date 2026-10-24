@@ -20,12 +20,16 @@ import type { FounderAuditRow, FounderContentRow, FounderReportQueueRow, Founder
 import { FounderReasonModal } from '../components/safety/FounderReasonModal.tsx'
 import { FounderFeaturedBadgeControl } from '../components/founder/FounderFeaturedBadgeControl.tsx'
 import { FounderCloseMonthModal } from '../components/founder/FounderCloseMonthModal.tsx'
+import { FounderBetaTab } from '../components/founder/FounderBetaTab.tsx'
+import { FounderErrorsTab } from '../components/founder/FounderErrorsTab.tsx'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 
-type FounderTab = 'overview' | 'reports' | 'users' | 'content' | 'appeals' | 'audit'
+type FounderTab = 'overview' | 'reports' | 'users' | 'content' | 'appeals' | 'audit' | 'beta' | 'errors'
 
 const TABS: { id: FounderTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
+  { id: 'beta', label: 'Beta' },
+  { id: 'errors', label: 'Errors' },
   { id: 'reports', label: 'Report queue' },
   { id: 'users', label: 'Users' },
   { id: 'content', label: 'Content' },
@@ -134,6 +138,10 @@ export default function FounderPage() {
           {error}
         </p>
       ) : null}
+
+      {tab === 'beta' ? <FounderBetaTab /> : null}
+
+      {tab === 'errors' ? <FounderErrorsTab /> : null}
 
       {tab === 'overview' ? (
         <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4">

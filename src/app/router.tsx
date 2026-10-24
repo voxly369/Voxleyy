@@ -49,6 +49,9 @@ const CheckEmailPage = lazy(() => import('../pages/auth/CheckEmailPage.tsx'))
 const AuthCallbackPage = lazy(() => import('../pages/auth/AuthCallbackPage.tsx'))
 const TermsPage = lazy(() => import('../pages/auth/TermsPage.tsx'))
 const PrivacyPage = lazy(() => import('../pages/auth/PrivacyPage.tsx'))
+const CommunityGuidelinesPage = lazy(() => import('../pages/auth/CommunityGuidelinesPage.tsx'))
+const CopyrightPage = lazy(() => import('../pages/auth/CopyrightPage.tsx'))
+const ContactPage = lazy(() => import('../pages/auth/ContactPage.tsx'))
 const LicencesPage = lazy(() => import('../pages/LicencesPage.tsx'))
 
 function RootLayout() {
@@ -84,6 +87,9 @@ const router = createBrowserRouter(
             { path: '/auth/callback', element: <AuthCallbackPage /> },
             { path: '/terms', element: <TermsPage /> },
             { path: '/privacy', element: <PrivacyPage /> },
+            { path: '/community-guidelines', element: <CommunityGuidelinesPage /> },
+            { path: '/copyright', element: <CopyrightPage /> },
+            { path: '/contact', element: <ContactPage /> },
             { path: '/licences', element: <LicencesPage /> },
           ],
         },

@@ -2027,6 +2027,33 @@ export type Database = {
         }
         Returns: undefined
       }
+      delete_my_account: { Args: Record<string, never>; Returns: undefined }
+      export_my_data: { Args: Record<string, never>; Returns: Json }
+      founder_create_invite_code: { Args: Record<string, never>; Returns: string }
+      founder_set_platform_flag: {
+        Args: { p_flag: string; p_enabled: boolean }
+        Returns: undefined
+      }
+      get_beta_signup_config: { Args: Record<string, never>; Returns: Json }
+      get_my_consents: { Args: Record<string, never>; Returns: Json }
+      health_check: { Args: Record<string, never>; Returns: Json }
+      join_beta_waitlist: { Args: { p_email: string }; Returns: undefined }
+      record_user_consent: {
+        Args: { p_document: string; p_version: string }
+        Returns: undefined
+      }
+      redeem_invite_code: { Args: { p_code: string }; Returns: undefined }
+      report_client_error: {
+        Args: {
+          p_message: string
+          p_name?: string | null
+          p_stack?: string | null
+          p_component_stack?: string | null
+          p_route?: string | null
+          p_context?: Json | null
+        }
+        Returns: undefined
+      }
       is_active_user: { Args: never; Returns: boolean }
       is_blocked_between: { Args: { a: string; b: string }; Returns: boolean }
       is_founder: { Args: never; Returns: boolean }

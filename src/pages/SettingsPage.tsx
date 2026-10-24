@@ -3,13 +3,15 @@ import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
-import { EmptyState } from '../components/states/EmptyState.tsx'
-import { ImageWithFallback } from '../components/states/ImageWithFallback.tsx'
 import { SafetySettingsSection } from '../components/safety/SafetySettingsSection.tsx'
+import { DeleteAccountModal } from '../components/settings/DeleteAccountModal.tsx'
 import { useAuth } from '../lib/auth/auth-context.ts'
 import { USERNAME_TAKEN_NOTICE } from '../lib/auth/messages.ts'
 import { ThemeChoiceGroup } from '../components/shell/ThemeChoiceGroup.tsx'
 import { useTheme } from '../lib/useTheme.ts'
+import { downloadJsonExport, exportMyData } from '../lib/account/dataExport.ts'
+
+const appVersion = import.meta.env.VITE_APP_VERSION ?? '0.0.0'
 
 const USERNAME_NOTICE_KEY = 'voxly-username-notice'
 
@@ -43,6 +45,9 @@ export default function SettingsPage() {
   const showUsernameNotice = Boolean(user && chosen && assigned && chosen !== assigned && !noticeDismissed(user.id))
   const [noticeOpen, setNoticeOpen] = useState(showUsernameNotice)
   const [signingOut, setSigningOut] = useState(false)
+  const [exportBusy, setExportBusy] = useState(false)
+  const [exportError, setExportError] = useState('')
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   function closeNotice() {
     if (user) dismissNotice(user.id)
@@ -118,14 +123,88 @@ export default function SettingsPage() {
           </Link>
         </section>
       ) : null}
-      <section className="rounded-2xl border border-line bg-surface p-5">
+      <section className="rounded-2xl border border-line bg-surface p-5" data-testid="settings-about">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">About</h2>
-        <Link
-          to="/licences"
-          className={`mt-4 inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
-        >
-          Font licences
-        </Link>
+        <p className="mt-3 text-sm text-muted">
+          Version <span data-testid="settings-app-version">{appVersion}</span>
+        </p>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <Link
+            to="/terms"
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Terms
+          </Link>
+          <Link
+            to="/privacy"
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Privacy
+          </Link>
+          <Link
+            to="/community-guidelines"
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Community guidelines
+          </Link>
+          <Link
+            to="/copyright"
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Copyright
+          </Link>
+          <Link
+            to="/contact"
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Contact
+          </Link>
+          <Link
+            to="/licences"
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Font licences
+          </Link>
+        </div>
+      </section>
+      <section className="rounded-2xl border border-line bg-surface p-5" data-testid="settings-data-section">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Your data</h2>
+        <p className="mt-2 text-sm text-muted">Download a JSON copy of your account data, or permanently delete your account.</p>
+        {exportError ? (
+          <p role="alert" className="mt-2 text-sm text-coral">
+            {exportError}
+          </p>
+        ) : null}
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <button
+            type="button"
+            disabled={exportBusy}
+            onClick={() => {
+              setExportBusy(true)
+              setExportError('')
+              void exportMyData().then((result) => {
+                setExportBusy(false)
+                if (!result.ok) {
+                  setExportError(result.message)
+                  return
+                }
+                downloadJsonExport(`voxly-export-${profile?.username ?? 'account'}.json`, result.payload)
+              })
+            }}
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink disabled:opacity-60 ${focusRing}`}
+            data-testid="settings-download-data"
+          >
+            {exportBusy ? 'Preparing…' : 'Download my data'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setDeleteOpen(true)}
+            className={`inline-flex min-h-11 items-center rounded-2xl border border-coral/40 px-4 text-base font-semibold text-coral ${focusRing}`}
+            data-testid="settings-delete-account"
+          >
+            Delete account
+          </button>
+        </div>
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 id="theme-label" className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -133,11 +212,7 @@ export default function SettingsPage() {
         </h2>
         <ThemeChoiceGroup choice={choice} onChange={setTheme} labelledBy="theme-label" />
       </section>
-      <EmptyState
-        icon={<ImageWithFallback alt="" label="Settings" />}
-        title="Settings"
-        message="The rest of Settings arrives in a later step."
-      />
+      <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} />
       <button
         type="button"
         disabled={signingOut}

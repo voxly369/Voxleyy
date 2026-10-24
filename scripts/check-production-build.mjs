@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Fails if production bundle contains e2e mock hooks or test-only markers.
+ * Fails if production bundle contains e2e mock hooks, test-only markers, or source maps.
  * Run after `npm run build`.
  */
 import { readdirSync, readFileSync } from 'node:fs'
@@ -38,6 +38,30 @@ try {
   process.exit(1)
 }
 
+const mapFiles = distFiles.filter((file) => file.endsWith('.map'))
+if (mapFiles.length > 0) {
+  console.error('check-production-build: source map files must not ship in dist/:')
+  for (const file of mapFiles) {
+    console.error(`  ${file.replace(process.cwd() + '/', '')}`)
+  }
+  process.exit(1)
+}
+
+const sourceMappingHits = []
+for (const file of distFiles.filter((f) => f.endsWith('.js'))) {
+  const text = readFileSync(file, 'utf8')
+  if (text.includes('sourceMappingURL=')) {
+    sourceMappingHits.push(file)
+  }
+}
+if (sourceMappingHits.length > 0) {
+  console.error('check-production-build: sourceMappingURL references in JS output:')
+  for (const file of sourceMappingHits) {
+    console.error(`  ${file.replace(process.cwd() + '/', '')}`)
+  }
+  process.exit(1)
+}
+
 const hits = []
 for (const file of distFiles) {
   const text = readFileSync(file, 'utf8')
@@ -54,4 +78,6 @@ if (hits.length > 0) {
   process.exit(1)
 }
 
-console.log(`check-production-build: OK (scanned ${distFiles.length} files, no e2e hook markers)`)
+console.log(
+  `check-production-build: OK (scanned ${distFiles.length} files, no maps, no e2e hook markers)`,
+)
