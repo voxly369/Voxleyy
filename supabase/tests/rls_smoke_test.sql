@@ -49,7 +49,8 @@ create or replace function pg_temp.create_test_user(
   p_id uuid,
   p_email text,
   p_confirmed timestamptz,
-  p_meta jsonb default '{}'::jsonb
+  p_meta jsonb default '{}'::jsonb,
+  p_fixture boolean default true
 )
 returns void
 language plpgsql
@@ -57,6 +58,8 @@ set search_path = public, auth
 as $$
 declare
   v_meta jsonb;
+  v_invite_only boolean;
+  v_beta_saved jsonb;
   pairs text[] := array[
     'instance_id', quote_literal('00000000-0000-0000-0000-000000000000') || '::uuid',
     'id', quote_literal(p_id::text) || '::uuid',
@@ -96,6 +99,14 @@ begin
     v_meta := v_meta || jsonb_build_object('username', left(v_local, 30));
   end if;
 
+  v_invite_only := coalesce((public.platform_setting_json('beta')->>'invite_only')::boolean, false);
+  if p_fixture and v_invite_only then
+    select value into v_beta_saved from public.platform_settings where key = 'beta';
+    update public.platform_settings
+    set value = jsonb_set(coalesce(value, '{}'::jsonb), '{invite_only}', 'false'::jsonb)
+    where key = 'beta';
+  end if;
+
   -- Only write columns this project actually has, so a newer or older auth.users shape still loads.
   for i in 1..array_length(pairs, 1) by 2 loop
     if exists (
@@ -116,6 +127,16 @@ begin
   end if;
 
   execute format('insert into auth.users (%s) values (%s)', cols, vals);
+
+  if p_fixture and v_invite_only then
+    if v_beta_saved is not null then
+      update public.platform_settings set value = v_beta_saved where key = 'beta';
+    else
+      update public.platform_settings
+      set value = jsonb_set(coalesce(value, '{}'::jsonb), '{invite_only}', 'true'::jsonb)
+      where key = 'beta';
+    end if;
+  end if;
 
   -- Some projects also require an identity row. A mismatch here must not hide a failed user insert.
   begin
@@ -4371,13 +4392,7 @@ begin
   select reader_a, reader_b, founder into v_a, v_b, v_founder from rls_ids limit 1;
 
   execute format('set local role %I', session_user);
-  update public.platform_settings
-  set value = jsonb_set(value, '{invite_only}', 'false'::jsonb)
-  where key = 'beta';
   perform pg_temp.create_test_user(v_pending, v_pending::text || '@pending.test', now());
-  update public.platform_settings
-  set value = jsonb_set(value, '{invite_only}', 'true'::jsonb)
-  where key = 'beta';
   update public.profiles set beta_access_granted = false where id = v_pending;
   select id into v_pub from public.creations where audience = 'public' and status = 'published' limit 1;
 
@@ -5018,6 +5033,46 @@ begin
   exception when others then
     perform pg_temp.record('profiles country FK rejects invalid code', true, sqlerrm);
   end;
+
+  execute format('set local role %I', session_user);
+  update public.platform_settings
+  set value = jsonb_set(coalesce(value, '{}'::jsonb), '{invite_only}', 'true'::jsonb)
+  where key = 'beta';
+
+  begin
+    perform pg_temp.create_test_user(gen_random_uuid(), 'noreply@fixture.test', now(), '{}'::jsonb, false);
+    perform pg_temp.record('signup dot test email no invite rejected', false, 'created');
+  exception when others then
+    perform pg_temp.record('signup dot test email no invite rejected', true, sqlerrm);
+  end;
+
+  begin
+    perform pg_temp.create_test_user(
+      gen_random_uuid(),
+      'stranger+' || gen_random_uuid()::text || '@example.com',
+      now(),
+      '{}'::jsonb,
+      false
+    );
+    perform pg_temp.record('signup non-founder no invite rejected', false, 'created');
+  exception when others then
+    perform pg_temp.record('signup non-founder no invite rejected', true, sqlerrm);
+  end;
+
+  perform pg_temp.record(
+    'founder email bypasses invite gate for beta access',
+    public.user_beta_access_ok(v_founder),
+    'user_beta_access_ok=' || public.user_beta_access_ok(v_founder)::text
+  );
+
+  v_other := gen_random_uuid();
+  perform pg_temp.create_test_user(v_other, v_other::text || '@no-beta-invite.test', now());
+  update public.profiles set beta_access_granted = false where id = v_other;
+  perform pg_temp.record(
+    'non-founder without beta_access fails user_beta_access_ok when invite_only',
+    not public.user_beta_access_ok(v_other),
+    'user_beta_access_ok=' || public.user_beta_access_ok(v_other)::text
+  );
 end $beta_readiness_18b$;
 
 do $$

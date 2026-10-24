@@ -102,6 +102,9 @@ export function preBetaMockHandleRest(url: string, _method: string, postData: un
   if (url.includes('/rest/v1/rpc/join_beta_waitlist')) {
     return null
   }
+  if (url.includes('/rest/v1/rpc/check_invite_code')) {
+    return false
+  }
   if (url.includes('/rest/v1/rpc/redeem_invite_code')) {
     const code = (postData as { p_code?: string } | null)?.p_code
     if (code === 'BADCODE') {
