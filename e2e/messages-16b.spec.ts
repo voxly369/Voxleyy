@@ -83,7 +83,7 @@ test.describe('messages 16B', () => {
 
   test('profile message button opens thread', async ({ page }) => {
     await page.goto(`/u/${OTHER.username}`, { waitUntil: 'networkidle' })
-    await page.getByTestId('profile-message-button').click()
+    await page.locator('[data-testid="profile-message-button"]:visible').click()
     await expect(page).toHaveURL(/\/messages\//)
   })
 

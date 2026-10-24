@@ -503,11 +503,12 @@ export async function installSupabaseMocks(page: Page) {
     }
 
     if (url.includes('/auth/v1/token')) {
-      let postData: unknown = null
+      const rawBody = route.request().postData()
+      let postData: unknown = rawBody
       try {
         postData = route.request().postDataJSON()
       } catch {
-        postData = null
+        postData = rawBody
       }
       const rejected = authMockMaybeRejectToken(url, postData)
       if (rejected) {

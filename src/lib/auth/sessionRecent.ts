@@ -15,7 +15,7 @@ export function readAccessTokenIat(accessToken: string | null | undefined): numb
   if (parts.length < 2) return null
   try {
     const payload = base64UrlToJson(parts[1]!)
-    if (!payload || typeof payload !== 'object') return null
+    if (payload === null || typeof payload !== 'object') return null
     const iat = (payload as { iat?: unknown }).iat
     return typeof iat === 'number' && Number.isFinite(iat) ? iat : null
   } catch {

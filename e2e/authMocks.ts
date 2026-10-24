@@ -17,15 +17,26 @@ export function setE2eResendRateLimitAfterFirstSuccess(enabled: boolean) {
   resendCount = 0
 }
 
+function tokenGrantType(postData: unknown): string | null {
+  if (postData && typeof postData === 'object') {
+    const grant = (postData as Record<string, unknown>).grant_type
+    return typeof grant === 'string' ? grant : null
+  }
+  if (typeof postData === 'string') {
+    return new URLSearchParams(postData).get('grant_type')
+  }
+  return null
+}
+
 export function authMockMaybeRejectToken(url: string, postData: unknown): { status: number; body: unknown } | null {
-  if (!url.includes('/auth/v1/token')) return null
-  const body = postData && typeof postData === 'object' ? (postData as Record<string, unknown>) : {}
-  const grant = body.grant_type
-  if (grant !== 'password' || !passwordSignInError) return null
+  if (!url.includes('/auth/v1/token') || !passwordSignInError) return null
+  const grant = tokenGrantType(postData)
+  if (grant !== null && grant !== 'password') return null
   return {
     status: 400,
     body: {
       error: passwordSignInError.code,
+      error_code: passwordSignInError.code,
       error_description: passwordSignInError.message ?? passwordSignInError.code,
       msg: passwordSignInError.message ?? passwordSignInError.code,
     },
