@@ -3825,6 +3825,9 @@ declare
   v_ra uuid := gen_random_uuid();
   v_rb uuid := gen_random_uuid();
   v_rc uuid;
+  v_nd_a uuid := gen_random_uuid();
+  v_nd_b uuid := gen_random_uuid();
+  v_held boolean;
 begin
   select reader_a, reader_b, founder into v_a, v_b, v_founder from rls_ids limit 1;
 
@@ -3834,16 +3837,68 @@ begin
   execute 'set local role authenticated';
   perform set_config('request.jwt.claim.sub', v_a::text, true);
   v_conv := public.get_or_create_dm(v_b);
+  v_msg := public.send_message(v_conv, 'Seed for access tests');
 
   perform set_config('request.jwt.claim.sub', v_founder::text, true);
   select count(*) into v_count from public.messages_visible where conversation_id = v_conv;
   perform pg_temp.record('non-member cannot read messages', v_count = 0, 'rows=' || v_count);
+  select count(*) into v_count from public.conversations where id = v_conv;
+  perform pg_temp.record('non-member cannot read conversations row', v_count = 0, 'rows=' || v_count);
+  select count(*) into v_count from public.conversation_members where conversation_id = v_conv;
+  perform pg_temp.record('non-member cannot read conversation_members', v_count = 0, 'rows=' || v_count);
   begin
     perform public.send_message(v_conv, 'intruder');
     perform pg_temp.record('non-member cannot send', false, 'sent');
   exception when others then
     perform pg_temp.record('non-member cannot send', true, sqlerrm);
   end;
+  begin
+    perform public.mark_conversation_read(v_conv);
+    perform pg_temp.record('non-member cannot mark_conversation_read', false, 'ok');
+  exception when others then
+    perform pg_temp.record('non-member cannot mark_conversation_read', true, sqlerrm);
+  end;
+  begin
+    perform public.set_conversation_muted(v_conv, true);
+    perform pg_temp.record('non-member cannot set_conversation_muted', false, 'ok');
+  exception when others then
+    perform pg_temp.record('non-member cannot set_conversation_muted', true, sqlerrm);
+  end;
+  begin
+    perform public.delete_message(v_msg);
+    perform pg_temp.record('non-member cannot delete_message', false, 'ok');
+  exception when others then
+    perform pg_temp.record('non-member cannot delete_message', true, sqlerrm);
+  end;
+
+  execute 'set local role anon';
+  begin
+    select count(*) into v_count from public.conversations where id = v_conv;
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon cannot read conversations', v_count = 0, 'rows=' || v_count);
+  exception when others then
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon cannot read conversations', true, sqlerrm);
+  end;
+  execute 'set local role anon';
+  begin
+    select count(*) into v_count from public.conversation_members where conversation_id = v_conv;
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon cannot read conversation_members', v_count = 0, 'rows=' || v_count);
+  exception when others then
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon cannot read conversation_members', true, sqlerrm);
+  end;
+  execute 'set local role anon';
+  begin
+    select count(*) into v_count from public.messages where conversation_id = v_conv;
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon cannot read messages table', v_count = 0, 'rows=' || v_count);
+  exception when others then
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon cannot read messages table', true, sqlerrm);
+  end;
+  execute 'set local role authenticated';
 
   perform set_config('request.jwt.claim.sub', v_a::text, true);
   v_conv2 := public.get_or_create_dm(v_b);
@@ -4026,6 +4081,8 @@ begin
   exception when others then perform pg_temp.record('send refused to banned counterpart policy', true, sqlerrm); end;
   select count(*) into v_count from public.messages_visible where conversation_id = v_conv;
   perform pg_temp.record('banned counterpart history still readable', v_count > 0, 'rows=' || v_count);
+  execute format('set local role %I', session_user);
+  update public.profiles set status = 'active' where id = v_a;
 
   execute format('set local role %I', session_user);
   perform pg_temp.create_test_user(v_del, v_del::text || '@del-a.test', now());
@@ -4055,6 +4112,85 @@ begin
       exit;
     end;
   end loop;
+
+  execute format('set local role %I', session_user);
+  insert into public.engagement_events (user_id, kind, created_at)
+  select v_ra, 'message_day', now() - (gs || ' seconds')::interval
+  from generate_series(1, 500) gs;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_ra::text, true);
+  begin
+    perform public.send_message(v_rc, 'over daily cap');
+    perform pg_temp.record('message per-day rate limit refuses over cap', false, 'sent');
+  exception when others then
+    perform pg_temp.record('message per-day rate limit refuses over cap', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_nd_a, v_nd_a::text || '@day-ok-a.test', now());
+  perform pg_temp.create_test_user(v_nd_b, v_nd_b::text || '@day-ok-b.test', now());
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_nd_a::text, true);
+  v_del_conv := public.get_or_create_dm(v_nd_b);
+  begin
+    perform public.send_message(v_del_conv, 'under daily cap');
+    perform pg_temp.record('message per-day rate limit allows under cap', true, 'sent');
+  exception when others then
+    perform pg_temp.record('message per-day rate limit allows under cap', false, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  delete from public.notifications where target_id = v_conv and type = 'message';
+  update public.notification_settings
+  set quiet_manual = true, quiet_reach = 'nobody', quiet_summary_pending = 0
+  where user_id = v_b;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform public.send_message(v_conv, 'Quiet nobody');
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select n.held into v_held from public.notifications n
+  where n.recipient_id = v_b and n.type = 'message' and n.target_id = v_conv
+  order by n.created_at desc limit 1;
+  perform pg_temp.record('message notification held when quiet nobody reach', v_held = true, 'held=' || v_held);
+
+  execute format('set local role %I', session_user);
+  delete from public.notifications where target_id = v_conv and type = 'message';
+  update public.notification_settings set quiet_reach = 'everyone' where user_id = v_b;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform public.send_message(v_conv, 'Quiet everyone');
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select n.held into v_held from public.notifications n
+  where n.recipient_id = v_b and n.type = 'message' and n.target_id = v_conv
+  order by n.created_at desc limit 1;
+  perform pg_temp.record('message notification delivered when quiet everyone reach', v_held = false, 'held=' || v_held);
+
+  execute format('set local role %I', session_user);
+  delete from public.notifications where target_id = v_conv and type = 'message';
+  delete from public.follows where follower_id in (v_a, v_b) and followee_id in (v_a, v_b);
+  update public.notification_settings set quiet_reach = 'close_contacts' where user_id = v_b;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform public.send_message(v_conv, 'Quiet close non-mutual');
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select n.held into v_held from public.notifications n
+  where n.recipient_id = v_b and n.type = 'message' and n.target_id = v_conv
+  order by n.created_at desc limit 1;
+  perform pg_temp.record('message notification held for close contacts non-mutual', v_held = true, 'held=' || v_held);
+
+  execute format('set local role %I', session_user);
+  delete from public.notifications where target_id = v_conv and type = 'message';
+  insert into public.follows (follower_id, followee_id) values (v_a, v_b), (v_b, v_a);
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform public.send_message(v_conv, 'Quiet close mutual');
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  select n.held into v_held from public.notifications n
+  where n.recipient_id = v_b and n.type = 'message' and n.target_id = v_conv
+  order by n.created_at desc limit 1;
+  perform pg_temp.record('message notification delivered for close contacts mutual', v_held = false, 'held=' || v_held);
+
+  update public.notification_settings set quiet_manual = false, quiet_reach = 'everyone' where user_id = v_b;
 
   perform set_config('request.jwt.claim.sub', v_founder::text, true);
   begin
