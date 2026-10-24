@@ -5005,6 +5005,21 @@ begin
   v_json := public.export_my_data();
   perform pg_temp.record('export_my_data profile key present', v_json ? 'profile', 'keys ok');
   perform pg_temp.record('export_my_data only own profile id', (v_json->'profile'->>'id')::uuid = v_b, 'id ok');
+  perform pg_temp.record('export_my_data exported_at key present', v_json ? 'exported_at', 'keys ok');
+  perform pg_temp.record('export_my_data notification_settings key present', v_json ? 'notification_settings', 'keys ok');
+  perform pg_temp.record('export_my_data creations key present', v_json ? 'creations', 'keys ok');
+  perform pg_temp.record('export_my_data comments key present', v_json ? 'comments', 'keys ok');
+  perform pg_temp.record('export_my_data likes key present', v_json ? 'likes', 'keys ok');
+  perform pg_temp.record('export_my_data saves key present', v_json ? 'saves', 'keys ok');
+  perform pg_temp.record('export_my_data follows key present', v_json ? 'follows', 'keys ok');
+  perform pg_temp.record('export_my_data collections key present', v_json ? 'collections', 'keys ok');
+  perform pg_temp.record('export_my_data highlights key present', v_json ? 'highlights', 'keys ok');
+  perform pg_temp.record('export_my_data bookmarks key present', v_json ? 'bookmarks', 'keys ok');
+  perform pg_temp.record('export_my_data reading_progress key present', v_json ? 'reading_progress', 'keys ok');
+  perform pg_temp.record('export_my_data badges key present', v_json ? 'badges', 'keys ok');
+  perform pg_temp.record('export_my_data messages_sent key present', v_json ? 'messages_sent', 'keys ok');
+  perform pg_temp.record('export_my_data consents key present', v_json ? 'consents', 'keys ok');
+  perform pg_temp.record('export_my_data truncated flag present', v_json ? 'truncated', 'keys ok');
 
   select count(*) into v_count from public.countries;
   perform pg_temp.record('countries seed count', v_count >= 200, 'rows=' || v_count);

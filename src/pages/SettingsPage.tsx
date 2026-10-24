@@ -5,6 +5,7 @@ import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { SafetySettingsSection } from '../components/safety/SafetySettingsSection.tsx'
 import { DeleteAccountModal } from '../components/settings/DeleteAccountModal.tsx'
+import { TwoFactorAuthSection } from '../components/settings/TwoFactorAuthSection.tsx'
 import { useAuth } from '../lib/auth/auth-context.ts'
 import { USERNAME_TAKEN_NOTICE } from '../lib/auth/messages.ts'
 import { ThemeChoiceGroup } from '../components/shell/ThemeChoiceGroup.tsx'
@@ -94,6 +95,7 @@ export default function SettingsPage() {
           </div>
         ) : null}
       </section>
+      <TwoFactorAuthSection />
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Profile</h2>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">

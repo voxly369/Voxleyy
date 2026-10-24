@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import type { OwnProfile } from './profile.ts'
 
-export type AuthResult = { ok: true } | { ok: false; message?: string }
+export type AuthResult = { ok: true; needsMfa?: boolean } | { ok: false; message?: string }
 
 export type SignUpInput = {
   email: string
