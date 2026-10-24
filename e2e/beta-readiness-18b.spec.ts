@@ -30,6 +30,7 @@ test.describe('beta readiness 18B', () => {
     await expect(page.getByTestId('onboarding-flow')).toBeVisible()
     for (let i = 0; i < 7; i += 1) {
       await page.getByTestId('onboarding-skip').click()
+      await page.waitForTimeout(150)
     }
     await expect(page.getByTestId('onboarding-flow')).toBeHidden({ timeout: 15_000 })
   })
