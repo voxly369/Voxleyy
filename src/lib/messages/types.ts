@@ -47,6 +47,30 @@ export type VisibleMessage = {
   isScheduled: boolean
 }
 
+export type LocalMessageStatus = 'sending' | 'failed'
+
+export type ThreadMessage = VisibleMessage & {
+  localStatus?: LocalMessageStatus
+  clientId?: string
+}
+
+export type DmWriterHit = {
+  id: string
+  username: string
+  displayName: string
+  avatarUrl: string | null
+  canMessage: boolean
+}
+
+export type DmSharePostHit = {
+  id: string
+  title: string | null
+  caption: string | null
+  excerpt: string | null
+  authorUsername: string
+  authorDisplayName: string
+}
+
 export type SharedCreationPreview = {
   id: string
   title: string | null

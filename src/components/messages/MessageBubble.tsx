@@ -1,23 +1,39 @@
 import { useState } from 'react'
 import { ConfirmDialog } from '../states/ConfirmDialog.tsx'
 import { focusRing } from '../shell/navItems.ts'
-import { deleteMessage } from '../../lib/messages/api.ts'
-import type { SharedCreationPreview, VisibleMessage } from '../../lib/messages/types.ts'
+import { ReportSheet } from '../safety/ReportSheet.tsx'
+import { cancelScheduledMessage, deleteMessage } from '../../lib/messages/api.ts'
+import type { SharedCreationPreview, ThreadMessage } from '../../lib/messages/types.ts'
 import { SharedPostCard } from './SharedPostCard.tsx'
 
 type MessageBubbleProps = {
-  message: VisibleMessage
+  message: ThreadMessage
   isOwn: boolean
+  reportedUserId?: string | null
   sharedPreview?: SharedCreationPreview | null
   onDeleted?: (messageId: string) => void
+  onCancelled?: (messageId: string) => void
+  onRetry?: (clientId: string) => void
 }
 
-export function MessageBubble({ message, isOwn, sharedPreview, onDeleted }: MessageBubbleProps) {
+export function MessageBubble({
+  message,
+  isOwn,
+  reportedUserId,
+  sharedPreview,
+  onDeleted,
+  onCancelled,
+  onRetry,
+}: MessageBubbleProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [cancelOpen, setCancelOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  const scheduled = message.isScheduled && isOwn
+  const scheduled = message.isScheduled && isOwn && !message.localStatus
   const deleted = message.isDeleted
+  const failed = message.localStatus === 'failed'
+  const sending = message.localStatus === 'sending'
 
   async function onDeleteConfirm() {
     setBusy(true)
@@ -27,16 +43,25 @@ export function MessageBubble({ message, isOwn, sharedPreview, onDeleted }: Mess
     if (result.ok) onDeleted?.(message.id)
   }
 
+  async function onCancelConfirm() {
+    setBusy(true)
+    const result = await cancelScheduledMessage(message.id)
+    setBusy(false)
+    setCancelOpen(false)
+    if (result.ok) onCancelled?.(message.id)
+  }
+
   return (
     <div
       className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
       data-testid="message-bubble"
       data-own={isOwn ? 'true' : 'false'}
+      data-local-status={message.localStatus ?? 'sent'}
     >
       <div
         className={`max-w-[85%] rounded-2xl px-4 py-2 text-base ${
           isOwn ? 'bg-coral text-white' : 'border border-line bg-raised text-ink'
-        }`}
+        } ${failed ? 'ring-2 ring-coral/60' : ''}`}
       >
         {deleted ? (
           <p className="italic opacity-80">Message deleted</p>
@@ -49,17 +74,55 @@ export function MessageBubble({ message, isOwn, sharedPreview, onDeleted }: Mess
                 Scheduled
               </p>
             ) : null}
+            {sending ? (
+              <p className="mt-1 text-xs opacity-90" data-testid="message-sending-label">Sending…</p>
+            ) : null}
+            {failed ? (
+              <p className="mt-1 text-xs font-semibold" data-testid="message-failed-label">Could not send</p>
+            ) : null}
           </>
         )}
-        {isOwn && !deleted ? (
-          <button
-            type="button"
-            onClick={() => setConfirmOpen(true)}
-            className={`mt-2 text-xs underline opacity-90 ${focusRing}`}
-          >
-            Delete
-          </button>
-        ) : null}
+        <div className="mt-2 flex flex-wrap gap-3">
+          {isOwn && !deleted && !message.localStatus ? (
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              className={`text-xs underline opacity-90 ${focusRing}`}
+            >
+              Delete
+            </button>
+          ) : null}
+          {scheduled ? (
+            <button
+              type="button"
+              onClick={() => setCancelOpen(true)}
+              data-testid="cancel-scheduled-message"
+              className={`text-xs underline opacity-90 ${focusRing}`}
+            >
+              Cancel schedule
+            </button>
+          ) : null}
+          {failed && message.clientId ? (
+            <button
+              type="button"
+              onClick={() => onRetry?.(message.clientId!)}
+              data-testid="retry-failed-message"
+              className={`text-xs font-semibold underline ${focusRing}`}
+            >
+              Retry
+            </button>
+          ) : null}
+          {!isOwn && !deleted && reportedUserId ? (
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              data-testid="report-message"
+              className={`text-xs underline opacity-90 ${focusRing}`}
+            >
+              Report
+            </button>
+          ) : null}
+        </div>
       </div>
       <ConfirmDialog
         open={confirmOpen}
@@ -69,6 +132,29 @@ export function MessageBubble({ message, isOwn, sharedPreview, onDeleted }: Mess
         busy={busy}
         onCancel={() => setConfirmOpen(false)}
         onConfirm={() => void onDeleteConfirm()}
+      />
+      <ConfirmDialog
+        open={cancelOpen}
+        title="Cancel scheduled message?"
+        message="This message will not be delivered."
+        confirmLabel="Cancel schedule"
+        busy={busy}
+        onCancel={() => setCancelOpen(false)}
+        onConfirm={() => void onCancelConfirm()}
+      />
+      <ReportSheet
+        open={reportOpen}
+        target={
+          reportOpen
+            ? {
+                targetType: 'message',
+                targetId: message.id,
+                reportedUserId: reportedUserId ?? undefined,
+                label: 'message',
+              }
+            : null
+        }
+        onClose={() => setReportOpen(false)}
       />
     </div>
   )

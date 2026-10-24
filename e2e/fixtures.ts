@@ -555,14 +555,18 @@ export {
   setModerationReportsEmpty,
   setModerationUnseenWarnings,
   seedModerationAuditLog,
+  prependFounderQueueRow,
 } from './moderationMocks.ts'
 
 export {
   bumpMessageUnread,
   E2E_CONVERSATION_ID,
+  E2E_SCHEDULED_MESSAGE_ID,
+  messageReportQueueRow,
   resetMessageMocks,
   setMessageCanMessage,
   setMessageQuietStatus,
+  setMessageSendFails,
   setMessageUnreadOverride,
 } from './messageMocks.ts'
 
