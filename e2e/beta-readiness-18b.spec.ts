@@ -1,12 +1,20 @@
 import { test, expect } from '@playwright/test'
 import { installSupabaseMocks, seedSignedInSession, READER } from './fixtures.ts'
-import { setE2eOnboardingComplete, setE2eOnboardingIncomplete } from './betaReadiness18bMocks.ts'
+import {
+  setE2eEntranceVisible,
+  setE2eOnboardingComplete,
+  setE2eOnboardingIncomplete,
+} from './betaReadiness18bMocks.ts'
 
 test.describe('beta readiness 18B', () => {
   test.beforeEach(async ({ page }) => {
     await installSupabaseMocks(page)
+    await page.addInitScript(() => {
+      localStorage.removeItem('voxly-last-visit-v1')
+    })
     await seedSignedInSession(page)
     setE2eOnboardingComplete()
+    setE2eEntranceVisible(false)
   })
 
   test('home greeting and checklist', async ({ page }) => {
