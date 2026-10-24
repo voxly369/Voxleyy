@@ -2096,6 +2096,45 @@ export type Database = {
       pin_badge: { Args: { p_badge_key: string; p_position: number }; Returns: undefined }
       unpin_badge: { Args: { p_badge_key: string }; Returns: undefined }
       set_featured_book: { Args: { p_book_id: string | null }; Returns: undefined }
+      touch_activity: { Args: Record<string, never>; Returns: undefined }
+      refresh_daily_metrics: { Args: { p_from: string; p_to: string }; Returns: Json }
+      founder_prepare_daily_metrics: { Args: { p_from: string; p_to: string }; Returns: Json }
+      founder_analytics_overview: {
+        Args: { p_from: string; p_to: string; p_country?: string; p_role?: string }
+        Returns: Json
+      }
+      founder_analytics_retention: {
+        Args: { p_from: string; p_to: string; p_country?: string; p_role?: string }
+        Returns: Json
+      }
+      founder_analytics_top_content: {
+        Args: {
+          p_from: string
+          p_to: string
+          p_window?: string
+          p_type?: string
+          p_sort?: string
+          p_limit?: number
+        }
+        Returns: Json
+      }
+      founder_analytics_top_creators: {
+        Args: { p_from: string; p_to: string; p_country?: string; p_limit?: number }
+        Returns: Json
+      }
+      founder_analytics_platform_health: { Args: { p_from: string; p_to: string }; Returns: Json }
+      founder_analytics_audience: { Args: { p_country?: string; p_role?: string }; Returns: Json }
+      founder_analytics_following: { Args: { p_from: string; p_to: string; p_limit?: number }; Returns: Json }
+      founder_analytics_engagement: { Args: { p_from: string; p_to: string }; Returns: Json }
+      founder_analytics_export: {
+        Args: { p_section: string; p_from: string; p_to: string; p_country?: string; p_role?: string }
+        Returns: Json
+      }
+      get_creator_dashboard_overview: { Args: { p_from: string; p_to: string }; Returns: Json }
+      get_creator_dashboard_top_posts: { Args: { p_window?: string; p_limit?: number }; Returns: Json }
+      get_creator_dashboard_audience: { Args: { p_from: string; p_to: string }; Returns: Json }
+      get_creator_dashboard_wip: { Args: Record<string, never>; Returns: Json }
+      get_creator_dashboard_books: { Args: Record<string, never>; Returns: Json }
       get_creator_analytics: { Args: Record<string, never>; Returns: Json }
       close_month: { Args: { p_month: string }; Returns: undefined }
       try_close_past_months: { Args: Record<string, never>; Returns: undefined }

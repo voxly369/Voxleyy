@@ -7,6 +7,7 @@ import { ACCOUNT_LOAD_FAILED, LOGIN_FAILED, RATE_LIMITED } from './messages.ts'
 import { mapAuthError } from '../errors/mapAuthError.ts'
 import { founderAccessFromRpc } from './founderAccess.ts'
 import { fetchIsFounder, fetchOwnProfile, type OwnProfile } from './profile.ts'
+import { touchActivityOncePerSession } from '../activity/touchActivity.ts'
 
 function redirectTo(path: string): string {
   return new URL(path, window.location.origin).toString()
@@ -84,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!ready || !userId) return
     void loadProfile(userId)
+    void touchActivityOncePerSession()
   }, [ready, userId, loadProfile])
 
   useEffect(() => {

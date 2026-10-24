@@ -7,7 +7,7 @@ import { PageSkeleton } from '../components/states/Skeleton.tsx'
 import { ModalStackProvider } from '../lib/shell/modalStack.tsx'
 import { ToastProvider } from '../components/shell/ToastProvider.tsx'
 import { AuthProvider } from '../lib/auth/AuthProvider.tsx'
-import { RequireAuth, RequireFounder, RequireGuest } from './guards.tsx'
+import { RequireAuth, RequireFounder, RequireGuest, RequireWriter } from './guards.tsx'
 
 const HomePage = lazy(() => import('../pages/HomePage.tsx'))
 const DiscoverPage = lazy(() => import('../pages/DiscoverPage.tsx'))
@@ -36,6 +36,7 @@ const BookPage = lazy(() => import('../pages/BookPage.tsx'))
 const CoverStudioPage = lazy(() => import('../pages/CoverStudioPage.tsx'))
 const BookPreviewPage = lazy(() => import('../pages/BookPreviewPage.tsx'))
 const FounderPage = lazy(() => import('../pages/FounderPage.tsx'))
+const CreatorDashboardPage = lazy(() => import('../pages/CreatorDashboardPage.tsx'))
 const MyReportsPage = lazy(() => import('../pages/settings/MyReportsPage.tsx'))
 const AppealsPage = lazy(() => import('../pages/settings/AppealsPage.tsx'))
 const NotificationSettingsPage = lazy(() => import('../pages/settings/NotificationSettingsPage.tsx'))
@@ -147,6 +148,10 @@ const router = createBrowserRouter(
                 {
                   element: <RequireFounder />,
                   children: [{ path: '/founder', element: <FounderPage /> }],
+                },
+                {
+                  element: <RequireWriter />,
+                  children: [{ path: '/creator', element: <CreatorDashboardPage /> }],
                 },
                 { path: '*', element: <NotFoundPage /> },
               ],

@@ -19,15 +19,32 @@ import { statusDisplay } from '../lib/safety/moderationDisplay.ts'
 import type { FounderAuditRow, FounderContentRow, FounderReportQueueRow, FounderUserSearchHit } from '../lib/safety/types.ts'
 import { FounderReasonModal } from '../components/safety/FounderReasonModal.tsx'
 import { FounderFeaturedBadgeControl } from '../components/founder/FounderFeaturedBadgeControl.tsx'
-import { FounderCloseMonthModal } from '../components/founder/FounderCloseMonthModal.tsx'
 import { FounderBetaTab } from '../components/founder/FounderBetaTab.tsx'
 import { FounderErrorsTab } from '../components/founder/FounderErrorsTab.tsx'
+import { FounderAnalyticsPanel, type FounderAnalyticsTabId } from '../components/founder/FounderAnalyticsPanel.tsx'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 
-type FounderTab = 'overview' | 'reports' | 'users' | 'content' | 'appeals' | 'audit' | 'beta' | 'errors'
+type FounderTab =
+  | FounderAnalyticsTabId
+  | 'reports'
+  | 'users'
+  | 'content'
+  | 'appeals'
+  | 'audit'
+  | 'beta'
+  | 'errors'
 
 const TABS: { id: FounderTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
+  { id: 'retention', label: 'Retention' },
+  { id: 'top-content', label: 'Top content' },
+  { id: 'top-creators', label: 'Top creators' },
+  { id: 'platform-health', label: 'Platform health' },
+  { id: 'audience', label: 'Audience' },
+  { id: 'following', label: 'Following' },
+  { id: 'engagement', label: 'Engagement' },
+  { id: 'revenue', label: 'Revenue' },
+  { id: 'curation', label: 'Curation' },
   { id: 'beta', label: 'Beta' },
   { id: 'errors', label: 'Errors' },
   { id: 'reports', label: 'Report queue' },
@@ -37,9 +54,22 @@ const TABS: { id: FounderTab; label: string }[] = [
   { id: 'audit', label: 'Audit log' },
 ]
 
+const ANALYTICS_TABS = new Set<FounderTab>([
+  'overview',
+  'retention',
+  'top-content',
+  'top-creators',
+  'platform-health',
+  'audience',
+  'following',
+  'engagement',
+  'revenue',
+  'curation',
+])
+
 export default function FounderPage() {
   useDocumentTitle('Founder')
-  const [tab, setTab] = useState<FounderTab>('reports')
+  const [tab, setTab] = useState<FounderTab>('overview')
   const [reportRows, setReportRows] = useState<FounderReportQueueRow[]>([])
   const [reportCursor, setReportCursor] = useState<string | null>(null)
   const [reportNext, setReportNext] = useState<string | null>(null)
@@ -59,9 +89,6 @@ export default function FounderPage() {
   const [appealDecision, setAppealDecision] = useState<{ id: string; decision: 'upheld' | 'overturned' } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [closeMonthOpen, setCloseMonthOpen] = useState(false)
-  const closeMonthTarget = `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, '0')}-01`
-
   const loadReports = useCallback(async (cursor: string | null, append: boolean) => {
     const result = await listFounderReportQueue(cursor)
     if (!result.ok) {
@@ -143,22 +170,7 @@ export default function FounderPage() {
 
       {tab === 'errors' ? <FounderErrorsTab /> : null}
 
-      {tab === 'overview' ? (
-        <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-4">
-          <h2 className="font-serif text-xl text-ink">Month close</h2>
-          <p className="text-sm text-muted">
-            Run performance badge rules for the current calendar month after it ends, or close manually for testing.
-          </p>
-          <button
-            type="button"
-            onClick={() => setCloseMonthOpen(true)}
-            className={`min-h-11 self-start rounded-2xl bg-coral px-4 font-semibold text-white ${focusRing}`}
-            data-testid="founder-close-month-open"
-          >
-            Close month…
-          </button>
-        </section>
-      ) : null}
+      {ANALYTICS_TABS.has(tab) ? <FounderAnalyticsPanel tab={tab as FounderAnalyticsTabId} /> : null}
 
       {tab === 'reports' ? (
         <div className="flex flex-col gap-4" data-testid="founder-report-queue">
@@ -401,11 +413,6 @@ export default function FounderPage() {
             }
           })
         }}
-      />
-      <FounderCloseMonthModal
-        open={closeMonthOpen}
-        month={closeMonthTarget}
-        onClose={() => setCloseMonthOpen(false)}
       />
     </PageContainer>
   )

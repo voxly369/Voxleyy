@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import {
+  gotoFounderReportQueue,
   installSupabaseMocks,
   seedModerationAuditLog,
   seedSignedInSession,
@@ -32,14 +33,14 @@ test.describe('moderation 12B founder workflows', () => {
   })
 
   test('empty reason blocks dismiss action', async ({ page }) => {
-    await page.goto('/founder', { waitUntil: 'networkidle' })
+    await gotoFounderReportQueue(page)
     await page.getByRole('button', { name: 'Dismiss' }).first().click()
     await page.getByRole('button', { name: 'Confirm' }).click()
     await expect(page.getByText('A reason is required.')).toBeVisible()
   })
 
   test('queue remove warn suspend and ban write audit rows', async ({ page }) => {
-    await page.goto('/founder', { waitUntil: 'networkidle' })
+    await gotoFounderReportQueue(page)
     await page.getByRole('button', { name: 'Remove content' }).first().click()
     await confirmFounderReason(page, 'Remove for spam policy.')
     await page.getByRole('button', { name: 'Warn' }).first().click()
@@ -58,7 +59,7 @@ test.describe('moderation 12B founder workflows', () => {
   })
 
   test('queue suspend 1d and 30d', async ({ page }) => {
-    await page.goto('/founder', { waitUntil: 'networkidle' })
+    await gotoFounderReportQueue(page)
     await page.getByRole('button', { name: 'Suspend 1d' }).first().click()
     await confirmFounderReason(page, 'One day suspension reason.')
     await page.getByRole('button', { name: 'Suspend 30d' }).first().click()
@@ -67,7 +68,7 @@ test.describe('moderation 12B founder workflows', () => {
 
   test('content tab remove and restore', async ({ page }) => {
     await page.goto('/founder', { waitUntil: 'networkidle' })
-    await founderNav(page).getByRole('button', { name: 'Content' }).click()
+    await founderNav(page).getByRole('button', { name: 'Content', exact: true }).click()
     await page.getByRole('button', { name: 'Remove' }).first().click()
     await page.getByLabel('Reason (required)').fill('Remove from content browser.')
     await page.getByRole('button', { name: 'Remove', exact: true }).click()
@@ -79,7 +80,7 @@ test.describe('moderation 12B founder workflows', () => {
   })
 
   test('users search and unban', async ({ page }) => {
-    await page.goto('/founder', { waitUntil: 'networkidle' })
+    await gotoFounderReportQueue(page)
     await founderNav(page).getByRole('button', { name: 'Users' }).click()
     await page.getByPlaceholder('Search name, username, or email').fill('writertwo')
     await page.getByRole('button', { name: 'Search' }).click()
@@ -87,7 +88,7 @@ test.describe('moderation 12B founder workflows', () => {
   })
 
   test('decide appeal upheld and overturned', async ({ page }) => {
-    await page.goto('/founder', { waitUntil: 'networkidle' })
+    await gotoFounderReportQueue(page)
     await founderNav(page).getByRole('button', { name: 'Appeals' }).click()
     await page.getByRole('button', { name: 'Uphold' }).first().click()
     await page.getByLabel('Reason (required)').fill('Original removal was correct.')
@@ -100,7 +101,7 @@ test.describe('moderation 12B founder workflows', () => {
   })
 
   test('audit log filter by action', async ({ page }) => {
-    await page.goto('/founder', { waitUntil: 'networkidle' })
+    await gotoFounderReportQueue(page)
     await page.getByRole('button', { name: 'Dismiss' }).first().click()
     await confirmFounderReason(page, 'Dismiss test reason here.')
     await founderNav(page).getByRole('button', { name: 'Audit log' }).click()
@@ -110,7 +111,7 @@ test.describe('moderation 12B founder workflows', () => {
 
   test('audit log cursor pagination', async ({ page }) => {
     seedModerationAuditLog(25)
-    await page.goto('/founder', { waitUntil: 'networkidle' })
+    await gotoFounderReportQueue(page)
     await founderNav(page).getByRole('button', { name: 'Audit log' }).click()
     await expect(auditLogRows(page)).toHaveCount(20)
     await expect(page.getByRole('button', { name: 'Load more' })).toBeVisible()
@@ -120,7 +121,7 @@ test.describe('moderation 12B founder workflows', () => {
   })
 
   test('view reported private content logs and refuses without report', async ({ page }) => {
-    await page.goto('/founder', { waitUntil: 'networkidle' })
+    await gotoFounderReportQueue(page)
     await page.getByText('Private journal report').scrollIntoViewIfNeeded()
     await page.getByTestId('view-reported-private-content').click()
     await expect(page.getByTestId('private-content-preview')).toContainText('Secret journal')

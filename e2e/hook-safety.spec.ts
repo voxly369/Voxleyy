@@ -20,6 +20,6 @@ test.describe('e2e hook safety', () => {
     await seedSignedInSession(page)
     setModerationIsFounder(true)
     await page.goto('/founder', { waitUntil: 'networkidle' })
-    await expect(page.getByTestId('founder-report-queue')).toBeVisible()
+    await expect(page.getByTestId('founder-analytics-overview')).toBeVisible()
   })
 })

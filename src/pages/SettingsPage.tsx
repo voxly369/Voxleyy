@@ -40,6 +40,7 @@ function dismissNotice(userId: string) {
 export default function SettingsPage() {
   const { choice, setTheme } = useTheme()
   const { user, profile, signOut, isFounder } = useAuth()
+  const isWriter = profile?.role === 'writer'
   const chosen = chosenUsername(user?.user_metadata)
   const assigned = profile?.username.toLowerCase() ?? ''
   const showUsernameNotice = Boolean(user && chosen && assigned && chosen !== assigned && !noticeDismissed(user.id))
@@ -112,6 +113,17 @@ export default function SettingsPage() {
         </div>
       </section>
       <SafetySettingsSection />
+      {isWriter ? (
+        <section className="rounded-2xl border border-line bg-surface p-5" data-testid="settings-creator-section">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Creator</h2>
+          <Link
+            to="/creator"
+            className={`mt-4 inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+          >
+            Creator dashboard
+          </Link>
+        </section>
+      ) : null}
       {isFounder ? (
         <section className="rounded-2xl border border-line bg-surface p-5" data-testid="settings-founder-section">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Founder</h2>
