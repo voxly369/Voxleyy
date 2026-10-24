@@ -95,7 +95,9 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
             >
               <span className="truncate">{post.author.displayName || post.author.username}</span>
             </Link>
-            {post.author.feedBadges?.length ? <BadgeRowOnName badges={post.author.feedBadges} /> : null}
+            {post.author.feedBadges?.length ? (
+              <BadgeRowOnName badges={post.author.feedBadges} verified={post.author.verified} />
+            ) : null}
             {post.author.verified ? <VerifiedBadge /> : null}
           </div>
           <Link

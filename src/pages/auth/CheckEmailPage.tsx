@@ -4,6 +4,8 @@ import { focusRing } from '../../components/shell/navItems.ts'
 import { useAuth } from '../../lib/auth/auth-context.ts'
 import { SEND_FAILED } from '../../lib/auth/messages.ts'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts'
+import { maskEmailForDisplay } from '../../lib/signup/maskEmail.ts'
+import { canResendConfirmation, recordResendConfirmation } from '../../lib/signup/resendLimits.ts'
 
 const COOLDOWN_SECONDS = 60
 
@@ -18,6 +20,7 @@ export default function CheckEmailPage() {
   const { resendConfirmation } = useAuth()
   const location = useLocation()
   const email = emailFromState(location.state)
+  const masked = email ? maskEmailForDisplay(email) : ''
   const [seconds, setSeconds] = useState(0)
   const [pending, setPending] = useState(false)
   const [notice, setNotice] = useState('')
@@ -34,6 +37,10 @@ export default function CheckEmailPage() {
 
   async function resend() {
     if (lock.current || seconds > 0 || !email) return
+    if (!canResendConfirmation()) {
+      setError('You have reached the resend limit for this hour. Try again later.')
+      return
+    }
     lock.current = true
     setPending(true)
     setError('')
@@ -45,6 +52,7 @@ export default function CheckEmailPage() {
       setError(result.message ?? SEND_FAILED)
       return
     }
+    recordResendConfirmation()
     setNotice('We sent another link.')
     setSeconds(COOLDOWN_SECONDS)
   }
@@ -53,9 +61,11 @@ export default function CheckEmailPage() {
     <div className="flex flex-col gap-5">
       <h1 className="text-3xl text-ink">Check your email</h1>
       <p role="status" aria-live="polite" className="text-base text-ink">
-        {email ? `We sent a link to ${email}` : 'We sent a link to your email address.'}
+        {masked
+          ? `We sent a confirmation link to ${masked}. Open it when you are ready.`
+          : 'We sent a confirmation link to your email address.'}
       </p>
-      <p className="text-sm text-muted">Open the link to confirm your account. It expires after a while.</p>
+      <p className="text-sm text-muted">The link expires after a while. You can request a new one below.</p>
       {notice ? (
         <p role="status" aria-live="polite" className="text-sm text-ink">
           {notice}
@@ -70,9 +80,15 @@ export default function CheckEmailPage() {
         disabled={pending || seconds > 0 || !email}
         aria-busy={pending ? true : undefined}
         className={`inline-flex min-h-11 items-center justify-center rounded-2xl bg-coral px-5 text-base font-semibold text-white disabled:opacity-60 ${focusRing}`}
+        data-testid="check-email-resend"
       >
         {seconds > 0 ? `Resend in ${seconds}s` : pending ? 'Please wait…' : 'Resend link'}
       </button>
+      <p className="text-sm text-muted">
+        <Link to="/signup" className={`underline underline-offset-2 ${focusRing}`} data-testid="check-email-start-over">
+          Wrong email? Start over
+        </Link>
+      </p>
       <p className="text-sm text-muted">
         <Link to="/login" className={`underline underline-offset-2 ${focusRing}`}>
           Back to sign in

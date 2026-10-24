@@ -4,10 +4,14 @@ import { emailSchema, passwordSchema, signUpSchema, usernameSchema } from './sch
 
 const validSignUp = {
   email: 'reader@example.com',
+  displayName: 'Reader',
   username: 'reader_name',
+  country: 'ZA',
+  timezone: 'Africa/Johannesburg',
   password: 'Correct horse battery 1',
   confirmPassword: 'Correct horse battery 1',
   acceptedTerms: true,
+  confirmedAge: true,
 }
 
 describe('auth schemas', () => {
@@ -51,5 +55,6 @@ describe('auth schemas', () => {
     expect(signUpSchema.safeParse(validSignUp).success).toBe(true)
     expect(signUpSchema.safeParse({ ...validSignUp, confirmPassword: 'another long password' }).success).toBe(false)
     expect(signUpSchema.safeParse({ ...validSignUp, acceptedTerms: false }).success).toBe(false)
+    expect(signUpSchema.safeParse({ ...validSignUp, confirmedAge: false }).success).toBe(false)
   })
 })

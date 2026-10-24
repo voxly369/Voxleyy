@@ -46,3 +46,18 @@ export async function redeemInviteCode(code: string): Promise<{ ok: true } | { o
   if (error) return { ok: false, message: 'That invite code isn\'t valid.' }
   return { ok: true }
 }
+
+export async function checkInviteCodeValid(code: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const formatError = inviteCodeFormatError(code)
+  if (formatError) return { ok: false, message: 'That invite code isn\'t valid.' }
+  const normalized = normalizeInviteCode(code)
+  const { data, error } = await supabase.rpc('check_invite_code', { p_code: normalized })
+  if (error) {
+    if (error.message.includes('Too many attempts')) {
+      return { ok: false, message: 'Too many attempts. Try again later.' }
+    }
+    return { ok: false, message: 'That invite code isn\'t valid.' }
+  }
+  if (data !== true) return { ok: false, message: 'That invite code isn\'t valid.' }
+  return { ok: true }
+}

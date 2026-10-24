@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../supabaseClient.ts'
 import { AuthContext, type AuthResult, type SignUpInput } from './auth-context.ts'
-import { ACCOUNT_LOAD_FAILED, LOGIN_FAILED, RATE_LIMITED } from './messages.ts'
+import { ACCOUNT_LOAD_FAILED, LOGIN_FAILED, RATE_LIMITED, SIGNUP_FAILED } from './messages.ts'
 import { mapAuthError } from '../errors/mapAuthError.ts'
 import { founderAccessFromRpc } from './founderAccess.ts'
 import { fetchIsFounder, fetchOwnProfile, type OwnProfile } from './profile.ts'
 import { touchActivityOncePerSession } from '../activity/touchActivity.ts'
+import { LEGAL_DOCUMENT_VERSIONS } from '../../config/organization.ts'
 
 function redirectTo(path: string): string {
   return new URL(path, window.location.origin).toString()
@@ -98,11 +99,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: input.email,
       password: input.password,
       options: {
-        data: { username: input.username },
-        emailRedirectTo: redirectTo('/auth/callback'),
+        data: {
+          username: input.username,
+          display_name: input.displayName,
+          country: input.country,
+          timezone: input.timezone,
+          consent_terms: LEGAL_DOCUMENT_VERSIONS.terms,
+          consent_privacy: LEGAL_DOCUMENT_VERSIONS.privacy,
+          consent_age: LEGAL_DOCUMENT_VERSIONS.age_18,
+          ...(input.inviteCode ? { invite_code: input.inviteCode } : {}),
+        },
+        emailRedirectTo: redirectTo('/auth/confirm'),
       },
     })
-    return authResult(signUpError)
+    if (signUpError) {
+      return { ok: false, message: mapAuthError(signUpError, SIGNUP_FAILED) }
+    }
+    return { ok: true }
   }, [])
 
   const signIn = useCallback(async (email: string, password: string): Promise<AuthResult> => {
@@ -137,7 +150,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error: resendError } = await supabase.auth.resend({
       type: 'signup',
       email,
-      options: { emailRedirectTo: redirectTo('/auth/callback') },
+      options: { emailRedirectTo: redirectTo('/auth/confirm') },
     })
     return authResult(resendError)
   }, [])

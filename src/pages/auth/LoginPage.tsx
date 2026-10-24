@@ -9,6 +9,8 @@ import { LOGIN_FAILED, RATE_LIMITED, SESSION_ENDED } from '../../lib/auth/messag
 import { safeNextPath } from '../../lib/auth/safeNextPath.ts'
 import { fieldErrors, loginSchema } from '../../lib/auth/schemas.ts'
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts'
+import { SignatureQuote } from '../../components/auth/SignatureQuote.tsx'
+import { canResendConfirmation, recordResendConfirmation } from '../../lib/signup/resendLimits.ts'
 
 const FAILURE_LIMIT = 5
 const COOLDOWN_MS = 30_000
@@ -16,7 +18,7 @@ const RESEND_COOLDOWN_MS = 60_000
 
 export default function LoginPage() {
   useDocumentTitle('Sign in')
-  const { signIn, sessionNotice } = useAuth()
+  const { signIn, sessionNotice, resendConfirmation } = useAuth()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const nextPath = safeNextPath(params.get('next'))
@@ -29,7 +31,9 @@ export default function LoginPage() {
   const [failures, setFailures] = useState(0)
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
+  const [resendPending, setResendPending] = useState(false)
   const lock = useRef(false)
+  const needsConfirm = formError === 'Please confirm your email first.'
 
   useEffect(() => {
     if (cooldownUntil === null) return
@@ -78,9 +82,23 @@ export default function LoginPage() {
     navigate(nextPath ?? '/', { replace: true })
   }
 
+  async function resendConfirmLink() {
+    const trimmed = email.trim()
+    if (!trimmed || resendPending || !canResendConfirmation()) return
+    setResendPending(true)
+    const result = await resendConfirmation(trimmed)
+    setResendPending(false)
+    if (result.ok) {
+      recordResendConfirmation()
+      setFormError('')
+      setErrors({})
+    }
+  }
+
   return (
     <form onSubmit={(event) => void onSubmit(event)} className="flex flex-col gap-5" noValidate>
       <h1 className="text-3xl text-ink">Sign in</h1>
+      <SignatureQuote />
       {sessionEnded ? (
         <p role="status" aria-live="polite" className="text-sm text-ink">
           {SESSION_ENDED}
@@ -111,6 +129,17 @@ export default function LoginPage() {
       <p role="alert" aria-live="polite" className="min-h-5 text-sm text-coral">
         {cooling ? `Try again in ${remaining} seconds.` : formError}
       </p>
+      {needsConfirm ? (
+        <button
+          type="button"
+          onClick={() => void resendConfirmLink()}
+          disabled={resendPending || !email.trim()}
+          className={`inline-flex min-h-11 items-center justify-center rounded-2xl border border-line bg-surface px-5 text-base font-semibold text-ink disabled:opacity-60 ${focusRing}`}
+          data-testid="login-resend-confirmation"
+        >
+          {resendPending ? 'Sending…' : 'Resend confirmation email'}
+        </button>
+      ) : null}
       <SubmitButton pending={pending} disabled={cooling}>
         Sign in
       </SubmitButton>

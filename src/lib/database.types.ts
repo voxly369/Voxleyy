@@ -2122,6 +2122,7 @@ export type Database = {
         Args: { p_document: string; p_version: string }
         Returns: undefined
       }
+      check_invite_code: { Args: { p_code: string }; Returns: boolean }
       redeem_invite_code: { Args: { p_code: string }; Returns: undefined }
       report_client_error: {
         Args: {

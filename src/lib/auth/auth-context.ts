@@ -8,6 +8,10 @@ export type SignUpInput = {
   email: string
   password: string
   username: string
+  displayName: string
+  country: string
+  timezone: string
+  inviteCode?: string
 }
 
 export type AuthContextValue = {

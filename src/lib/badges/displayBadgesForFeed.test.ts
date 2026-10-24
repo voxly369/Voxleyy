@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { displayBadgesForFeed } from './displayBadgesForFeed.ts'
+import { displayBadgesBesideName } from './displayBadgesForFeed.ts'
 
-describe('displayBadgesForFeed', () => {
-  it('returns at most two badges sorted by sort order', () => {
-    expect(
-      displayBadgesForFeed([
-        { badgeKey: 'b', iconKey: 'badge', sortOrder: 2 },
-        { badgeKey: 'a', iconKey: 'badge', sortOrder: 1 },
-        { badgeKey: 'c', iconKey: 'badge', sortOrder: 3 },
-      ]).map((b) => b.badgeKey),
-    ).toEqual(['a', 'b'])
+describe('displayBadgesBesideName', () => {
+  it('uses Founder and Verified slots for the Founder account', () => {
+    const badges = [
+      { badgeKey: 'founder', iconKey: 'founder', sortOrder: 0 },
+      { badgeKey: 'poet', iconKey: 'quill', sortOrder: 1 },
+    ]
+    const visible = displayBadgesBesideName(badges, true)
+    expect(visible.map((b) => b.badgeKey)).toEqual(['founder', 'verified'])
   })
 })

@@ -10,8 +10,9 @@ const CODE_MESSAGES: Record<string, string> = {
   invalid_credentials: LOGIN_FAILED,
   invalid_grant: LOGIN_FAILED,
   user_not_found: LOGIN_FAILED,
-  email_not_confirmed: 'Confirm your email before signing in.',
-  user_already_registered: 'An account with this email already exists. Try signing in.',
+  email_not_confirmed: 'Please confirm your email first.',
+  user_already_registered:
+    'We could not create an account with those details. If you already joined, try signing in.',
   signup_disabled: 'Sign-ups are closed right now.',
   weak_password: 'Choose a stronger password.',
   over_email_send_rate_limit: RATE_LIMITED,
