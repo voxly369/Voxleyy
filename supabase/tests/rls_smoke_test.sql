@@ -2744,7 +2744,15 @@ begin
   select reader_a, reader_b into v_a, v_b from rls_ids;
   select id into v_post from public.creations where status = 'published' and audience = 'public' limit 1;
   select id into v_private from public.creations where audience = 'private' and status = 'published' limit 1;
-  select author_id into v_blocked_author from public.creations where id = v_post;
+  select c.author_id into v_blocked_author
+  from public.creations c
+  where c.id = v_post and c.author_id <> v_a;
+  if v_blocked_author is null then
+    select c.id, c.author_id into v_post, v_blocked_author
+    from public.creations c
+    where c.status = 'published' and c.audience = 'public' and c.author_id <> v_a
+    limit 1;
+  end if;
 
   perform set_config('request.jwt.claim.sub', v_a::text, true);
 
@@ -4760,6 +4768,87 @@ begin
     'analytics=' || coalesce(v_analytics->>'likes_7d', 'null') || ' overview=' || coalesce(v_overview->>'likes', 'null')
   );
 end $founder_analytics_17b$;
+
+-- Prompt 18A: Founder never beta-gated.
+do $founder_signup_18a$
+declare
+  v_uid uuid := gen_random_uuid();
+  v_beta boolean;
+  v_json jsonb;
+  v_msg text;
+  v_other uuid := gen_random_uuid();
+begin
+  update public.platform_settings
+  set value = jsonb_build_object(
+    'invite_only', true,
+    'signups_open', false,
+    'waitlist_open', false,
+    'closed_message', 'closed for smoke'
+  )
+  where key = 'beta';
+  update public.platform_settings set value = jsonb_build_object('open', false) where key = 'signups';
+
+  execute format('set local role %I', session_user);
+  select founder into v_uid from rls_ids;
+  select p.beta_access_granted into v_beta from public.profiles p where p.id = v_uid;
+  perform pg_temp.record(
+    'founder signup without invite code grants beta at creation',
+    v_beta is true,
+    'beta_access_granted=' || coalesce(v_beta::text, 'null')
+  );
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_uid::text, true);
+  perform public.assert_beta_write_allowed(v_uid);
+  v_json := public.get_my_beta_status();
+  perform pg_temp.record(
+    'founder get_my_beta_status access_granted invite_only signups closed',
+    coalesce((v_json->>'access_granted')::boolean, false),
+    v_json::text
+  );
+
+  execute format('set local role %I', session_user);
+  update public.profiles set beta_access_granted = false where id = v_uid;
+  delete from public.platform_settings where key = 'beta';
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_uid::text, true);
+  perform public.assert_beta_write_allowed(v_uid);
+  v_json := public.get_my_beta_status();
+  perform pg_temp.record(
+    'founder assert_beta_write_allowed missing beta flag row',
+    coalesce((v_json->>'access_granted')::boolean, false),
+    v_json::text
+  );
+
+  execute format('set local role %I', session_user);
+  insert into public.platform_settings (key, value)
+  values ('beta', jsonb_build_object('invite_only', true, 'signups_open', false))
+  on conflict (key) do update set value = excluded.value;
+
+  perform pg_temp.create_test_user(v_other, 'nobeta18a@voxly.test', now());
+  update public.profiles set beta_access_granted = false where id = v_other;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_other::text, true);
+  begin
+    perform public.assert_beta_write_allowed(v_other);
+    perform pg_temp.record('non-founder signup without invite fails beta write', false, 'unexpected ok');
+  exception when others then
+    perform pg_temp.record('non-founder signup without invite fails beta write', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_other::text, true);
+  begin
+    perform public.redeem_invite_code('NOTVALID00');
+    perform pg_temp.record('invalid invite generic error text', false, 'redeemed');
+  exception when others then
+    v_msg := sqlerrm;
+    perform pg_temp.record(
+      'invalid invite generic error no founder hint',
+      v_msg = 'That invite code isn''t valid.' and v_msg not ilike '%founder%' and v_msg not ilike '%voxly%',
+      v_msg
+    );
+  end;
+end $founder_signup_18a$;
 
 do $$
 declare
