@@ -5,6 +5,7 @@ import {
   SAMPLE_CREATION_ID,
 } from './fixtures.ts'
 import { setE2eEntranceVisible, setE2eOnboardingComplete } from './betaReadiness18bMocks.ts'
+import { setE2eBetaSignupConfig } from './preBetaMocks.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -55,6 +56,37 @@ const screens: ScreenDef[] = [
     },
   },
   { name: 'home', path: '/', signedIn: true, beforeGoto: () => setE2eEntranceVisible(false) },
+  {
+    name: 'signup',
+    path: '/signup',
+    signedIn: false,
+    skipNav: true,
+    skipRightRail: true,
+    skipReadingLine: true,
+    beforeGoto: () => setE2eBetaSignupConfig({ signups_open: true, invite_only: true }),
+  },
+  {
+    name: 'check-email',
+    path: '/check-email',
+    signedIn: false,
+    skipNav: true,
+    skipRightRail: true,
+    skipReadingLine: true,
+    setup: async (page) => {
+      await page.evaluate(() => {
+        window.history.replaceState({ usr: { email: 'pending@example.com' } }, '', '/check-email')
+      })
+      await page.reload({ waitUntil: 'networkidle' })
+    },
+  },
+  {
+    name: 'auth-confirm-expired',
+    path: '/auth/confirm?error=access_denied&error_code=otp_expired',
+    signedIn: false,
+    skipNav: true,
+    skipRightRail: true,
+    skipReadingLine: true,
+  },
   {
     name: 'following',
     path: '/',

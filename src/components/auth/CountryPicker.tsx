@@ -47,6 +47,7 @@ export function CountryPicker({ id, label, value, onChange, error }: CountryPick
         size={6}
         className={`max-h-48 rounded-2xl border border-line bg-surface px-3 py-2 text-base text-ink ${focusRing}`}
         data-testid="signup-country-select"
+        aria-label={label}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
       >

@@ -637,6 +637,7 @@ export {
   setE2eBetaAccessGranted,
   setE2eConsentsOutdated,
   setE2eInviteOnlyPlatform,
+  setE2eInviteCodeValid,
 } from './preBetaMocks.ts'
 
 export {
