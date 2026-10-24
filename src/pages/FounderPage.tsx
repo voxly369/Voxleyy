@@ -154,7 +154,7 @@ export default function FounderPage() {
             type="button"
             aria-current={tab === item.id ? 'page' : undefined}
             onClick={() => setTab(item.id)}
-            className={`min-h-11 rounded-2xl px-4 text-sm font-semibold ${tab === item.id ? 'bg-coral text-white' : 'bg-raised text-ink'} ${focusRing}`}
+            className={`min-h-11 rounded-2xl px-4 text-sm font-semibold ${tab === item.id ? 'bg-surface text-coral ring-2 ring-inset ring-coral' : 'bg-raised text-ink'} ${focusRing}`}
           >
             {item.label}
           </button>

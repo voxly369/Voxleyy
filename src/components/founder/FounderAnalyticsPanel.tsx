@@ -211,7 +211,7 @@ export function FounderAnalyticsPanel({ tab }: FounderAnalyticsPanelProps) {
               type="button"
               aria-pressed={topWindow === w}
               onClick={() => setTopWindow(w)}
-              className={`min-h-11 rounded-2xl px-3 text-sm font-semibold ${topWindow === w ? 'bg-coral text-white' : 'bg-raised'} ${focusRing}`}
+              className={`min-h-11 rounded-2xl px-3 text-sm font-semibold ${topWindow === w ? 'bg-surface text-coral ring-2 ring-inset ring-coral' : 'bg-raised'} ${focusRing}`}
             >
               {w}
             </button>
@@ -222,7 +222,7 @@ export function FounderAnalyticsPanel({ tab }: FounderAnalyticsPanelProps) {
               type="button"
               aria-pressed={topSort === s}
               onClick={() => setTopSort(s)}
-              className={`min-h-11 rounded-2xl px-3 text-sm font-semibold ${topSort === s ? 'bg-coral text-white' : 'bg-raised'} ${focusRing}`}
+              className={`min-h-11 rounded-2xl px-3 text-sm font-semibold ${topSort === s ? 'bg-surface text-coral ring-2 ring-inset ring-coral' : 'bg-raised'} ${focusRing}`}
             >
               {s}
             </button>
