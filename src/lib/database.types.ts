@@ -39,6 +39,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_feedback: {
+        Row: {
+          id: number
+          user_id: string
+          category: string
+          message: string
+          page_path: string | null
+          app_version: string | null
+          viewport: string | null
+          read_at: string | null
+          done_at: string | null
+          founder_note: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: never
+          user_id: string
+          category: string
+          message: string
+          page_path?: string | null
+          app_version?: string | null
+          viewport?: string | null
+          read_at?: string | null
+          done_at?: string | null
+          founder_note?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: never
+          user_id?: string
+          category?: string
+          message?: string
+          page_path?: string | null
+          app_version?: string | null
+          viewport?: string | null
+          read_at?: string | null
+          done_at?: string | null
+          founder_note?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       appeals: {
         Row: {
           created_at: string
@@ -2029,6 +2071,39 @@ export type Database = {
       }
       delete_my_account: { Args: Record<string, never>; Returns: undefined }
       export_my_data: { Args: Record<string, never>; Returns: Json }
+      get_my_profile_preferences: { Args: Record<string, never>; Returns: Json }
+      upsert_my_profile_preferences: { Args: { p_patch: Json }; Returns: Json }
+      complete_my_onboarding: {
+        Args: { p_country: string | null; p_timezone: string | null }
+        Returns: Json
+      }
+      submit_app_feedback: {
+        Args: {
+          p_category: string
+          p_message: string
+          p_page_path?: string | null
+          p_app_version?: string | null
+          p_viewport?: string | null
+        }
+        Returns: number
+      }
+      founder_list_feedback: {
+        Args: { p_category?: string | null; p_cursor?: string | null; p_limit?: number }
+        Returns: Json
+      }
+      founder_feedback_unread_count: { Args: Record<string, never>; Returns: number }
+      founder_update_feedback: {
+        Args: {
+          p_id: number
+          p_read?: boolean | null
+          p_done?: boolean | null
+          p_note?: string | null
+        }
+        Returns: undefined
+      }
+      founder_pending_storage_cleanup_count: { Args: Record<string, never>; Returns: number }
+      founder_list_deletion_storage_queue: { Args: { p_limit?: number }; Returns: Json }
+      check_upload_quota: { Args: { p_bytes: number; p_kind?: string }; Returns: undefined }
       founder_create_invite_code: { Args: Record<string, never>; Returns: string }
       founder_client_errors_grouped: { Args: { p_limit?: number }; Returns: Json }
       founder_dismiss_client_error: { Args: { p_message: string }; Returns: undefined }

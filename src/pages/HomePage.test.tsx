@@ -12,6 +12,47 @@ vi.mock('../components/shell/RightRail.tsx', () => ({
   RightRail: () => null,
 }))
 
+vi.mock('../lib/auth/auth-context.ts', () => ({
+  useAuth: () => ({
+    profile: {
+      id: 'user-1',
+      username: 'reader',
+      display_name: 'Reader',
+      bio: '',
+      timezone: 'UTC',
+      role: 'writer',
+    },
+    isFounder: false,
+  }),
+}))
+
+vi.mock('../lib/onboarding/api.ts', () => ({
+  fetchMyProfilePreferences: vi.fn(async () => ({
+    ok: true,
+    data: { checklist_dismissed_at: '2026-01-01T00:00:00Z' },
+  })),
+  patchMyProfilePreferences: vi.fn(async () => ({ ok: true, data: {} })),
+}))
+
+vi.mock('../lib/home/checklistSignals.ts', () => ({
+  fetchChecklistSignals: vi.fn(async () => ({
+    hasBio: true,
+    postCount: 1,
+    followCount: 2,
+    librarySaveCount: 1,
+    readingProgressCount: 1,
+    feedbackSent: true,
+  })),
+}))
+
+vi.mock('../lib/streaks/api.ts', () => ({
+  getUserStreaks: vi.fn(async () => ({ ok: true, data: { writing: { current: 0, longest: 0, lastActiveDay: null }, reading: { current: 0, longest: 0, lastActiveDay: null } } })),
+}))
+
+vi.mock('../lib/supabaseClient.ts', () => ({
+  supabase: { rpc: vi.fn(async () => ({ data: 'Prompt' })) },
+}))
+
 import { listFeed } from '../lib/feed/listFeed.ts'
 
 describe('HomePage offline', () => {

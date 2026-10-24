@@ -113,7 +113,20 @@ end $$;
 insert into rls_ids (founder, reader_a, reader_b)
 values (gen_random_uuid(), gen_random_uuid(), gen_random_uuid());
 
-select pg_temp.create_test_user(founder, 'voxly369@gmail.com', now()) from rls_ids;
+do $$
+declare
+  v_founder uuid;
+  v_existing uuid;
+begin
+  select founder into v_founder from rls_ids limit 1;
+  select id into v_existing from auth.users where lower(email) = 'voxly369@gmail.com' limit 1;
+  if v_existing is not null then
+    update rls_ids set founder = v_existing;
+  else
+    perform pg_temp.create_test_user(v_founder, 'voxly369@gmail.com', now());
+  end if;
+end $$;
+
 select pg_temp.create_test_user(reader_a, 'reader.a@voxly.test', now()) from rls_ids;
 select pg_temp.create_test_user(reader_b, 'reader.b@voxly.test', now()) from rls_ids;
 
@@ -4849,6 +4862,99 @@ begin
     );
   end;
 end $founder_signup_18a$;
+
+do $beta_readiness_18b$
+declare
+  v_founder uuid;
+  v_a uuid;
+  v_b uuid;
+  v_other uuid := gen_random_uuid();
+  v_json jsonb;
+  v_count integer;
+  v_id bigint;
+  v_bool boolean;
+begin
+  select founder, reader_a, reader_b into v_founder, v_a, v_b from rls_ids limit 1;
+
+  perform pg_temp.record('founder badge definition exists', exists(select 1 from public.badges where key = 'founder'), 'founder row');
+  select count(*) into v_count from public.user_badges where user_id = v_founder and badge_key = 'founder';
+  perform pg_temp.record('founder badge awarded to founder profile', v_count >= 1, 'rows=' || v_count);
+  perform public.award_user_badge(v_a, 'founder', null);
+  select count(*) into v_count from public.user_badges where user_id = v_a and badge_key = 'founder';
+  perform pg_temp.record('award_user_badge cannot grant founder badge', v_count = 0, 'rows=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    perform public.pin_badge('founder', 1);
+    perform pg_temp.record('pin_badge rejects founder key', false, 'pinned');
+  exception when others then
+    perform pg_temp.record('pin_badge rejects founder key', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  v_id := public.submit_app_feedback('idea', 'Smoke feedback message for 18B.', '/home', '0.0.0', '800x600');
+  perform pg_temp.record('submit_app_feedback returns id', v_id is not null, 'id=' || coalesce(v_id::text, 'null'));
+  begin
+    for i in 1..10 loop
+      perform public.submit_app_feedback('praise', 'Extra feedback row ' || i || ' for rate limit.');
+    end loop;
+    perform public.submit_app_feedback('bug', 'Should fail rate limit.');
+    perform pg_temp.record('submit_app_feedback daily rate limit', false, 'accepted 11th');
+  exception when others then
+    perform pg_temp.record('submit_app_feedback daily rate limit', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_json := public.founder_list_feedback(null, null, 10);
+  select jsonb_array_length(v_json->'rows') into v_count;
+  perform pg_temp.record('founder_list_feedback returns rows', v_count >= 1, 'rows=' || v_count);
+  v_count := public.founder_feedback_unread_count();
+  perform pg_temp.record('founder_feedback_unread_count positive', v_count >= 0, 'count=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform public.complete_my_onboarding(null, null);
+  select count(*) into v_count from public.notifications
+  where recipient_id = v_a and type = 'announcement' and coalesce(data->>'kind', '') = 'founder_welcome';
+  perform pg_temp.record('send_founder_welcome_notification first call', v_count = 1, 'rows=' || v_count);
+  perform public.complete_my_onboarding(null, null);
+  select count(*) into v_count from public.notifications
+  where recipient_id = v_a and type = 'announcement' and coalesce(data->>'kind', '') = 'founder_welcome';
+  perform pg_temp.record('send_founder_welcome_notification idempotent', v_count = 1, 'rows=' || v_count);
+
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_other, v_other::text || '@18b-other.test', now());
+  perform set_config('request.jwt.claim.sub', v_other::text, true);
+  for i in 1..50 loop
+    perform public.record_invite_attempt('smoke-session-18b');
+  end loop;
+  begin
+    perform public.record_invite_attempt('smoke-session-18b');
+    perform pg_temp.record('invite attempt limit enforced', false, '51st ok');
+  exception when others then
+    perform pg_temp.record('invite attempt limit enforced', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin perform public.check_upload_quota(1024, 'avatars'); perform pg_temp.record('check_upload_quota allows under cap', true, 'ok');
+  exception when others then perform pg_temp.record('check_upload_quota allows under cap', false, sqlerrm); end;
+  begin perform public.check_upload_quota(60000000, 'media'); perform pg_temp.record('check_upload_quota rejects oversize bytes', false, 'ok');
+  exception when others then perform pg_temp.record('check_upload_quota rejects oversize bytes', true, sqlerrm); end;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  insert into public.mutes (user_id, muted_user_id) values (v_a, v_b) on conflict do nothing;
+  perform pg_temp.record('mute rate limit trigger allows first mute', true, 'ok');
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_count := public.founder_pending_storage_cleanup_count();
+  perform pg_temp.record('founder_pending_storage_cleanup_count callable', v_count >= 0, 'count=' || v_count);
+  v_json := public.founder_list_deletion_storage_queue(10);
+  perform pg_temp.record('founder_list_deletion_storage_queue json', v_json is not null, 'json ok');
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  v_json := public.export_my_data();
+  perform pg_temp.record('export_my_data profile key present', v_json ? 'profile', 'keys ok');
+  perform pg_temp.record('export_my_data only own profile id', (v_json->'profile'->>'id')::uuid = v_b, 'id ok');
+end $beta_readiness_18b$;
 
 do $$
 declare

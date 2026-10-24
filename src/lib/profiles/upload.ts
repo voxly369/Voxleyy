@@ -82,6 +82,12 @@ export async function saveProfileImage(input: {
     return fail('Sign in again to upload an image.')
   }
 
+  const { error: quotaError } = await supabase.rpc('check_upload_quota', {
+    p_bytes: input.blob.size,
+    p_kind: input.bucket,
+  })
+  if (quotaError) return fail(quotaError.message ?? 'Daily upload limit reached. Try again tomorrow.')
+
   // Storage policy requires the first folder to be the signed-in user id.
   const path = `${input.userId}/${crypto.randomUUID()}.webp`
   try {

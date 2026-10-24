@@ -14,6 +14,8 @@ import { NotificationProvider } from '../../lib/notifications/NotificationProvid
 import { MessagesProvider } from '../../lib/messages/MessagesProvider.tsx'
 import { NotificationBell } from '../notifications/NotificationBell.tsx'
 import { NotificationPanelHost } from '../notifications/NotificationPanelHost.tsx'
+import { FeedbackProvider } from '../../lib/shell/FeedbackProvider.tsx'
+import { FeedbackFab } from '../feedback/FeedbackFab.tsx'
 
 export function AppShell() {
   const { profile } = useAuth()
@@ -25,6 +27,7 @@ export function AppShell() {
         <NotificationProvider>
         <MessagesProvider>
         <CreateSheetProvider>
+        <FeedbackProvider>
           <div id={VOXLY_APP_ROOT_ID}>
             <SkipLink />
             <div className="pointer-events-none fixed left-4 top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 md:hidden">
@@ -37,6 +40,7 @@ export function AppShell() {
             {suspended ? <SuspendedBanner suspendedUntil={profile?.suspended_until ?? null} /> : null}
             <WarningModal />
             <NotificationPanelHost />
+            <FeedbackFab />
             <main
               id="main"
               tabIndex={-1}
@@ -45,6 +49,7 @@ export function AppShell() {
               <Outlet />
             </main>
           </div>
+        </FeedbackProvider>
         </CreateSheetProvider>
         </MessagesProvider>
         </NotificationProvider>

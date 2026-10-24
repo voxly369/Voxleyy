@@ -35,7 +35,7 @@ test.describe('notifications 13A', () => {
     await page.goto('/notifications', { waitUntil: 'networkidle' })
     await page.getByRole('button', { name: 'Mark all read' }).click()
     await page.getByRole('button', { name: 'Clear read' }).click()
-    await expect(page.getByText('No notifications yet')).toBeVisible()
+    await expect(page.getByText('Your inbox is clear')).toBeVisible()
   })
 
   test('pagination loads more rows', async ({ page }) => {

@@ -1,4 +1,5 @@
 import type { AdminNotificationRow, NotificationRow } from './types.ts'
+import { founderWelcomeNotification } from '../../config/founderWelcome.ts'
 
 function actorLabel(row: { actor: { displayName: string | null; username: string | null } }): string {
   const name = row.actor.displayName?.trim()
@@ -64,6 +65,7 @@ export function buildDisplayText(row: NotificationRow): string {
     case 'challenge_start':
       return 'A writing challenge you joined is starting'
     case 'announcement':
+      if (data.kind === 'founder_welcome') return founderWelcomeNotification.title
       return typeof data.title === 'string' && data.title.trim()
         ? data.title.trim()
         : 'New announcement from Voxly'

@@ -4,6 +4,7 @@ import { badgeMeta } from './badgeMeta.ts'
 /** Maps icon_key values from the database to stable CSS modifier classes. */
 export function badgeIconClass(iconKey: string, badgeKey?: BadgeKey): string {
   const key = iconKey || (badgeKey ? badgeMeta(badgeKey).iconKey : 'badge')
+  if (key === 'founder') return 'bg-teal-700 text-white dark:bg-teal-500 dark:text-ink'
   if (key === 'verified') return 'bg-verified text-white'
   if (key === 'star' || key === 'featured') return 'bg-coral text-white'
   if (key === 'streak') return 'bg-amber-500 text-white'
@@ -32,6 +33,8 @@ export function badgeIconGlyph(iconKey: string, badgeKey?: BadgeKey): string {
       return '✨'
     case 'star':
       return '⭐'
+    case 'founder':
+      return 'V'
     case 'verified':
       return '✓'
     case 'streak':

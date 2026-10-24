@@ -6,5 +6,5 @@ test('post page shows mobile back control', async ({ page }) => {
   await seedSignedInSession(page)
   await installSupabaseMocks(page)
   await page.goto(`/c/${SAMPLE_CREATION_ID}`)
-  await expect(page.getByRole('button', { name: 'Back' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Back' }).first()).toBeVisible()
 })

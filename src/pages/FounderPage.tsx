@@ -21,6 +21,8 @@ import { FounderReasonModal } from '../components/safety/FounderReasonModal.tsx'
 import { FounderFeaturedBadgeControl } from '../components/founder/FounderFeaturedBadgeControl.tsx'
 import { FounderBetaTab } from '../components/founder/FounderBetaTab.tsx'
 import { FounderErrorsTab } from '../components/founder/FounderErrorsTab.tsx'
+import { FounderFeedbackTab } from '../components/founder/FounderFeedbackTab.tsx'
+import { founderFeedbackUnreadCount } from '../lib/founder/feedback.ts'
 import { FounderAnalyticsPanel, type FounderAnalyticsTabId } from '../components/founder/FounderAnalyticsPanel.tsx'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 
@@ -33,6 +35,7 @@ type FounderTab =
   | 'audit'
   | 'beta'
   | 'errors'
+  | 'feedback'
 
 const TABS: { id: FounderTab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
@@ -47,6 +50,7 @@ const TABS: { id: FounderTab; label: string }[] = [
   { id: 'curation', label: 'Curation' },
   { id: 'beta', label: 'Beta' },
   { id: 'errors', label: 'Errors' },
+  { id: 'feedback', label: 'Feedback' },
   { id: 'reports', label: 'Report queue' },
   { id: 'users', label: 'Users' },
   { id: 'content', label: 'Content' },
@@ -89,6 +93,11 @@ export default function FounderPage() {
   const [appealDecision, setAppealDecision] = useState<{ id: string; decision: 'upheld' | 'overturned' } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [feedbackUnread, setFeedbackUnread] = useState(0)
+
+  useEffect(() => {
+    void founderFeedbackUnreadCount().then(setFeedbackUnread)
+  }, [tab])
   const loadReports = useCallback(async (cursor: string | null, append: boolean) => {
     const result = await listFounderReportQueue(cursor)
     if (!result.ok) {
@@ -148,17 +157,21 @@ export default function FounderPage() {
     <PageContainer variant="wide" className="flex flex-col gap-6 py-8">
       <PageHeader title="Founder" />
       <nav aria-label="Founder sections" className="flex flex-wrap gap-2">
-        {TABS.map((item) => (
+        {TABS.map((item) => {
+          const label =
+            item.id === 'feedback' && feedbackUnread > 0 ? `${item.label} (${feedbackUnread})` : item.label
+          return (
           <button
             key={item.id}
             type="button"
             aria-current={tab === item.id ? 'page' : undefined}
             onClick={() => setTab(item.id)}
             className={`min-h-11 rounded-2xl px-4 text-sm font-semibold ${tab === item.id ? 'bg-surface text-coral ring-2 ring-inset ring-coral' : 'bg-raised text-ink'} ${focusRing}`}
+            data-testid={item.id === 'feedback' ? 'founder-tab-feedback' : undefined}
           >
-            {item.label}
+            {label}
           </button>
-        ))}
+        )})}
       </nav>
       {error ? (
         <p role="alert" className="text-sm text-coral">
@@ -169,6 +182,8 @@ export default function FounderPage() {
       {tab === 'beta' ? <FounderBetaTab /> : null}
 
       {tab === 'errors' ? <FounderErrorsTab /> : null}
+
+      {tab === 'feedback' ? <FounderFeedbackTab /> : null}
 
       {ANALYTICS_TABS.has(tab) ? <FounderAnalyticsPanel tab={tab as FounderAnalyticsTabId} /> : null}
 

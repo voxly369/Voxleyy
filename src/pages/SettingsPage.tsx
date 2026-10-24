@@ -10,6 +10,8 @@ import { USERNAME_TAKEN_NOTICE } from '../lib/auth/messages.ts'
 import { ThemeChoiceGroup } from '../components/shell/ThemeChoiceGroup.tsx'
 import { useTheme } from '../lib/useTheme.ts'
 import { downloadJsonExport, exportMyData } from '../lib/account/dataExport.ts'
+import { useFeedback } from '../lib/shell/FeedbackProvider.tsx'
+import { reopenOnboarding } from '../lib/onboarding/api.ts'
 
 const appVersion = import.meta.env.VITE_APP_VERSION ?? '0.0.0'
 
@@ -40,6 +42,7 @@ function dismissNotice(userId: string) {
 export default function SettingsPage() {
   const { choice, setTheme } = useTheme()
   const { user, profile, signOut, isFounder } = useAuth()
+  const { openFeedback } = useFeedback()
   const isWriter = profile?.role === 'writer'
   const chosen = chosenUsername(user?.user_metadata)
   const assigned = profile?.username.toLowerCase() ?? ''
@@ -110,6 +113,34 @@ export default function SettingsPage() {
           >
             Notifications
           </Link>
+        </div>
+      </section>
+      <section className="rounded-2xl border border-line bg-surface p-5" data-testid="settings-support-section">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Support</h2>
+        <p className="mt-2 text-sm text-muted">Send the Founder a note about bugs, ideas, or how Voxly feels in use.</p>
+        <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <button
+            type="button"
+            onClick={openFeedback}
+            className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
+            data-testid="settings-send-feedback"
+          >
+            Send feedback
+          </button>
+          {!isFounder ? (
+            <button
+              type="button"
+              onClick={() => {
+                void reopenOnboarding().then((result) => {
+                  if (result.ok) window.dispatchEvent(new Event('voxly-reopen-onboarding'))
+                })
+              }}
+              className={`inline-flex min-h-11 items-center rounded-2xl border border-line px-4 text-base font-semibold text-ink ${focusRing}`}
+              data-testid="settings-reopen-onboarding"
+            >
+              Review onboarding
+            </button>
+          ) : null}
         </div>
       </section>
       <SafetySettingsSection />

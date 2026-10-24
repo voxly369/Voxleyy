@@ -3,6 +3,11 @@ import { accessibleCoralFill, focusRing } from '../shell/navItems.ts'
 import { Modal } from '../shell/Modal.tsx'
 import { founderCreateInviteCode, founderSetPlatformFlag } from '../../lib/founder/platformFlags.ts'
 import { founderListInviteCodes, founderRevokeInviteCode, type FounderInviteCodeRow } from '../../lib/founder/inviteCodes.ts'
+import {
+  founderListPendingStorageQueue,
+  founderPendingStorageCleanupCount,
+} from '../../lib/founder/storageCleanup.ts'
+import { buildCsv, downloadCsv } from '../../lib/analytics/csvExport.ts'
 
 type FlagDef = { key: string; label: string; description: string }
 
@@ -37,6 +42,7 @@ export function FounderBetaTab() {
   const [inviteCode, setInviteCode] = useState<string | null>(null)
   const [inviteRows, setInviteRows] = useState<FounderInviteCodeRow[]>([])
   const [listLoading, setListLoading] = useState(true)
+  const [pendingFiles, setPendingFiles] = useState(0)
 
   async function refreshInvites() {
     setListLoading(true)
@@ -51,6 +57,7 @@ export function FounderBetaTab() {
 
   useEffect(() => {
     void refreshInvites()
+    void founderPendingStorageCleanupCount().then(setPendingFiles)
   }, [])
 
   async function applyFlag(key: string, next: boolean) {
@@ -167,6 +174,36 @@ export function FounderBetaTab() {
             ))}
           </ul>
         )}
+      </div>
+      <div className="rounded-2xl border border-line bg-surface p-4" data-testid="founder-pending-storage-cleanup">
+        <h3 className="font-medium text-ink">Pending file cleanups</h3>
+        <p className="mt-1 text-sm text-muted">
+          {pendingFiles} object{pendingFiles === 1 ? '' : 's'} queued after account deletions. See ops/LAUNCH-CHECKLIST.md.
+        </p>
+        <button
+          type="button"
+          className={`mt-3 min-h-11 rounded-2xl border border-line px-4 text-sm font-semibold ${focusRing}`}
+          data-testid="founder-pending-storage-csv"
+          onClick={() => {
+            void founderListPendingStorageQueue().then((result) => {
+              if (!result.ok) {
+                setMessage(result.message)
+                return
+              }
+              const csv = buildCsv(
+                ['bucket_id', 'object_path', 'queued_at'],
+                result.rows.map((row) => ({
+                  bucket_id: row.bucketId,
+                  object_path: row.objectPath,
+                  queued_at: row.queuedAt,
+                })),
+              )
+              downloadCsv('voxly-pending-storage-cleanups.csv', csv)
+            })
+          }}
+        >
+          Download CSV
+        </button>
       </div>
       {message ? (
         <p role="alert" className="text-sm text-coral">

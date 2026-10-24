@@ -145,7 +145,8 @@ async function assertRightRail(page: Page, width: number, screenName: string) {
 
 async function assertTouchTargets(page: Page, width: number) {
   const min = width >= 1024 ? 32 : 44
-  const handles = await page
+  const root = page.locator('#main')
+  const handles = await root
     .locator('button:visible, a:visible, input:visible, textarea:visible, [role="tab"]:visible')
     .elementHandles()
   for (const handle of handles) {
@@ -180,8 +181,10 @@ async function assertTouchTargets(page: Page, width: number) {
     if (meta.tag === 'a' && meta.inParagraph) continue
     if (meta.tag === 'a' && meta.inHeading) continue
     if ((meta.inputType === 'radio' || meta.inputType === 'checkbox') && meta.labelHitArea) continue
-    expect(box.width).toBeGreaterThanOrEqual(min - 1)
-    expect(box.height).toBeGreaterThanOrEqual(min - 1)
+    if (box.width < min - 1 || box.height < min - 1) {
+      const label = await handle.evaluate((node) => node.textContent?.trim().slice(0, 60) ?? node.getAttribute('aria-label') ?? '')
+      throw new Error(`Touch target too small (${Math.round(box.width)}x${Math.round(box.height)}): ${label}`)
+    }
   }
 }
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
@@ -128,7 +129,15 @@ export default function NotificationsPage() {
       ) : null}
       {loading && rows.length === 0 ? <p className="text-sm text-muted">Loading…</p> : null}
       {!loading && rows.length === 0 ? (
-        <EmptyState title="No notifications yet" message="When someone interacts with your work, it appears here." />
+        <EmptyState
+          title="Your inbox is clear"
+          message="Likes, comments, follows, and notes from writers you care about will gather here."
+          action={
+            <Link to="/discover" className="min-h-11 inline-flex items-center rounded-2xl bg-coral px-4 text-sm font-semibold text-white">
+              Discover writers
+            </Link>
+          }
+        />
       ) : (
         groups.map((group) => (
           <section key={group.key} aria-labelledby={`notif-group-${group.key}`}>
