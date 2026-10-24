@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '../supabaseClient.ts'
 import { AuthContext, type AuthResult, type SignUpInput } from './auth-context.ts'
-import { ACCOUNT_LOAD_FAILED, RATE_LIMITED } from './messages.ts'
+import { ACCOUNT_LOAD_FAILED, LOGIN_FAILED, RATE_LIMITED } from './messages.ts'
+import { mapAuthError } from '../errors/mapAuthError.ts'
 import { founderAccessFromRpc } from './founderAccess.ts'
 import { fetchIsFounder, fetchOwnProfile, type OwnProfile } from './profile.ts'
 
@@ -104,7 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-    return signInError ? { ok: false } : { ok: true }
+    if (!signInError) return { ok: true }
+    return { ok: false, message: mapAuthError(signInError, LOGIN_FAILED) }
   }, [])
 
   const signOut = useCallback(async () => {

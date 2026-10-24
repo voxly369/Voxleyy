@@ -21,6 +21,7 @@ let memberMuted = false
 let sendShouldFail = false
 let sendFailCount = 0
 let messageReportId: string | null = null
+let listConversationsError: string | null = null
 
 function seed() {
   const now = new Date().toISOString()
@@ -88,7 +89,16 @@ export function resetMessageMocks() {
   memberMuted = false
   sendShouldFail = false
   sendFailCount = 0
+  listConversationsError = null
   seed()
+}
+
+export function setMessageListError(message: string | null) {
+  listConversationsError = message
+}
+
+export function clearMessageConversations() {
+  conversations = []
 }
 
 export function setMessageUnreadOverride(count: number | null) {
@@ -168,6 +178,9 @@ export function messageMockHandleRest(url: string, method: string, postData: unk
   }
 
   if (url.includes('/rest/v1/rpc/list_my_conversations')) {
+    if (listConversationsError) {
+      return { __httpError: { status: 500, message: listConversationsError } } as unknown as Json
+    }
     return conversations
   }
 

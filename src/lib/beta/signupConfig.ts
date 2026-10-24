@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient.ts'
+import { inviteCodeFormatError, normalizeInviteCode } from './inviteCode.ts'
 
 export type BetaSignupConfig = {
   signups_open: boolean
@@ -38,9 +39,10 @@ export async function joinBetaWaitlist(email: string): Promise<{ ok: true } | { 
 }
 
 export async function redeemInviteCode(code: string): Promise<{ ok: true } | { ok: false; message: string }> {
-  const trimmed = code.trim()
-  if (!trimmed) return { ok: false, message: 'Enter your invite code.' }
-  const { error } = await supabase.rpc('redeem_invite_code', { p_code: trimmed })
+  const formatError = inviteCodeFormatError(code)
+  if (formatError) return { ok: false, message: formatError }
+  const normalized = normalizeInviteCode(code)
+  const { error } = await supabase.rpc('redeem_invite_code', { p_code: normalized })
   if (error) return { ok: false, message: 'That invite code is not valid or has already been used.' }
   return { ok: true }
 }

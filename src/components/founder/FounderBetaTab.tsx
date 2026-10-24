@@ -1,7 +1,8 @@
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { focusRing } from '../shell/navItems.ts'
 import { Modal } from '../shell/Modal.tsx'
 import { founderCreateInviteCode, founderSetPlatformFlag } from '../../lib/founder/platformFlags.ts'
+import { founderListInviteCodes, founderRevokeInviteCode, type FounderInviteCodeRow } from '../../lib/founder/inviteCodes.ts'
 
 type FlagDef = { key: string; label: string; description: string }
 
@@ -34,6 +35,23 @@ export function FounderBetaTab() {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
+  const [inviteRows, setInviteRows] = useState<FounderInviteCodeRow[]>([])
+  const [listLoading, setListLoading] = useState(true)
+
+  async function refreshInvites() {
+    setListLoading(true)
+    const result = await founderListInviteCodes()
+    setListLoading(false)
+    if (!result.ok) {
+      setMessage(result.message)
+      return
+    }
+    setInviteRows(result.rows)
+  }
+
+  useEffect(() => {
+    void refreshInvites()
+  }, [])
 
   async function applyFlag(key: string, next: boolean) {
     setBusy(true)
@@ -58,6 +76,19 @@ export function FounderBetaTab() {
       return
     }
     setInviteCode(result.code)
+    await refreshInvites()
+  }
+
+  async function revokeInvite(code: string) {
+    setBusy(true)
+    setMessage(null)
+    const result = await founderRevokeInviteCode(code)
+    setBusy(false)
+    if (!result.ok) {
+      setMessage(result.message)
+      return
+    }
+    await refreshInvites()
   }
 
   return (
@@ -103,6 +134,40 @@ export function FounderBetaTab() {
           New code: <code className="rounded bg-bg px-2 py-1">{inviteCode}</code>
         </p>
       ) : null}
+      <div className="rounded-2xl border border-line bg-surface p-4" data-testid="founder-beta-invite-list">
+        <h3 className="font-medium text-ink">Invite codes</h3>
+        {listLoading ? (
+          <p className="mt-2 text-sm text-muted">Loading codes…</p>
+        ) : inviteRows.length === 0 ? (
+          <p className="mt-2 text-sm text-muted">No invite codes yet.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {inviteRows.map((row) => (
+              <li
+                key={row.code}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-bg px-3 py-2 text-sm"
+                data-testid="founder-beta-invite-row"
+              >
+                <code>{row.code}</code>
+                <span className="text-muted">
+                  {row.uses}/{row.max_uses} uses{row.revoked ? ' · revoked' : ''}
+                </span>
+                {!row.revoked ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void revokeInvite(row.code)}
+                    className={`min-h-9 rounded-xl border border-line px-3 text-xs font-semibold ${focusRing}`}
+                    data-testid="founder-beta-revoke-invite"
+                  >
+                    Revoke
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       {message ? (
         <p role="alert" className="text-sm text-coral">
           {message}

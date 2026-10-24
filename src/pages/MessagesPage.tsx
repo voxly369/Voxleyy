@@ -71,13 +71,23 @@ export default function MessagesPage() {
           data-testid="messages-thread-pane"
         >
           {conversationId ? (
-            <ConversationThread
-              conversation={activeConversation}
-              conversationId={conversationId}
-              showBackLink
-              sharedCreationId={shareCreationId}
-              onSent={() => void refresh()}
-            />
+            !conversationsLoading && !activeConversation ? (
+              <div
+                className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center"
+                data-testid="messages-conversation-not-found"
+              >
+                <p className="text-lg font-medium text-ink">Conversation not found</p>
+                <p className="text-sm text-muted">That thread may have been removed or you no longer have access.</p>
+              </div>
+            ) : (
+              <ConversationThread
+                conversation={activeConversation}
+                conversationId={conversationId}
+                showBackLink
+                sharedCreationId={shareCreationId}
+                onSent={() => void refresh()}
+              />
+            )
           ) : (
             <div className="hidden flex-1 items-center justify-center p-6 md:flex">
               <EmptyState title="Select a conversation" message="Choose a thread from the list or message a writer from their profile." />

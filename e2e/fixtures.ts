@@ -18,6 +18,7 @@ import { notificationMockHandleRest, resetNotificationMocks } from './notificati
 import { messageMockHandleRest, resetMessageMocks } from './messageMocks.ts'
 import { badgeMockHandleRest, resetBadgeMocks } from './badgeMocks.ts'
 import { preBetaMockHandleRest, resetPreBetaMocks } from './preBetaMocks.ts'
+import { authMockMaybeRejectResend, authMockMaybeRejectToken, resetAuthMocks } from './authMocks.ts'
 import { Buffer } from 'node:buffer'
 
 export const PROJECT_REF = 'ktgxdqplvggeyrnuqljx'
@@ -491,6 +492,7 @@ export async function installSupabaseMocks(page: Page) {
   resetMessageMocks()
   resetModerationMocks()
   resetPreBetaMocks()
+  resetAuthMocks()
   const session = sessionResponse(READER.id, READER.email)
 
   await page.route('**/*', async (route) => {
@@ -501,7 +503,28 @@ export async function installSupabaseMocks(page: Page) {
     }
 
     if (url.includes('/auth/v1/token')) {
+      let postData: unknown = null
+      try {
+        postData = route.request().postDataJSON()
+      } catch {
+        postData = null
+      }
+      const rejected = authMockMaybeRejectToken(url, postData)
+      if (rejected) {
+        await fulfillJson(route, rejected.body, rejected.status)
+        return
+      }
       await fulfillJson(route, session)
+      return
+    }
+
+    if (url.includes('/auth/v1/resend')) {
+      const rejected = authMockMaybeRejectResend(url)
+      if (rejected) {
+        await fulfillJson(route, rejected.body, rejected.status)
+        return
+      }
+      await fulfillJson(route, {})
       return
     }
 
@@ -567,6 +590,14 @@ export {
   prependFounderQueueRow,
 } from './moderationMocks.ts'
 
+export { resetAuthMocks, setE2ePasswordSignInError, setE2eResendRateLimitAfterFirstSuccess } from './authMocks.ts'
+
+export {
+  setE2eBetaAccessGranted,
+  setE2eConsentsOutdated,
+  setE2eInviteOnlyPlatform,
+} from './preBetaMocks.ts'
+
 export {
   bumpMessageUnread,
   E2E_CONVERSATION_ID,
@@ -577,6 +608,8 @@ export {
   setMessageQuietStatus,
   setMessageSendFails,
   setMessageUnreadOverride,
+  setMessageListError,
+  clearMessageConversations,
 } from './messageMocks.ts'
 
 export {
