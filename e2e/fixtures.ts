@@ -18,6 +18,7 @@ import { notificationMockHandleRest, resetNotificationMocks } from './notificati
 import { messageMockHandleRest, resetMessageMocks } from './messageMocks.ts'
 import { badgeMockHandleRest, resetBadgeMocks } from './badgeMocks.ts'
 import { preBetaMockHandleRest, resetPreBetaMocks } from './preBetaMocks.ts'
+import { betaReadiness18bMockHandleRest, resetBetaReadiness18bMocks } from './betaReadiness18bMocks.ts'
 import { authMockMaybeRejectResend, authMockMaybeRejectToken, resetAuthMocks } from './authMocks.ts'
 import { Buffer } from 'node:buffer'
 
@@ -86,7 +87,7 @@ function ownProfile(id: string, username: string, display_name: string, creation
     id,
     username,
     display_name,
-    bio: 'Bio',
+    bio: 'A thoughtful bio for testing.',
     avatar_url: null,
     banner_url: null,
     website: null,
@@ -377,6 +378,8 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
   if (bookResult !== undefined) return bookResult
   const preBetaResult = preBetaMockHandleRest(url, method, postData)
   if (preBetaResult !== undefined) return preBetaResult
+  const beta18bResult = betaReadiness18bMockHandleRest(url, method, postData)
+  if (beta18bResult !== undefined) return beta18bResult
 
   const posts = e2eFeedOverride ?? feedPosts()
 
@@ -522,6 +525,7 @@ export async function installSupabaseMocks(page: Page) {
   resetMessageMocks()
   resetModerationMocks()
   resetPreBetaMocks()
+  resetBetaReadiness18bMocks()
   resetAuthMocks()
   e2eOwnProfileRole = 'writer'
   const session = sessionResponse(READER.id, READER.email)

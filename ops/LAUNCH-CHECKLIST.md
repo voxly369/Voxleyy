@@ -1,50 +1,13 @@
-# Voxly pre-beta launch checklist
+# Voxly launch checklist (ops)
 
-Use this before opening a closed beta to real users. Legal placeholders in `src/config/organization.ts` must be replaced first.
+## Pending file cleanups after account deletion
 
-## Legal and policy
+When a member deletes their account, Voxly records storage object paths in `deletion_storage_queue`. Rows are **not** removed from Supabase Storage automatically in the current beta build.
 
-- [ ] Counsel review of Terms, Privacy, Community Guidelines, and Copyright pages
-- [ ] Replace organization placeholders (company name, DPO, postal address, governing law, minimum age)
-- [ ] Bump `LEGAL_DOCUMENT_VERSIONS` and migrate consent records if text changed
-- [ ] Confirm cookie/analytics disclosures match what the app actually loads
+Before public launch (or on a regular cadence during private beta):
 
-## Security and secrets
+1. Open the Founder dashboard **Beta** tab and note **Pending file cleanups**.
+2. Download the CSV of `bucket_id` and `object_path` values.
+3. In the Supabase project **Storage** dashboard, delete those objects (or run an Edge Function with the service role to batch-delete queued paths and mark `done_at`).
 
-- [ ] No service-role keys in client bundle or public env vars
-- [ ] RLS enabled on all user tables; founder RPCs gated by `is_founder`
-- [ ] Client errors scrubbed before `report_client_error` (tokens, emails, query strings)
-- [ ] Production build passes `npm run check:production` (no source maps, no e2e hooks)
-
-## Beta access
-
-- [ ] `get_beta_signup_config` reflects intended sign-up / invite-only / waitlist state
-- [ ] Invite codes tested end-to-end (`redeem_invite_code` after sign-up)
-- [ ] Waitlist flow tested when sign-ups closed (`join_beta_waitlist`)
-- [ ] Founder beta tab flags documented for on-call
-
-## Account lifecycle
-
-- [ ] `export_my_data` returns expected JSON for a test account
-- [ ] `delete_my_account` removes auth user and profile; session ends in UI
-- [ ] Password reset and email confirmation flows tested on production domain
-
-## Observability
-
-- [ ] `/health` returns `{ "status": "ok" }` from static hosting
-- [ ] `scripts/load-smoke.mjs` green against staging `BASE_URL`
-- [ ] Error inbox (founder Errors tab) wired when RPC is ready
-- [ ] Optional third-party error hook documented in `reportError.ts` if enabled
-
-## Performance and limits
-
-- [ ] Review `ops/LIMITS.md` against Supabase plan and CDN
-- [ ] Rate limits on auth email sends verified
-- [ ] Load test critical paths: feed, publish, reader, messages
-
-## Deployment
-
-- [ ] Migrations applied to production in order (`npm run check:migrations`)
-- [ ] `npm run verify` green on release commit
-- [ ] Rollback plan: previous static build + DB migration notes
-- [ ] Status page or founder comms template for incidents
+Update member-facing Privacy copy if automation is not yet live — exports and account deletion proceed immediately; file blobs may remain until manual or automated cleanup runs.

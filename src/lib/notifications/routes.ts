@@ -1,5 +1,10 @@
 import type { AdminNotificationRow, NotificationRow } from './types.ts'
 
+function founderWelcomeHref(data: Record<string, unknown>): string {
+  if (data.kind === 'founder_welcome') return '/'
+  return '/'
+}
+
 function creationIdFromData(data: Record<string, unknown>, fallback: string | null): string | null {
   if (typeof data.creation_id === 'string') return data.creation_id
   if (typeof data.book_id === 'string') return data.book_id
@@ -39,6 +44,8 @@ export function notificationHref(row: NotificationRow): string | null {
       return '/settings'
     case 'purchase':
     case 'announcement':
+      if (row.data.kind === 'founder_welcome') return founderWelcomeHref(row.data)
+      return null
     case 'summary':
     case 'collab_invite':
     case 'challenge_start':

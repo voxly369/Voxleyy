@@ -90,7 +90,15 @@ export default function MessagesPage() {
             )
           ) : (
             <div className="hidden flex-1 items-center justify-center p-6 md:flex">
-              <EmptyState title="Select a conversation" message="Choose a thread from the list or message a writer from their profile." />
+              <EmptyState
+                title="Start a conversation"
+                message="Pick a thread from the list, or visit a writer’s profile to send your first note."
+                action={
+                  <Link to="/discover" className="min-h-11 inline-flex items-center rounded-2xl bg-coral px-4 text-sm font-semibold text-white">
+                    Discover writers
+                  </Link>
+                }
+              />
             </div>
           )}
         </section>

@@ -1,0 +1,131 @@
+const READER_ID = '11111111-1111-1111-1111-111111111111'
+
+let onboardingCompleted = false
+let onboardingStep = 0
+let feedbackCount = 0
+let founderWelcomeSent = false
+let feedbackSubmitCount = 0
+
+export function setE2eOnboardingIncomplete(step = 0) {
+  onboardingCompleted = false
+  onboardingStep = step
+}
+
+export function setE2eOnboardingComplete() {
+  onboardingCompleted = true
+  onboardingStep = 99
+}
+
+export function resetBetaReadiness18bMocks() {
+  onboardingCompleted = true
+  onboardingStep = 99
+  feedbackCount = 0
+  founderWelcomeSent = false
+  feedbackSubmitCount = 0
+}
+
+export function betaReadiness18bMockHandleRest(url: string, method: string, postData: unknown): unknown | undefined {
+  if (url.includes('/rest/v1/rpc/get_my_profile_preferences')) {
+    return {
+      user_id: READER_ID,
+      onboarding_completed_at: onboardingCompleted ? '2026-01-02T00:00:00.000Z' : null,
+      onboarding_step: onboardingStep,
+      writer_roles: ['poet'],
+      favorite_genres: ['poetry'],
+      languages: ['en'],
+      welcome_moment_seen_at: '2026-01-01T00:00:00.000Z',
+      checklist_dismissed_at: null,
+      checklist_progress: {},
+    }
+  }
+  if (url.includes('/rest/v1/rpc/upsert_my_profile_preferences')) {
+    const patch = (postData as { p_patch?: Record<string, unknown> } | null)?.p_patch ?? {}
+    if (typeof patch.onboarding_step === 'number') onboardingStep = patch.onboarding_step
+    if (patch.onboarding_completed_at === null) onboardingCompleted = false
+    return {
+      user_id: READER_ID,
+      onboarding_completed_at: onboardingCompleted ? '2026-01-02T00:00:00.000Z' : null,
+      onboarding_step: onboardingStep,
+      writer_roles: [],
+      favorite_genres: [],
+      languages: ['en'],
+      welcome_moment_seen_at: '2026-01-01T00:00:00.000Z',
+      checklist_dismissed_at: null,
+      checklist_progress: {},
+    }
+  }
+  if (url.includes('/rest/v1/rpc/complete_my_onboarding')) {
+    onboardingCompleted = true
+    onboardingStep = 99
+    if (!founderWelcomeSent) founderWelcomeSent = true
+    return {
+      user_id: READER_ID,
+      onboarding_completed_at: '2026-01-02T00:00:00.000Z',
+      onboarding_step: 99,
+      writer_roles: [],
+      favorite_genres: [],
+      languages: ['en'],
+      welcome_moment_seen_at: '2026-01-01T00:00:00.000Z',
+      checklist_dismissed_at: null,
+      checklist_progress: {},
+    }
+  }
+  if (url.includes('/rest/v1/rpc/submit_app_feedback')) {
+    feedbackSubmitCount += 1
+    if (feedbackSubmitCount > 10) {
+      return { __httpError: { status: 400, message: 'You can send up to 10 pieces of feedback per day.' } }
+    }
+    feedbackCount += 1
+    return feedbackCount
+  }
+  if (url.includes('/rest/v1/rpc/founder_list_feedback')) {
+    return {
+      rows: [
+        {
+          id: 1,
+          user_id: READER_ID,
+          category: 'idea',
+          message: 'Love the reading experience.',
+          page_path: '/settings',
+          app_version: '0.0.0',
+          viewport: '375x667',
+          read_at: null,
+          done_at: null,
+          founder_note: null,
+          created_at: '2026-01-02T12:00:00.000Z',
+        },
+      ],
+      next_cursor: null,
+    }
+  }
+  if (url.includes('/rest/v1/rpc/founder_feedback_unread_count')) return 1
+  if (url.includes('/rest/v1/rpc/founder_update_feedback')) return null
+  if (url.includes('/rest/v1/rpc/founder_pending_storage_cleanup_count')) return 2
+  if (url.includes('/rest/v1/rpc/founder_list_deletion_storage_queue')) {
+    return [{ bucket_id: 'avatars', object_path: `${READER_ID}/x.webp`, queued_at: '2026-01-01T00:00:00.000Z' }]
+  }
+  if (url.includes('/rest/v1/app_feedback') && method === 'GET') {
+    return [{ id: 1 }]
+  }
+  if (url.includes('/rest/v1/creations') && url.includes('status=eq.published') && url.includes('select=id')) {
+    return [{ id: '00000000-0000-0000-0000-000000000001' }]
+  }
+  if (url.includes('/rest/v1/follows') && url.includes('select=followee_id')) {
+    return [{ followee_id: '22222222-2222-2222-2222-222222222222' }, { followee_id: '33333333-3333-3333-3333-333333333333' }]
+  }
+  if (url.includes('/rest/v1/library_saved_items')) {
+    return [{ creation_id: '00000000-0000-0000-0000-000000000001' }]
+  }
+  if (url.includes('/rest/v1/library_continue_reading')) {
+    return [{ creation_id: '00000000-0000-0000-0000-000000000001', updated_at: '2026-01-01T00:00:00.000Z' }]
+  }
+  if (url.includes('/rest/v1/library_continue_reading')) return []
+  if (url.includes('/rest/v1/creations') && url.includes('head=true')) {
+    return null
+  }
+  return undefined
+}
+
+export function e2eFounderWelcomeWasSent() {
+  return founderWelcomeSent
+}

@@ -11,6 +11,7 @@ import { isBannedStatus } from '../lib/auth/profile.ts'
 import { documentsNeedingReaccept, parseStoredConsents } from '../lib/consent/consentVersion.ts'
 import type { LegalDocumentKey } from '../config/organization.ts'
 import { supabase } from '../lib/supabaseClient.ts'
+import { OnboardingGate } from './OnboardingGate.tsx'
 
 function pathAllowedDuringInviteGate(pathname: string): boolean {
   return /^\/(settings|terms|privacy|contact|copyright|community-guidelines)(\/|$)/.test(pathname)
@@ -52,7 +53,7 @@ function ConsentReacceptGate() {
     )
   }
 
-  return <Outlet />
+  return <OnboardingGate />
 }
 
 export function RequireAuth() {

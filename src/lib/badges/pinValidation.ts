@@ -9,6 +9,9 @@ export function validatePinAction(
   badgeKey: string,
   action: 'pin' | 'unpin',
 ): PinValidationResult {
+  if (badgeKey === 'founder') {
+    return { ok: false, message: 'The Founder badge stays pinned automatically.' }
+  }
   if (action === 'unpin') {
     if (!pinnedKeys.includes(badgeKey)) {
       return { ok: false, message: 'That badge is not pinned.' }

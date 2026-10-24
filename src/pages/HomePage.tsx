@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { HomeGreeting } from '../components/home/HomeGreeting.tsx'
+import { HomeChecklistCard } from '../components/home/HomeChecklistCard.tsx'
+import { useAuth } from '../lib/auth/auth-context.ts'
+import { fetchMyProfilePreferences, patchMyProfilePreferences } from '../lib/onboarding/api.ts'
+import { fetchChecklistSignals } from '../lib/home/checklistSignals.ts'
+import { getUserStreaks } from '../lib/streaks/api.ts'
+import { liveCurrentStreak } from '../lib/streaks/liveCurrentStreak.ts'
+import { supabase } from '../lib/supabaseClient.ts'
 import { FeedSwitcher, type FeedTab } from '../components/feed/FeedSwitcher.tsx'
 import { PostCard } from '../components/feed/PostCard.tsx'
 import { CommentsSheet } from '../components/engagement/CommentsSheet.tsx'
@@ -20,7 +28,13 @@ function tabToKind(tab: FeedTab): FeedKind {
 
 export default function HomePage() {
   useDocumentTitle('Home')
+  const { profile, isFounder } = useAuth()
   const [tab, setTab] = useState<FeedTab>('home')
+  const [dailyPrompt, setDailyPrompt] = useState<string | null>(null)
+  const [writingStreak, setWritingStreak] = useState<number | null>(null)
+  const [continueCount, setContinueCount] = useState(0)
+  const [checklistDismissed, setChecklistDismissed] = useState(true)
+  const [checklistSignals, setChecklistSignals] = useState<Awaited<ReturnType<typeof fetchChecklistSignals>> | null>(null)
   const [posts, setPosts] = useState<FeedPost[]>([])
   const [cursor, setCursor] = useState<FeedCursor | null>(null)
   const [loading, setLoading] = useState(true)
@@ -41,6 +55,30 @@ export default function HomePage() {
       window.removeEventListener('offline', syncOnline)
     }
   }, [])
+
+  useEffect(() => {
+    if (!profile?.id) return
+    void supabase.rpc('writing_prompt_for_date').then(({ data }) => {
+      if (typeof data === 'string') setDailyPrompt(data)
+    })
+    if (profile.role === 'writer') {
+      void getUserStreaks(profile.id).then((result) => {
+        if (result.ok) {
+          setWritingStreak(liveCurrentStreak(result.data.writing, profile.timezone ?? 'UTC'))
+        }
+      })
+    } else {
+      void import('../lib/library/listLibrary.ts').then(({ listContinueReading }) =>
+        listContinueReading().then((result) => {
+          if (result.ok) setContinueCount(result.items.length)
+        }),
+      )
+    }
+    void fetchMyProfilePreferences().then((prefs) => {
+      if (prefs.ok) setChecklistDismissed(Boolean(prefs.data.checklist_dismissed_at))
+    })
+    void fetchChecklistSignals(profile.id, profile.bio ?? null).then(setChecklistSignals)
+  }, [profile?.id, profile?.role, profile?.timezone, profile?.bio])
 
   useEffect(() => {
     if (offline) return
@@ -112,6 +150,26 @@ export default function HomePage() {
   return (
     <FeedWithRailLayout>
       <div className="flex flex-col gap-4">
+      {profile ? (
+        <HomeGreeting
+          displayName={profile.display_name?.trim() || profile.username}
+          timezone={profile.timezone ?? 'UTC'}
+          role={profile.role === 'writer' ? 'writer' : 'reader'}
+          writingStreak={writingStreak}
+          dailyPrompt={dailyPrompt}
+          continueReadingCount={continueCount}
+        />
+      ) : null}
+      {!isFounder && profile && checklistSignals ? (
+        <HomeChecklistCard
+          signals={checklistSignals}
+          dismissed={checklistDismissed}
+          onDismiss={() => {
+            setChecklistDismissed(true)
+            void patchMyProfilePreferences({ checklist_dismissed_at: new Date().toISOString() })
+          }}
+        />
+      ) : null}
       <FeedSwitcher active={tab} onChange={onTabChange} />
       {loading ? (
         <div className="flex flex-col gap-4">
@@ -132,7 +190,15 @@ export default function HomePage() {
             }
           />
         ) : (
-          <EmptyState title="Home" message="When writers publish, their work will show up here." />
+          <EmptyState
+            title="The page is quiet — for now"
+            message="Follow a few writers or explore Discover; fresh work lands here as they publish."
+            action={
+              <Link to="/discover" className="min-h-11 inline-flex items-center rounded-2xl bg-coral px-4 text-sm font-semibold text-white">
+                Discover writers
+              </Link>
+            }
+          />
         )
       ) : (
         <>

@@ -77,7 +77,7 @@ export default function ProfileBadgesPage() {
   const isOwn = Boolean(me?.id && userId && me.id === userId)
 
   async function togglePin(badgeKey: string, earned: boolean) {
-    if (!isOwn || !earned) return
+    if (!isOwn || !earned || badgeKey === 'founder') return
     setBusyKey(badgeKey)
     const pinned = pinnedKeys.includes(badgeKey)
     const result = pinned ? await unpinBadge(badgeKey) : await pinBadge(badgeKey)
