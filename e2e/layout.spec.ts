@@ -190,6 +190,7 @@ async function assertRightRail(page: Page, width: number, screenName: string) {
   const rail = page.getByRole('complementary', { name: 'Suggestions' })
   const onFeed =
     screenName === 'home' ||
+    screenName === 'home-greeting' ||
     screenName === 'following' ||
     screenName === 'create-sheet' ||
     screenName === 'comments' ||
