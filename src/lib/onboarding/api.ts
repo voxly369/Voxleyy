@@ -9,6 +9,8 @@ export type ProfilePreferencesRow = {
   favorite_genres: string[]
   languages: string[]
   welcome_moment_seen_at: string | null
+  last_entrance_local_date: string | null
+  show_entrance_screen: boolean
   checklist_dismissed_at: string | null
   checklist_progress: Record<string, unknown>
 }
@@ -28,6 +30,9 @@ function parseRow(data: unknown): ProfilePreferencesRow | null {
       : [],
     languages: Array.isArray(row.languages) ? row.languages.filter((x): x is string => typeof x === 'string') : [],
     welcome_moment_seen_at: typeof row.welcome_moment_seen_at === 'string' ? row.welcome_moment_seen_at : null,
+    last_entrance_local_date:
+      typeof row.last_entrance_local_date === 'string' ? row.last_entrance_local_date : null,
+    show_entrance_screen: row.show_entrance_screen !== false,
     checklist_dismissed_at: typeof row.checklist_dismissed_at === 'string' ? row.checklist_dismissed_at : null,
     checklist_progress:
       row.checklist_progress && typeof row.checklist_progress === 'object'

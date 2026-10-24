@@ -2146,6 +2146,7 @@ export type Database = {
         Args: { p_query: string; p_tab?: string; p_limit?: number }
         Returns: Json
       }
+      quote_of_the_day: { Args: { p_day?: string; p_tz?: string }; Returns: Json }
       writing_prompt_for_date: { Args: { p_on?: string }; Returns: string }
       tag_public_post_count: { Args: { p_tag: string }; Returns: number }
       compute_engagement_score: {
