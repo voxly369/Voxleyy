@@ -50,17 +50,6 @@ test.describe('messages 15B', () => {
   })
 
   test('report message from bubble', async ({ page }) => {
-    await page.route('**/rest/v1/reports**', async (route) => {
-      if (route.request().method() === 'POST') {
-        await route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify([{ id: '00000000-0000-0000-0000-0000000000mr2' }]),
-        })
-        return
-      }
-      await route.fallback()
-    })
     await page.goto(`/messages/${E2E_CONVERSATION_ID}`, { waitUntil: 'networkidle' })
     await page.locator('[data-testid="message-bubble"][data-own="false"]').first().getByTestId('report-message').click()
     await expect(page.getByTestId('report-sheet-form')).toBeVisible()

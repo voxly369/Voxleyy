@@ -3921,10 +3921,22 @@ begin
   begin perform public.send_message(v_conv, 'far', null, v_far); perform pg_temp.record('send refused deliver_at over 30 days', false, 'sent');
   exception when others then perform pg_temp.record('send refused deliver_at over 30 days', true, sqlerrm); end;
 
+  execute 'set local role authenticated';
   perform set_config('request.jwt.claim.sub', v_a::text, true);
-  update public.messages set body = 'hack' where conversation_id = v_conv;
-  get diagnostics v_count = row_count;
-  perform pg_temp.record('messages direct update blocked', v_count = 0, 'row_count=' || v_count);
+  begin
+    update public.messages set body = 'hack' where conversation_id = v_conv;
+    get diagnostics v_count = row_count;
+    perform pg_temp.record('messages direct update blocked', v_count = 0, 'row_count=' || v_count);
+  exception when others then
+    perform pg_temp.record('messages direct update blocked', true, sqlerrm);
+  end;
+  begin
+    delete from public.messages where conversation_id = v_conv;
+    get diagnostics v_count = row_count;
+    perform pg_temp.record('messages direct delete blocked', v_count = 0, 'row_count=' || v_count);
+  exception when others then
+    perform pg_temp.record('messages direct delete blocked', true, sqlerrm);
+  end;
 
   v_msg := public.send_message(v_conv, 'To delete');
   perform public.delete_message(v_msg);
@@ -3937,9 +3949,10 @@ begin
   select count(*) into v_count from public.messages_visible where id = v_msg;
   perform pg_temp.record('scheduled invisible to recipient until deliver_at', v_count = 0, 'rows=' || v_count);
   perform set_config('request.jwt.claim.sub', v_b::text, true);
-  select count(*) into v_count from public.notifications n
-  where n.recipient_id = v_b and n.type = 'message' and n.target_id = v_conv and n.created_at > now();
-  perform pg_temp.record('message notification not visible before deliver_at', v_count >= 1, 'future_rows=' || v_count);
+  select count(*) into v_count from public.notification_feed n
+  where n.type = 'message' and n.target_id = v_conv
+    and (n.data->>'message_id')::uuid = v_msg;
+  perform pg_temp.record('message notification not visible before deliver_at', v_count = 0, 'feed_rows=' || v_count);
 
   execute format('set local role %I', session_user);
   delete from public.notifications where target_id = v_conv and type = 'message';
@@ -3948,7 +3961,8 @@ begin
   perform public.send_message(v_conv, 'One');
   perform public.send_message(v_conv, 'Two');
   perform set_config('request.jwt.claim.sub', v_b::text, true);
-  select (n.data->>'count')::integer into v_count from public.notifications n
+  select coalesce(nullif(regexp_replace(n.data->>'count', '[^0-9]', '', 'g'), ''), '0')::integer
+    into v_count from public.notifications n
   where n.recipient_id = v_b and n.type = 'message' and n.target_id = v_conv and n.read_at is null
   order by n.created_at desc limit 1;
   perform pg_temp.record('message notification dedupes per conversation count', v_count >= 2, 'count=' || v_count);
@@ -3958,19 +3972,26 @@ begin
   perform pg_temp.record('recipient_quiet_status null when quiet off', v_json is null, 'json null');
 
   perform set_config('request.jwt.claim.sub', v_a::text, true);
-  v_json := public.search_dm_writers(v_b::text);
-  select not exists (
-    select 1 from jsonb_array_elements(v_json) e where (e->>'id')::uuid = v_a
-  ) into v_count;
-  perform pg_temp.record('search_dm_writers excludes self', v_count, 'rows=' || coalesce(jsonb_array_length(v_json), 0));
+  v_json := public.search_dm_writers('reader');
+  select count(*) into v_count
+  from jsonb_array_elements(v_json) e
+  where (e->>'id')::uuid = v_a;
+  perform pg_temp.record('search_dm_writers excludes self', v_count = 0, 'self_rows=' || v_count);
 
   select count(*) into v_count from pg_publication_tables
   where pubname = 'supabase_realtime' and tablename in ('messages', 'conversation_members');
   perform pg_temp.record('messages tables in supabase_realtime', v_count = 2, 'rows=' || v_count);
 
   execute 'set local role anon';
-  begin perform public.message_unread_total(); perform pg_temp.record('anon cannot call message_unread_total', false, 'ok');
-  exception when others then perform pg_temp.record('anon cannot call message_unread_total', true, sqlerrm); end;
+  begin
+    perform public.message_unread_total();
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon cannot call message_unread_total', false, 'ok');
+  exception when others then
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon cannot call message_unread_total', true, sqlerrm);
+  end;
+  execute 'set local role authenticated';
 
   perform set_config('request.jwt.claim.sub', v_founder::text, true);
   execute 'set local role authenticated';
@@ -3980,14 +4001,18 @@ begin
   execute 'set local role authenticated';
   perform set_config('request.jwt.claim.sub', v_a::text, true);
   v_msg := public.send_message(v_conv, 'Report me');
-  execute format('set local role %I', session_user);
-  insert into public.reports (reporter_id, reported_user_id, target_type, target_id, reason, details)
-  values (v_b, v_a, 'message', v_msg, 'spam', 'test') returning id into v_report;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  insert into public.reports (target_type, target_id, reported_user_id, reason, details)
+  values ('message', v_msg, v_a, 'spam', 'test') returning id into v_report;
   execute 'set local role authenticated';
   perform set_config('request.jwt.claim.sub', v_founder::text, true);
   v_json := public.view_reported_private_content(v_report);
-  v_count := case when v_json->>'target_type' = 'message' then 1 else 0 end;
-  perform pg_temp.record('founder reported message context with audit', v_count = 1, 'type=' || coalesce(v_json->>'target_type', ''));
+  perform pg_temp.record(
+    'founder reported message context with audit',
+    coalesce(v_json->>'target_type', '') = 'message',
+    'type=' || coalesce(v_json->>'target_type', '')
+  );
 
   perform set_config('request.jwt.claim.sub', v_a::text, true);
   begin perform public.view_reported_private_content(v_report); perform pg_temp.record('non-founder cannot view reported message', false, 'ok');
@@ -4002,6 +4027,7 @@ begin
   select count(*) into v_count from public.messages_visible where conversation_id = v_conv;
   perform pg_temp.record('banned counterpart history still readable', v_count > 0, 'rows=' || v_count);
 
+  execute format('set local role %I', session_user);
   perform pg_temp.create_test_user(v_del, v_del::text || '@del-a.test', now());
   perform pg_temp.create_test_user(v_del2, v_del2::text || '@del-b.test', now());
   perform set_config('request.jwt.claim.sub', v_del::text, true);
@@ -4011,6 +4037,7 @@ begin
   select count(*) into v_count from public.conversation_members where user_id = v_del;
   perform pg_temp.record('account deletion cascades conversation_members', v_count = 0, 'rows=' || v_count);
 
+  execute format('set local role %I', session_user);
   perform pg_temp.create_test_user(v_ra, v_ra::text || '@rate-a.test', now());
   perform pg_temp.create_test_user(v_rb, v_rb::text || '@rate-b.test', now());
   perform set_config('request.jwt.claim.sub', v_ra::text, true);

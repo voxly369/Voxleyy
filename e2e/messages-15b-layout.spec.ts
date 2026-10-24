@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { E2E_CONVERSATION_ID, installSupabaseMocks, seedSignedInSession } from './fixtures.ts'
 
-const WIDTHS = [375, 768, 1280] as const
+const WIDTHS = [375, 767, 768, 1024, 1279, 1280, 1440] as const
 
 for (const width of WIDTHS) {
   test(`messages 15B layout ${width}px`, async ({ page }) => {
