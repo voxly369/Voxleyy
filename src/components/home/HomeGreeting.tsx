@@ -10,6 +10,7 @@ type HomeGreetingProps = {
   role: 'reader' | 'writer'
   writingStreak: number | null
   dailyPrompt: string | null
+  dailyQuote: { text: string; author: string } | null
   continueReadingCount: number
 }
 
@@ -20,6 +21,7 @@ export function HomeGreeting({
   role,
   writingStreak,
   dailyPrompt,
+  dailyQuote,
   continueReadingCount,
 }: HomeGreetingProps) {
   const greeting = timeAwareGreeting(timezone, displayName)
@@ -32,6 +34,12 @@ export function HomeGreeting({
         <p className="text-sm text-muted" data-testid="home-greeting-country">
           {countryFlag(countryCode)} {cName}
         </p>
+      ) : null}
+      {dailyQuote ? (
+        <figure className="border-l-2 border-coral pl-4 text-sm text-muted" data-testid="home-daily-quote">
+          <blockquote>&ldquo;{dailyQuote.text}&rdquo;</blockquote>
+          <figcaption className="mt-1 text-xs">&mdash; {dailyQuote.author}</figcaption>
+        </figure>
       ) : null}
       {role === 'writer' ? (
         <div className="flex flex-col gap-1 text-sm text-muted">

@@ -8,6 +8,7 @@ let feedbackSubmitCount = 0
 let lastEntranceLocalDate: string | null = null
 let showEntranceScreen = true
 let welcomeMomentSeenAt: string | null = '2026-01-01T00:00:00.000Z'
+let quoteOfDayBroken = false
 
 export function setE2eOnboardingIncomplete(step = 0) {
   onboardingCompleted = false
@@ -28,6 +29,11 @@ export function resetBetaReadiness18bMocks() {
   lastEntranceLocalDate = null
   showEntranceScreen = true
   welcomeMomentSeenAt = '2026-01-01T00:00:00.000Z'
+  quoteOfDayBroken = false
+}
+
+export function setE2eQuoteOfDayBroken(broken: boolean) {
+  quoteOfDayBroken = broken
 }
 
 export function setE2eEntranceVisible(visible: boolean) {
@@ -88,6 +94,9 @@ export function betaReadiness18bMockHandleRest(url: string, method: string, post
     }
   }
   if (url.includes('/rest/v1/rpc/quote_of_the_day')) {
+    if (quoteOfDayBroken) {
+      return { __httpError: { status: 500, message: 'quote unavailable' } }
+    }
     return { text: 'Quiet ink can still change a room.', author: 'Voxly', source: null, kind: 'original' }
   }
   if (url.includes('/rest/v1/rpc/writing_prompt_for_date')) return 'Threshold'

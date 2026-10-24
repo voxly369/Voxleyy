@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { SIGNATURE_QUOTE } from '../../config/brand.ts'
+import { fetchDailyQuoteForDay } from '../../lib/entrance/dailyQuoteView.ts'
 import { useAuth } from '../../lib/auth/auth-context.ts'
 import { countryFlag, countryName } from '../../lib/profiles/countries.ts'
 import { hourInTimeZone, entranceGreeting, localDateKey } from '../../lib/home/greeting.ts'
@@ -60,21 +61,8 @@ export function EntranceScreen({
       if (firstEntranceEver) {
         setQuote({ text: SIGNATURE_QUOTE.text, author: SIGNATURE_QUOTE.attribution })
       } else {
-        const { data } = await supabase.rpc('quote_of_the_day', {
-          p_day: localDateKey(timezone),
-          p_tz: timezone,
-        })
-        if (data && typeof data === 'object' && !Array.isArray(data)) {
-          const row = data as Record<string, unknown>
-          if (typeof row.text === 'string' && typeof row.author === 'string') {
-            setQuote({
-              text: row.text,
-              author: row.author,
-              source: typeof row.source === 'string' ? row.source : null,
-            })
-          }
-        }
-        setQuote((current) => current ?? { text: SIGNATURE_QUOTE.text, author: SIGNATURE_QUOTE.attribution })
+        const daily = await fetchDailyQuoteForDay(localDateKey(timezone), timezone)
+        setQuote(daily)
       }
       const { data: prompt } = await supabase.rpc('writing_prompt_for_date')
       if (typeof prompt === 'string') setDailyPrompt(prompt)

@@ -14,6 +14,7 @@ describe('HomeGreeting', () => {
           role="reader"
           writingStreak={null}
           dailyPrompt={null}
+          dailyQuote={{ text: 'Quiet ink.', author: 'Voxly' }}
           continueReadingCount={0}
         />
       </MemoryRouter>,

@@ -6,7 +6,9 @@ import {
   setE2eOnboardingComplete,
   setE2eOnboardingForEntranceE2e,
   setE2eOnboardingIncomplete,
+  setE2eQuoteOfDayBroken,
 } from './betaReadiness18bMocks.ts'
+const SIGNATURE_QUOTE_TEXT = 'The sky is not the limit, you limit yourself to the sky.'
 
 async function expectNoSeriousViolations(
   page: import('@playwright/test').Page,
@@ -95,6 +97,18 @@ test.describe('beta readiness 18B stage 2', () => {
     await expect(toggle).toBeVisible()
     await toggle.uncheck()
     await expect(toggle).not.toBeChecked()
+  })
+
+  test('entrance and home use built-in quote when quote_of_the_day fails', async ({ page }) => {
+    setE2eOnboardingComplete()
+    setE2eEntranceVisible(false)
+    setE2eQuoteOfDayBroken(true)
+    await page.goto('/', { waitUntil: 'networkidle' })
+    await expect(page.getByTestId('home-greeting')).toBeVisible()
+    await expect(page.getByTestId('home-daily-quote')).toContainText(SIGNATURE_QUOTE_TEXT)
+    setE2eEntranceVisible(true)
+    await page.reload({ waitUntil: 'networkidle' })
+    await expect(page.getByTestId('entrance-quote')).toContainText(SIGNATURE_QUOTE_TEXT)
   })
 
   test('home greeting shows country', async ({ page }) => {
