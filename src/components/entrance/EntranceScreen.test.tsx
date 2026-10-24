@@ -17,7 +17,7 @@ vi.mock('../../lib/auth/auth-context.ts', () => ({
       display_name: 'Sam',
       country: 'ZA',
       timezone: 'UTC',
-      role: 'reader',
+      role: 'writer',
     },
   }),
 }))
@@ -41,8 +41,18 @@ vi.mock('../../lib/supabaseClient.ts', () => ({
   },
 }))
 
-vi.mock('../../lib/library/listLibrary.ts', () => ({
-  listContinueReading: vi.fn(async () => ({ ok: true, items: [] })),
+vi.mock('../../lib/streaks/api.ts', () => ({
+  getUserStreaks: vi.fn(async () => ({
+    ok: true,
+    data: {
+      writing: { current: 0, longest: 0, lastActiveDay: null },
+      reading: { current: 0, longest: 0, lastActiveDay: null },
+    },
+  })),
+}))
+
+vi.mock('../../lib/streaks/liveCurrentStreak.ts', () => ({
+  liveCurrentStreak: () => 0,
 }))
 
 function renderEntrance(props: Partial<ComponentProps<typeof EntranceScreen>> = {}) {
