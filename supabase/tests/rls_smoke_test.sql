@@ -105,6 +105,9 @@ begin
   exception when others then
     null;
   end;
+
+  execute format('set local role %I', session_user);
+  update public.profiles set beta_access_granted = true where id = p_id;
 end $$;
 
 insert into rls_ids (founder, reader_a, reader_b)
@@ -113,6 +116,12 @@ values (gen_random_uuid(), gen_random_uuid(), gen_random_uuid());
 select pg_temp.create_test_user(founder, 'voxly369@gmail.com', now()) from rls_ids;
 select pg_temp.create_test_user(reader_a, 'reader.a@voxly.test', now()) from rls_ids;
 select pg_temp.create_test_user(reader_b, 'reader.b@voxly.test', now()) from rls_ids;
+
+do $$
+begin
+  execute format('set local role %I', session_user);
+  update public.profiles set beta_access_granted = true;
+end $$;
 
 do $$
 declare
@@ -4200,6 +4209,98 @@ begin
     perform pg_temp.record('founder view refused without open report', true, sqlerrm);
   end;
 end $messages_15b$;
+
+do $pre_beta_16a$
+declare
+  v_founder uuid;
+  v_a uuid;
+  v_b uuid;
+  v_inv text;
+  v_uid uuid := gen_random_uuid();
+  v_json jsonb;
+  v_count integer;
+  v_cid uuid;
+begin
+  select founder, reader_a, reader_b into v_founder, v_a, v_b from rls_ids limit 1;
+
+  select public.health_check() into v_json;
+  perform pg_temp.record('health_check returns ok', coalesce(v_json->>'ok', '') = 'true', v_json::text);
+
+  execute 'set local role anon';
+  begin
+    perform public.health_check();
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon can call health_check', true, 'ok');
+  exception when others then
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon can call health_check', false, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_uid, v_uid::text || '@beta-pending.test', now());
+  update public.profiles set beta_access_granted = false where id = v_uid;
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_uid::text, true);
+  begin
+    insert into public.creations (author_id, type, title, audience, status, body_text)
+    values (v_uid, 'poem', 'Blocked', 'public', 'draft', 'x');
+    perform pg_temp.record('uninvited user cannot create while invite_only', false, 'insert ok');
+  exception when others then
+    perform pg_temp.record('uninvited user cannot create while invite_only', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  update public.platform_settings
+  set value = jsonb_set(value, '{invite_only}', 'true'::jsonb)
+  where key = 'beta';
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_inv := public.founder_create_invite_code(1, now() + interval '7 days', 'smoke');
+  perform set_config('request.jwt.claim.sub', v_uid::text, true);
+  perform public.redeem_invite_code(v_inv);
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_uid, 'poem', 'Allowed', 'public', 'draft', 'y') returning id into v_cid;
+  perform pg_temp.record('invite redeem grants beta access', v_cid is not null, 'id=' || v_cid::text);
+
+  begin
+    perform public.redeem_invite_code(v_inv);
+    perform pg_temp.record('invite code single use enforced', false, 'redeemed twice');
+  exception when others then
+    perform pg_temp.record('invite code single use enforced', true, sqlerrm);
+  end;
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform public.record_user_consent('terms', '2026-10-24');
+  select count(*) into v_count from public.user_consents where user_id = v_a and document = 'terms';
+  perform pg_temp.record('user consents insert via record_user_consent', v_count >= 1, 'rows=' || v_count);
+  begin
+    insert into public.user_consents (user_id, document, version) values (v_a, 'terms', 'x');
+    perform pg_temp.record('user consents direct insert blocked', false, 'insert ok');
+  exception when others then
+    perform pg_temp.record('user consents direct insert blocked', true, sqlerrm);
+  end;
+
+  perform public.report_client_error('smoke error', 'stack', '/test', '0.0.0', 'test');
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_json := public.founder_list_client_errors(10);
+  select count(*) into v_count
+  from jsonb_array_elements(v_json) e where e->>'message' = 'smoke error';
+  perform pg_temp.record('founder_list_client_errors includes reported row', v_count >= 1, 'rows=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  v_json := public.export_my_data();
+  perform pg_temp.record('export_my_data returns own profile', (v_json->'profile'->>'id')::uuid = v_a, 'id ok');
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  begin
+    perform public.delete_my_account();
+    perform pg_temp.record('founder account cannot be deleted', false, 'deleted');
+  exception when others then
+    perform pg_temp.record('founder account cannot be deleted', true, sqlerrm);
+  end;
+end $pre_beta_16a$;
+
 do $$
 declare
   n integer;
