@@ -1,8 +1,17 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, beforeEach, afterEach } from 'vitest'
-import { shouldShowEntrance, writeDeviceLastVisitDay, readDeviceLastVisitDay } from './entranceSchedule.ts'
+import {
+  ENTRANCE_FRESH_OPEN_ABSENCE_MS,
+  LAST_ENTRANCE_DISMISSED_AT_KEY,
+  isFreshOpenAfterAbsence,
+  readLastEntranceDismissedAtMs,
+  shouldShowEntrance,
+  writeLastEntranceDismissedAtMs,
+} from './entranceSchedule.ts'
 
-describe('shouldShowEntrance', () => {
+const MINUTE_MS = 60 * 1000
+
+describe('entrance fresh-open rule', () => {
   beforeEach(() => {
     localStorage.clear()
   })
@@ -11,49 +20,43 @@ describe('shouldShowEntrance', () => {
     localStorage.clear()
   })
 
-  it('returns false when showEntranceScreen is false', () => {
+  it('returns false when Show the entrance screen is off', () => {
     expect(
       shouldShowEntrance({
-        timeZone: 'UTC',
         showEntranceScreen: false,
-        serverLastEntranceDate: null,
+        lastDismissedAtMs: null,
         now: new Date('2026-06-01T10:00:00.000Z'),
       }),
     ).toBe(false)
   })
 
-  it('returns false when server already recorded today', () => {
+  it('returns true on first fresh open when the entrance setting is on', () => {
     expect(
       shouldShowEntrance({
-        timeZone: 'UTC',
         showEntranceScreen: true,
-        serverLastEntranceDate: '2026-06-01',
-        now: new Date('2026-06-01T15:00:00.000Z'),
-      }),
-    ).toBe(false)
-  })
-
-  it('returns false when device visited today', () => {
-    writeDeviceLastVisitDay('2026-06-01')
-    expect(
-      shouldShowEntrance({
-        timeZone: 'UTC',
-        showEntranceScreen: true,
-        serverLastEntranceDate: null,
-        now: new Date('2026-06-01T08:00:00.000Z'),
-      }),
-    ).toBe(false)
-    expect(readDeviceLastVisitDay()).toBe('2026-06-01')
-  })
-
-  it('returns true on a new local day', () => {
-    expect(
-      shouldShowEntrance({
-        timeZone: 'Africa/Johannesburg',
-        showEntranceScreen: true,
-        serverLastEntranceDate: '2026-05-30',
-        now: new Date('2026-05-31T06:00:00.000Z'),
+        lastDismissedAtMs: null,
+        now: new Date('2026-06-01T10:00:00.000Z'),
       }),
     ).toBe(true)
+  })
+
+  it('30-minute boundary: 29 minutes away stays inside, 30 and 31 minutes show again', () => {
+    const dismissedAt = new Date('2026-06-01T10:00:00.000Z').getTime()
+    expect(
+      isFreshOpenAfterAbsence(dismissedAt, new Date(dismissedAt + 29 * MINUTE_MS)),
+    ).toBe(false)
+    expect(
+      isFreshOpenAfterAbsence(dismissedAt, new Date(dismissedAt + 30 * MINUTE_MS)),
+    ).toBe(true)
+    expect(
+      isFreshOpenAfterAbsence(dismissedAt, new Date(dismissedAt + 31 * MINUTE_MS)),
+    ).toBe(true)
+    expect(ENTRANCE_FRESH_OPEN_ABSENCE_MS).toBe(30 * MINUTE_MS)
+  })
+
+  it('persists last dismiss timestamp on device', () => {
+    writeLastEntranceDismissedAtMs(1_700_000_000_000)
+    expect(readLastEntranceDismissedAtMs()).toBe(1_700_000_000_000)
+    expect(localStorage.getItem(LAST_ENTRANCE_DISMISSED_AT_KEY)).toBe('1700000000000')
   })
 })

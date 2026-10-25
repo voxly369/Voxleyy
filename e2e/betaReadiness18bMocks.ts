@@ -44,6 +44,7 @@ export function setE2eEntranceVisible(visible: boolean) {
     showEntranceScreen = true
     try {
       localStorage.removeItem('voxly-last-visit-v1')
+      localStorage.removeItem('voxly-last-entrance-dismissed-at-v1')
     } catch {
       /* ignore */
     }

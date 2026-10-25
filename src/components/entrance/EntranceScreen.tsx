@@ -5,7 +5,14 @@ import { fetchDailyQuoteForDay } from '../../lib/entrance/dailyQuoteView.ts'
 import { useAuth } from '../../lib/auth/auth-context.ts'
 import { countryFlag, countryName } from '../../lib/profiles/countries.ts'
 import { hourInTimeZone, entranceGreeting, localDateKey } from '../../lib/home/greeting.ts'
-import { isLongAbsence, shouldShowEntrance, writeDeviceLastVisitDay } from '../../lib/entrance/entranceSchedule.ts'
+import {
+  ENTRANCE_FRESH_OPEN_ABSENCE_MS,
+  isLongAbsence,
+  readLastEntranceDismissedAtMs,
+  shouldShowEntrance,
+  writeDeviceLastVisitDay,
+  writeLastEntranceDismissedAtMs,
+} from '../../lib/entrance/entranceSchedule.ts'
 import { patchMyProfilePreferences } from '../../lib/onboarding/api.ts'
 import { useCreateSheet } from '../../lib/shell/useCreateSheet.ts'
 import { supabase } from '../../lib/supabaseClient.ts'
@@ -69,9 +76,8 @@ export function EntranceScreen({
   useEffect(() => {
     if (!profile) return
     const visible = shouldShowEntrance({
-      timeZone: timezone,
       showEntranceScreen,
-      serverLastEntranceDate,
+      lastDismissedAtMs: readLastEntranceDismissedAtMs(),
     })
     setOpen(visible)
     if (!visible) return
@@ -96,12 +102,32 @@ export function EntranceScreen({
         if (cont.ok) setContinueReading(cont.items.length > 0)
       }
     })()
-  }, [profile, timezone, showEntranceScreen, serverLastEntranceDate, firstEntranceEver])
+  }, [profile, timezone, showEntranceScreen, firstEntranceEver])
+
+  useEffect(() => {
+    if (!profile || !showEntranceScreen) return
+    let hiddenAt: number | null = null
+    function onVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now()
+        return
+      }
+      if (document.visibilityState !== 'visible' || hiddenAt == null) return
+      const awayMs = Date.now() - hiddenAt
+      hiddenAt = null
+      if (awayMs >= ENTRANCE_FRESH_OPEN_ABSENCE_MS) {
+        setOpen(true)
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
+  }, [profile, showEntranceScreen])
 
   const finishEntrance = useCallback(async () => {
     setSceneActive(false)
     music.fadeOutAndStop()
     const today = localDateKey(timezone)
+    writeLastEntranceDismissedAtMs(Date.now())
     writeDeviceLastVisitDay(today)
     setOpen(false)
     setExiting(false)

@@ -28,6 +28,7 @@ test.describe('beta readiness 18B stage 2', () => {
     await installSupabaseMocks(page)
     await page.addInitScript(() => {
       localStorage.removeItem('voxly-last-visit-v1')
+      localStorage.removeItem('voxly-last-entrance-dismissed-at-v1')
     })
     await seedSignedInSession(page)
   })

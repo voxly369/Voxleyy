@@ -1,6 +1,11 @@
 import { daysBetweenLocalDates, localDateKey } from '../home/greeting.ts'
 
 const DEVICE_LAST_VISIT_KEY = 'voxly-last-visit-v1'
+export const LAST_ENTRANCE_DISMISSED_AT_KEY = 'voxly-last-entrance-dismissed-at-v1'
+
+/** Show entrance again after this gap away (fresh load or long tab absence). */
+export const ENTRANCE_FRESH_OPEN_ABSENCE_MS = 30 * 60 * 1000
+
 const ABSENCE_DAYS = 7
 
 export function readDeviceLastVisitDay(): string | null {
@@ -20,25 +25,44 @@ export function writeDeviceLastVisitDay(dayKey: string): void {
   }
 }
 
-export type EntranceScheduleInput = {
-  timeZone: string
-  showEntranceScreen: boolean
-  serverLastEntranceDate: string | null
-  now?: Date
+export function readLastEntranceDismissedAtMs(): number | null {
+  try {
+    const raw = localStorage.getItem(LAST_ENTRANCE_DISMISSED_AT_KEY)
+    if (!raw) return null
+    const ms = Number(raw)
+    return Number.isFinite(ms) && ms > 0 ? ms : null
+  } catch {
+    return null
+  }
 }
 
-export function shouldShowEntrance(input: EntranceScheduleInput): boolean {
-  if (!input.showEntranceScreen) return false
-  const now = input.now ?? new Date()
-  const today = localDateKey(input.timeZone, now)
-  if (input.serverLastEntranceDate === today) return false
+export function writeLastEntranceDismissedAtMs(ms: number): void {
   try {
-    const deviceDay = readDeviceLastVisitDay()
-    if (deviceDay === today) return false
+    localStorage.setItem(LAST_ENTRANCE_DISMISSED_AT_KEY, String(ms))
   } catch {
     /* ignore */
   }
-  return true
+}
+
+export type EntranceScheduleInput = {
+  showEntranceScreen: boolean
+  lastDismissedAtMs: number | null
+  now?: Date
+}
+
+/** Fresh-open rule: first visit, or return after {@link ENTRANCE_FRESH_OPEN_ABSENCE_MS}. */
+export function shouldShowEntrance(input: EntranceScheduleInput): boolean {
+  if (!input.showEntranceScreen) return false
+  const nowMs = (input.now ?? new Date()).getTime()
+  if (input.lastDismissedAtMs == null) return true
+  return nowMs - input.lastDismissedAtMs >= ENTRANCE_FRESH_OPEN_ABSENCE_MS
+}
+
+export function isFreshOpenAfterAbsence(
+  lastDismissedAtMs: number | null,
+  now: Date = new Date(),
+): boolean {
+  return shouldShowEntrance({ showEntranceScreen: true, lastDismissedAtMs, now })
 }
 
 export function isLongAbsence(timeZone: string, serverLastEntranceDate: string | null, now: Date = new Date()): boolean {
