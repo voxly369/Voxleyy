@@ -234,6 +234,7 @@ Awarded automatically by stored rules, except Featured and Verified. A user can 
 | Trending       | 1,000 likes on one post                                                    |
 | Rising Creator | 100 followers                                                              |
 | Viral Creator  | 10,000 total likes                                                         |
+| Battle Winner  | Won a Battle round (section 9); also earns a timed feature spot on Discover |
 | Featured       | Awarded by the Founder only                                                |
 | Verified       | Purchased by the user. The only paid badge. One colour everywhere (Voxly coral accent) |
 
@@ -433,7 +434,9 @@ Filters: genre, mood, language, country, trending, new. Mood and genre chip rows
 
 - **Streaks.** See section 6.
 
-- **Duets (also called Two Hits).** A writer posts a **part**, which can be text, audio or video. Another writer can join and post their **response part**. The original and the response appear together—side by side on wide screens and stacked on phones—and each keeps its own author, time and credit. Duets work for writing, voice and video. Any writer can start a duet from an eligible post; the original author can turn joins off for that post. Both authors' Safe Space, block and report rules apply in full.
+- **Duets (also called Two Hits) — collaborative.** A writer posts a **part** (text, audio or, once video creation exists, video). Another writer **joins** with a **response part**. The two parts appear together—side by side on wide screens and stacked on phones—each with its own author and credit. Duets are **shared pieces**: nobody wins. **Each author shares to their own followers.** Safe Space, block and report rules apply to both authors. The original author can turn joins off for that post. **Duets ship for writing and audio first; video duets follow once video creation is built.**
+
+- **Battles — competitive.** A writer posts a **challenge part**; an **opponent** answers in a set **round** with a published **start time and end time**. **Anyone can start a Battle.** Followers **vote for a winner**. Battle rules are published on a **rules page the Founder approves**. **Rewards (only, for now):** the winner receives a **Battle Winner** badge (section 6) and a **feature spot on Discover** for a set period. No money is involved until payments are live. Battles can run as **standalone Battles** or **inside Slam events** (section 9).
 
 - **Collabs.** See section 5.
 
@@ -463,7 +466,7 @@ Slam events are scheduled, community-voted competitions and are a core part of V
 
 - **Community Slams.** Any Writer can host their own Slam (to confirm with the Founder: whether this opens to all Writers or only to Writers above a follower or badge threshold). The host sets the theme, rules, format, entry window and schedule, and the same voting, protection and badge rules apply. The Founder can feature, pause or remove any Slam.
 
-- **Formats.** Head-to-head bracket (weekly), open slam (everyone enters one piece and the community votes), and **Slam duets**—head-to-head **Duets (Two Hits)** under Slam rules the Founder approves, with community voting while the entry window is open.
+- **Formats.** Head-to-head bracket (weekly), open slam (everyone enters one piece and the community votes), and **Battles** hosted inside the Slam schedule—same Battle rules (section 9), Founder-approved rules page, voting while the round is open.
 
 - **Time zones.** The creator sets the time once; each event then shows start, close and results times in the viewer's own local time, with a countdown and an add-to-calendar button. Reminders follow each user's Quiet mode.
 
@@ -656,7 +659,7 @@ The following belong to the full Voxly platform and are specified here so the ar
 | reports, moderation_actions, warnings, appeals | Section 11                                                                                                                                     |
 | settings                                       | Per-user notification and privacy preferences                                                                                                  |
 | ranking_settings                               | Adjustable ranking weights                                                                                                                     |
-| slam_events, duets                             | Slam competitions and Duet (Two Hits) pairs                                                                                                    |
+| slam_events, battles, duets                    | Slam competitions; competitive Battle rounds; collaborative Duet (Two Hits) pairs                                                          |
 | legacy_works                                   | Legacy Literature Archive                                                                                                                      |
 
 **Storage buckets:** avatars, banners, post media, covers, manuscripts, exports. Paid content files are private and served only to buyers.
@@ -758,7 +761,7 @@ High-level order (details and evidence in the roadmap):
 
 9.  **Events and announcements** in local time, scheduled by time zone.
 
-10. **Communities, channels, community roles, Slam, Duets, challenges, Discover growth, For You, trending sounds, duets, ambient mood.**
+10. **Communities, channels, community roles, Slam, Battles, Duets, challenges, Discover growth, For You, trending sounds, ambient mood.**
 
 11. **Create types:** video, voice clip, podcast, recitation, collab, course, event (record-and-post; no live streaming).
 
@@ -813,7 +816,7 @@ Voxly is not one more social app. It brings together what writers, performers an
 | Self-publishing stores              | Book Builder, storefront, wallet, Voxly Book ID, rights registry |
 | Design tools                        | Cover Studio, quote cards                                 |
 | Messaging apps and forums           | DMs, Communities, Channels                                |
-| Performance and spotlight apps      | Slam events, Duets (Two Hits), Featured Stage (no live streaming) |
+| Performance and spotlight apps      | Slam events, Battles, Duets (Two Hits), Featured Stage (no live streaming) |
 | Learning platforms                  | Courses, challenges, prompts                              |
 | Pen-pal and cultural exchange sites | Country Vibe (section 20); Pen Pals later (section 26)    |
 
@@ -899,7 +902,7 @@ Founder-only, row-level secured, with filters by date range, country and role, a
 
 - **Audience.** Distribution by country and time zone, language and role.
 
-- **Slam and Duets.** Participation, votes and active duet pairs.
+- **Slam, Battles and Duets.** Participation, battle votes, winners and active duet pairs.
 
 ### Automated monthly report
 
@@ -1156,7 +1159,8 @@ This document is the single source of truth for Voxly. Every idea the Founder ha
 | Pen Pals                                   | Full spec in section 26; **not first release**                    |
 | Country Vibe                               | Section 20; **themed banner + mood palette** (Owner)              |
 | Location and time zone                     | Section 20                                                        |
-| Duets (Two Hits)                           | Section 9; no separate 'Battles' term                             |
+| Duets (Two Hits)                           | Section 9; collaborative shared pieces                          |
+| Battles                                    | Section 9; competitive rounds; Battle Winner badge + Discover feature |
 | Build phases                               | `docs/ROADMAP.md`                                                 |
 | Any further ideas from earlier discussions | To be added by the Founder to this list                           |
 

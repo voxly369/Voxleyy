@@ -47,7 +47,7 @@ Each row needs a **named test or e2e** on `main` to stay DONE (see Part 3).
 | **For You feed** | Tab exists but disabled (“Coming soon”); no full-screen ranked FYP (`FeedSwitcher.tsx`). |
 | **Create picker types** | Video, voice, podcast, recitation, collab, course, event show “Coming soon” (`CreateTypePicker.tsx`, `creationTypes.ts` phase flags). |
 | **Communities & Channels** | Discover Communities tab partial; Channels (500+ followers) not built; messaging categories incomplete. |
-| **Slam & Discover performance tabs** | Slam/Live placeholders on Discover (`DiscoverPage.tsx`); spec removes Live—Slam/Duet product not wired. |
+| **Slam & Discover performance tabs** | Slam/Live placeholders on Discover (`DiscoverPage.tsx`); spec removes Live—Slam, Battles and Duets not wired. |
 | **Challenges** | Spec leaderboard/time-left/“Ended”; no full challenge product surface. |
 | **Monthly report & Founder insights** | Partial analytics panels and CSV; automated monthly report, month-start/month-end emails not built. |
 | **Creator Dashboard** | UI shell; subscriptions/wallet/sales placeholders until payments. |
@@ -60,7 +60,8 @@ Each row needs a **named test or e2e** on `main` to stay DONE (see Part 3).
 | **Auto-hide & warnings** | Manual moderation built; automatic 3–5 report hide and 3-strike warning not built. |
 | **Signed-out teaser** | Spec: title + first lines public; app largely sign-in-gated today. |
 | **Country Vibe banner** | Country pages exist; themed vibe banner + mood palette not spec-complete. |
-| **Duets (Two Hits)** | Spec §9 defined; no duet creation/vote UI on main. |
+| **Duets (Two Hits)** | Spec §9 collaborative duets; no join/share UI on main. |
+| **Battles** | Spec §9 competitive rounds, voting, Battle Winner badge + Discover feature; not built on main. |
 | **Trending Sounds & ambient mood** | Spec first release; not product-complete on main. |
 | **Organisation accounts & Legacy Archive** | Spec first release; not on main. |
 | **Leagues & Wrapped** | Spec first release; not on main. |
@@ -84,7 +85,7 @@ Use this order exactly. **Est. prompts** = rough numbered-prompt count. **Owner 
 | 7 | Notifications: held until Quiet ends, daily digest, scheduled posts & messages | 3–4 | Default digest time |
 | 8 | Emails: Founder welcome, transactional, month-start events, month-end recap | 3–4 | **Copy** for each template |
 | 9 | Events & announcements in local time, scheduled by time zone | 2–3 | |
-| 10 | Communities, channels, community roles, Slam, **Duets (Two Hits)**, challenges, Discover growth, **For You**, trending sounds, duets, ambient mood | 10–14 | Slam rules pages |
+| 10 | Communities, channels, community roles, Slam, **Battles**, **Duets (Two Hits)**, challenges, Discover growth, **For You**, trending sounds, ambient mood | 10–14 | **Founder-approved Battle rules page**; Slam formats |
 | 11 | Create types: video, voice clip, podcast, recitation, collab, course, event (record-and-post only) | 8–10 | Max duration limits |
 | 12 | Writing Clubs and live co-writing (**written parts only**) | 3–5 | |
 | 13 | Creator Dashboard (all non-payment sections) | 3–4 | |
