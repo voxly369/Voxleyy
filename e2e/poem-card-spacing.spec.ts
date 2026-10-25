@@ -66,10 +66,10 @@ const poemCreationDetail = {
 
 test.describe('Poem card spacing', () => {
   test.beforeEach(async ({ page }) => {
-    setE2eFeedOverride([poemFeedRow])
-    setE2eCreationDetailOverride(poemCreationDetail)
     await seedSignedInSession(page)
     await installSupabaseMocks(page)
+    setE2eFeedOverride([poemFeedRow])
+    setE2eCreationDetailOverride(poemCreationDetail)
   })
 
   test.afterEach(() => {
