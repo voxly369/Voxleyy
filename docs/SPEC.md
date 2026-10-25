@@ -876,6 +876,14 @@ The first moments set the feeling of the whole platform: this is a home for writ
 
 - **Tone.** Warm, literary and encouraging in all copy, including empty states and errors.
 
+### 21.1 Swipe entrance, animated scene and optional music
+
+When the daily entrance is shown, the member greets Voxly with a **swipe to step inside** (or **Enter** on pointer devices, plus **Step inside** for assistive tech). A rightward drag moves the scene with the finger; releasing before about one-third of the width springs back, while a firm flick or passing the threshold slides the overlay away into Home with no layout shift (instant when reduced motion is preferred). Keyboard **Enter**, **Space** and **ArrowRight** also enter; focus returns to the main Home landmark.
+
+The welcome scene is an **original layered SVG** animation (pages, quills, books, microphones, notebooks, stars and small stickers) using transforms and opacity only, with parallax tied to the swipe, element caps by viewport width, and motion paused when the tab is hidden or after the entrance closes. With **prefers-reduced-motion**, the scene is a still composition.
+
+An **optional owner-supplied instrumental** may loop on the entrance only: it starts after a gesture on that screen, fades in quietly, fades out on exit, and is controlled by a mute toggle (remembered on the device) and a Settings **Entrance music** switch (default on). No track is bundled; configuration lives in `src/config/brand.ts` and `ops/ENTRANCE-MUSIC.md`.
+
 ## 22. Retention, insights and the monthly report
 
 ### Founder insights

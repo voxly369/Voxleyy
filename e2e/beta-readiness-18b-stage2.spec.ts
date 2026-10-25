@@ -37,7 +37,8 @@ test.describe('beta readiness 18B stage 2', () => {
     setE2eEntranceVisible(true)
     await page.goto('/', { waitUntil: 'networkidle' })
     await expect(page.getByTestId('entrance-screen')).toBeVisible()
-    await expect(page.getByTestId('entrance-step-inside')).toBeVisible()
+    await expect(page.getByTestId('entrance-step-inside')).toBeAttached()
+    await expect(page.getByTestId('entrance-enter-button')).toBeVisible()
   })
 
   test('entrance screen step inside dismisses overlay', async ({ page }) => {
@@ -45,7 +46,7 @@ test.describe('beta readiness 18B stage 2', () => {
     setE2eEntranceVisible(true)
     await page.goto('/', { waitUntil: 'networkidle' })
     await expect(page.getByTestId('entrance-screen')).toBeVisible()
-    await page.getByTestId('entrance-step-inside').click()
+    await page.getByTestId('entrance-enter-button').click()
     await expect(page.getByTestId('entrance-screen')).toHaveCount(0)
   })
 

@@ -6,6 +6,7 @@ export const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://ktgxdqplvggeyrnuqljx.supabase.co",
   "font-src 'self'",
+  "media-src 'self'",
   "connect-src 'self' https://ktgxdqplvggeyrnuqljx.supabase.co wss://ktgxdqplvggeyrnuqljx.supabase.co https://api.dictionaryapi.dev",
   "frame-ancestors 'none'",
   "base-uri 'self'",
