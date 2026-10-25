@@ -13,6 +13,8 @@ import { useTheme } from '../lib/useTheme.ts'
 import { downloadJsonExport, exportMyData } from '../lib/account/dataExport.ts'
 import { useFeedback } from '../lib/shell/FeedbackProvider.tsx'
 import { fetchMyProfilePreferences, patchMyProfilePreferences, reopenOnboarding } from '../lib/onboarding/api.ts'
+import { readEntranceMusicPrefs, writeEntranceMusicPrefs } from '../lib/entrance/entranceMusicPrefs.ts'
+import { resolveEntranceMusic } from '../lib/entrance/entranceMusicConfig.ts'
 
 const appVersion = import.meta.env.VITE_APP_VERSION ?? '0.0.0'
 
@@ -56,6 +58,8 @@ export default function SettingsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [showEntranceScreen, setShowEntranceScreen] = useState(true)
   const [entranceBusy, setEntranceBusy] = useState(false)
+  const entranceTrack = resolveEntranceMusic()
+  const [entranceMusicEnabled, setEntranceMusicEnabled] = useState(() => readEntranceMusicPrefs().enabled)
 
   useEffect(() => {
     void fetchMyProfilePreferences().then((result) => {
@@ -296,6 +300,22 @@ export default function SettingsPage() {
           />
         </label>
         <p className="mt-2 text-sm text-muted">Once per day when you open Voxly, see your greeting, quote, and word of the day.</p>
+        {entranceTrack ? (
+          <label className="mt-4 flex min-h-11 cursor-pointer items-center justify-between gap-4 text-sm">
+            <span className="text-ink">Entrance music</span>
+            <input
+              type="checkbox"
+              checked={entranceMusicEnabled}
+              onChange={(event) => {
+                const next = event.target.checked
+                setEntranceMusicEnabled(next)
+                writeEntranceMusicPrefs({ enabled: next })
+              }}
+              className="size-5 accent-coral"
+              data-testid="settings-entrance-music"
+            />
+          </label>
+        ) : null}
       </section>
       <section className="rounded-2xl border border-line bg-surface p-5">
         <h2 id="theme-label" className="text-xs font-semibold uppercase tracking-wide text-muted">

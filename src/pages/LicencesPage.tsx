@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
 import { focusRing } from '../components/shell/navItems.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
+import { resolveEntranceMusic } from '../lib/entrance/entranceMusicConfig.ts'
 
 export default function LicencesPage() {
   useDocumentTitle('Font licences')
+  const entranceTrack = resolveEntranceMusic()
 
   return (
     <div className="flex flex-col gap-4">
@@ -35,6 +37,14 @@ export default function LicencesPage() {
         <p className="mt-2 text-sm text-ink">Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)</p>
         <p className="mt-2 text-sm text-ink">Licensed under the SIL Open Font License, Version 1.1.</p>
       </section>
+
+      {entranceTrack ? (
+        <section className="rounded-xl border border-line bg-bg p-4" data-testid="licence-entrance-music">
+          <h2 className="font-serif text-lg text-ink">Entrance music</h2>
+          <p className="mt-2 text-sm text-ink">{entranceTrack.credit}</p>
+          <p className="mt-2 text-sm text-ink">{entranceTrack.licence}</p>
+        </section>
+      ) : null}
 
       <section className="rounded-xl border border-line bg-bg p-4">
         <h2 className="font-serif text-lg text-ink">OpenDyslexic</h2>
