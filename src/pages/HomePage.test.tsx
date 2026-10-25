@@ -36,6 +36,7 @@ vi.mock('../lib/onboarding/api.ts', () => ({
 
 vi.mock('../lib/home/checklistSignals.ts', () => ({
   fetchChecklistSignals: vi.fn(async () => ({
+    hasAvatar: true,
     hasBio: true,
     postCount: 1,
     followCount: 2,

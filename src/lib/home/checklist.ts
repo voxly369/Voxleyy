@@ -1,4 +1,5 @@
 export type ChecklistKey =
+  | 'profile_photo'
   | 'profile_bio'
   | 'first_post'
   | 'follow_two'
@@ -7,6 +8,7 @@ export type ChecklistKey =
   | 'send_feedback'
 
 export type ChecklistSignals = {
+  hasAvatar: boolean
   hasBio: boolean
   postCount: number
   followCount: number
@@ -17,6 +19,7 @@ export type ChecklistSignals = {
 
 export function checklistCompletion(signals: ChecklistSignals): Record<ChecklistKey, boolean> {
   return {
+    profile_photo: signals.hasAvatar,
     profile_bio: signals.hasBio,
     first_post: signals.postCount > 0,
     follow_two: signals.followCount >= 2,

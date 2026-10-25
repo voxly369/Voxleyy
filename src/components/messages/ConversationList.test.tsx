@@ -16,6 +16,7 @@ const row: ConversationSummary = {
   otherShowLocalTime: false,
   otherTimezone: 'UTC',
   otherAccountDeleted: false,
+  otherVerified: false,
   unreadCount: 3,
   preview: 'Hey',
 }

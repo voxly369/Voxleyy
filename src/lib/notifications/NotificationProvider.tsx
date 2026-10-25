@@ -28,6 +28,7 @@ function parseRealtimeRow(value: Record<string, unknown>): NotificationRow | nul
       username: null,
       displayName: null,
       avatarUrl: null,
+      verified: false,
     },
     targetType: typeof value.target_type === 'string' ? value.target_type : null,
     targetId: typeof value.target_id === 'string' ? value.target_id : null,

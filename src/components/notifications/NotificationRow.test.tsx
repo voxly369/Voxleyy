@@ -11,7 +11,7 @@ describe('NotificationRow', () => {
           row={{
             id: 'n1',
             type: 'mention',
-            actor: { id: 'a', username: 'writer', displayName: 'Writer', avatarUrl: null },
+            actor: { id: 'a', username: 'writer', displayName: 'Writer', avatarUrl: null, verified: true },
             targetType: 'creation',
             targetId: '00000000-0000-0000-0000-000000000001',
             data: {},
@@ -27,5 +27,6 @@ describe('NotificationRow', () => {
     const link = screen.getByTestId('notification-row')
     expect(link).toHaveAttribute('href', '/c/00000000-0000-0000-0000-000000000001')
     expect(link).toHaveTextContent('mentioned you')
+    expect(screen.getByLabelText('Verified account')).toBeInTheDocument()
   })
 })

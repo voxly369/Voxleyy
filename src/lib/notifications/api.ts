@@ -19,7 +19,7 @@ const ISOish =
 const UUIDish = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 const FEED_COLUMNS =
-  'id, type, actor_id, target_type, target_id, data, held, created_at, read_at, actor_username, actor_display_name, actor_avatar_url, target_title, target_excerpt'
+  'id, type, actor_id, target_type, target_id, data, held, created_at, read_at, actor_username, actor_display_name, actor_avatar_url, actor_verified, target_title, target_excerpt'
 
 const ADMIN_FEED_COLUMNS =
   'id, type, actor_id, target_type, target_id, data, created_at, read_at, actor_username, actor_display_name, actor_avatar_url'
@@ -69,6 +69,7 @@ function parseActor(row: Record<string, unknown>) {
     username: text(row.actor_username),
     displayName: text(row.actor_display_name),
     avatarUrl: text(row.actor_avatar_url),
+    verified: bool(row.actor_verified),
   }
 }
 

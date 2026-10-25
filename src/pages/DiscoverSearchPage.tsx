@@ -18,6 +18,7 @@ import { parseDiscoverFilters } from '../lib/discover/filterParams.ts'
 import { CountryLink } from '../components/country/CountryLink.tsx'
 import { DiscoverLanguageFilterChips } from '../components/discover/DiscoverLanguageFilterChips.tsx'
 import { languageFilterEmptyMessage } from '../lib/languages/showPostLanguageLabel.ts'
+import { DisplayNameWithMarks } from '../components/profile/DisplayNameWithMarks.tsx'
 
 const TABS: { id: SearchTab; label: string }[] = [
   { id: 'top', label: 'Top' },
@@ -101,8 +102,12 @@ export default function DiscoverSearchPage() {
                 <ul className="flex flex-col gap-2">
                   {results.writers.map((writer) => (
                     <li key={writer.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line p-3">
-                      <Link to={`/u/${writer.username}`} className={`min-h-11 flex-1 ${focusRing}`}>
-                        <span className="font-medium text-ink">{writer.displayName || writer.username}</span>
+                      <Link to={`/u/${writer.username}`} className={`min-h-11 min-w-0 flex-1 ${focusRing}`}>
+                        <DisplayNameWithMarks
+                          name={writer.displayName || writer.username}
+                          verified={writer.verified}
+                          nameClassName="font-medium text-ink"
+                        />
                         <span className="block text-sm text-muted">
                           @{writer.username} · {formatCountLabel(writer.followerCount, 'follower')}
                         </span>

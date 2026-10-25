@@ -5709,6 +5709,52 @@ begin
   perform pg_temp.record('unverified public profile hides verified_at', v_ts is null, 'ts=' || coalesce(v_ts::text, 'null'));
 end $stage_d_verified_at$;
 
+-- 18C hardening: storage queue RPC and own-folder policy (see also avatar storage block earlier in this file).
+do $stage_18c_storage$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_count integer;
+  v_cols text;
+  v_vals text;
+begin
+  select id into v_a from public.profiles where username = 'readera' limit 1;
+  select id into v_b from public.profiles where username = 'readerb' limit 1;
+  if v_a is null or v_b is null then
+    perform pg_temp.record('18c storage users present', false, 'missing readera/readerb');
+    return;
+  end if;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform public.queue_storage_object_for_deletion('avatars', v_a::text || '/smoke-old.webp');
+  select count(*) into v_count
+  from public.deletion_storage_queue
+  where bucket_id = 'avatars' and object_path = v_a::text || '/smoke-old.webp' and done_at is null;
+  perform pg_temp.record('queue_storage_object_for_deletion enqueues row', v_count >= 1, 'rows=' || v_count);
+
+  perform set_config('search_path', 'pg_temp, public, auth, storage', true);
+  if exists (select 1 from information_schema.columns where table_schema = 'storage' and table_name = 'objects' and column_name = 'owner') then
+    v_cols := 'bucket_id, name, owner';
+    v_vals := quote_literal('avatars') || ', ' || quote_literal(v_b::text || '/intrusion.webp') || ', ' || quote_literal(v_a::text);
+  else
+    v_cols := 'bucket_id, name, owner_id';
+    v_vals := quote_literal('avatars') || ', ' || quote_literal(v_b::text || '/intrusion.webp') || ', ' || quote_literal(v_b::text);
+  end if;
+  begin
+    execute format('insert into storage.objects (%s) values (%s)', v_cols, v_vals);
+    perform pg_temp.record('storage avatars insert blocked for other user path', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record('storage avatars insert blocked for other user path', true, sqlerrm);
+  end;
+  reset role;
+end $stage_18c_storage$;
+
 do $$
 declare
   n integer;

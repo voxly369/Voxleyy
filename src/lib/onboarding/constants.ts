@@ -7,4 +7,4 @@ export const WRITER_ROLE_OPTIONS = [
   { id: 'reader', label: 'Reader' },
 ] as const
 
-export const ONBOARDING_STEP_COUNT = 7
+export const ONBOARDING_STEP_COUNT = 8

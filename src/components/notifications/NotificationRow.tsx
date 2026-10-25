@@ -1,7 +1,13 @@
 import { Link } from 'react-router-dom'
 import { focusRing } from '../shell/navItems.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
-import { buildAdminDisplayText, buildDisplayText } from '../../lib/notifications/notificationText.ts'
+import {
+  buildAdminDisplayText,
+  buildDisplayText,
+  buildNotificationActionText,
+  notificationShowsActorName,
+} from '../../lib/notifications/notificationText.ts'
+import { DisplayNameWithMarks } from '../profile/DisplayNameWithMarks.tsx'
 import { adminNotificationHref, notificationHref } from '../../lib/notifications/routes.ts'
 import type { AdminNotificationRow, NotificationRow as Row } from '../../lib/notifications/types.ts'
 
@@ -36,9 +42,11 @@ export function NotificationRow(props: Props) {
   const isAdmin = props.variant === 'admin'
   const row = props.row
   const unread = !row.readAt
-  const label = isAdmin ? buildAdminDisplayText(props.row) : buildDisplayText(props.row)
-  const href = isAdmin ? adminNotificationHref(props.row) : notificationHref(props.row)
+  const label = isAdmin ? buildAdminDisplayText(props.row) : buildDisplayText((props as UserProps).row)
+  const href = isAdmin ? adminNotificationHref(props.row) : notificationHref((props as UserProps).row)
   const actorName = row.actor.displayName || row.actor.username || 'Someone'
+  const userRow = !isAdmin ? (props as UserProps).row : null
+  const showActorLine = userRow !== null && notificationShowsActorName(userRow)
 
   const inner = (
     <>
@@ -49,7 +57,14 @@ export function NotificationRow(props: Props) {
         className="!size-11 shrink-0"
       />
       <div className="min-w-0 flex-1">
-        <p className={`text-sm ${unread ? 'font-semibold text-ink' : 'text-ink'}`}>{label}</p>
+        {showActorLine ? (
+          <p className={`flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm ${unread ? 'font-semibold text-ink' : 'text-ink'}`}>
+            <DisplayNameWithMarks name={actorName} verified={userRow!.actor.verified} />
+            <span>{buildNotificationActionText(userRow!)}</span>
+          </p>
+        ) : (
+          <p className={`text-sm ${unread ? 'font-semibold text-ink' : 'text-ink'}`}>{label}</p>
+        )}
         <p className="text-xs text-muted">{relativeTime(row.createdAt)}</p>
       </div>
       {unread ? <span className="size-2 shrink-0 rounded-full bg-coral" aria-hidden="true" /> : null}

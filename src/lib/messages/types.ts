@@ -26,6 +26,7 @@ export type ConversationSummary = {
   otherShowLocalTime: boolean
   otherTimezone: string
   otherAccountDeleted: boolean
+  otherVerified: boolean
   unreadCount: number
   preview: string | null
 }
@@ -81,6 +82,7 @@ export type SharedCreationPreview = {
   excerpt: string | null
   authorUsername: string
   authorDisplayName: string
+  authorVerified: boolean
 }
 
 export const MESSAGE_BODY_MAX = 2000

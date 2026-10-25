@@ -19,6 +19,7 @@ import { focusRing } from '../shell/navItems.ts'
 import { HorizontalChipRow } from './HorizontalChipRow.tsx'
 import { DiscoverPostStrip } from './DiscoverPostStrip.tsx'
 import { CountryLink } from '../country/CountryLink.tsx'
+import { DisplayNameWithMarks } from '../profile/DisplayNameWithMarks.tsx'
 
 function SectionShell({
   title,
@@ -118,7 +119,11 @@ export function DiscoverExploreTab() {
                     className="size-12 rounded-full"
                   />
                   <div className="min-w-0">
-                    <p className="truncate font-medium text-ink">{writer.displayName || writer.username}</p>
+                    <DisplayNameWithMarks
+                      name={writer.displayName || writer.username}
+                      verified={writer.verified}
+                      nameClassName="font-medium text-ink"
+                    />
                     <p className="truncate text-sm text-muted">@{writer.username}</p>
                     {writer.country ? <CountryLink code={writer.country} className="mt-1" /> : null}
                   </div>
@@ -195,7 +200,11 @@ export function DiscoverExploreTab() {
             {rising.map((writer) => (
               <article key={writer.id} className="w-56 shrink-0 rounded-2xl border border-line bg-surface p-4">
                 <Link to={`/u/${writer.username}`} className={`block ${focusRing}`}>
-                  <p className="font-medium text-ink">{writer.displayName || writer.username}</p>
+                  <DisplayNameWithMarks
+                    name={writer.displayName || writer.username}
+                    verified={writer.verified}
+                    nameClassName="font-medium text-ink"
+                  />
                   <p className="text-sm text-muted">@{writer.username}</p>
                   {writer.country ? (
                     <CountryLink

@@ -31,6 +31,7 @@ export type NotificationActor = {
   username: string | null
   displayName: string | null
   avatarUrl: string | null
+  verified: boolean
 }
 
 export type NotificationRow = {

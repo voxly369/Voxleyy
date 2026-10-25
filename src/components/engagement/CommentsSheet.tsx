@@ -18,6 +18,8 @@ import type { CommentNode } from '../../lib/engagement/commentTree.ts'
 import { parseMentions } from '../../lib/engagement/mentions.ts'
 import { supabase } from '../../lib/supabaseClient.ts'
 import { BadgeRowOnName } from '../badges/BadgeRowOnName.tsx'
+import { showsStandaloneVerifiedSeal } from '../../lib/badges/displayBadgesForFeed.ts'
+import { DisplayNameWithMarks } from '../profile/DisplayNameWithMarks.tsx'
 import { MentionText } from './MentionText.tsx'
 import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
 import { listHiddenWords } from '../../lib/safety/hiddenWordsApi.ts'
@@ -365,15 +367,19 @@ function CommentRow({
           node.author.displayName
         ) : (
           <>
-            {node.author.displayName || node.author.username}
-            {node.author.feedBadges?.length ? (
-              <BadgeRowOnName
-                badges={node.author.feedBadges}
-                verified={node.author.verified}
-                className="ml-1 align-middle"
-              />
-            ) : null}
-            {node.author.verified ? ' ✓' : ''}
+            <DisplayNameWithMarks
+              name={node.author.displayName || node.author.username}
+              verified={
+                showsStandaloneVerifiedSeal(node.author.feedBadges ?? [], node.author.verified)
+                  ? node.author.verified
+                  : false
+              }
+              badges={
+                node.author.feedBadges?.length ? (
+                  <BadgeRowOnName badges={node.author.feedBadges} verified={node.author.verified} className="align-middle" />
+                ) : null
+              }
+            />
           </>
         )}
       </p>

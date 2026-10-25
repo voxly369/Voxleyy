@@ -14,6 +14,7 @@ const sample: ConversationSummary = {
   otherShowLocalTime: false,
   otherTimezone: 'UTC',
   otherAccountDeleted: false,
+  otherVerified: false,
   unreadCount: 0,
   preview: 'Hello there',
 }

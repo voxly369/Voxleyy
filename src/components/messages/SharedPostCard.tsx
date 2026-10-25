@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { focusRing } from '../shell/navItems.ts'
 import type { SharedCreationPreview } from '../../lib/messages/types.ts'
+import { DisplayNameWithMarks } from '../profile/DisplayNameWithMarks.tsx'
 
 type SharedPostCardProps = {
   preview: SharedCreationPreview
@@ -18,7 +19,10 @@ export function SharedPostCard({ preview, className = '' }: SharedPostCardProps)
     >
       <p className="text-xs font-semibold uppercase tracking-wide text-muted">Shared post</p>
       <p className="mt-1 font-medium text-ink">{title}</p>
-      <p className="text-sm text-muted">by {byline}</p>
+      <p className="flex flex-wrap items-center gap-x-1 text-sm text-muted">
+        <span>by</span>
+        <DisplayNameWithMarks name={byline} verified={preview.authorVerified} />
+      </p>
       {preview.excerpt ? <p className="mt-2 line-clamp-2 text-sm text-ink">{preview.excerpt}</p> : null}
     </Link>
   )

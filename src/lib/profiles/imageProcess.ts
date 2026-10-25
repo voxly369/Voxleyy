@@ -92,3 +92,32 @@ export async function prepareProfileImage(
   }
   return { blob, contentType: 'image/webp' }
 }
+
+/** Live crop preview on a canvas (same geometry as prepareProfileImage). */
+export async function paintProfileImagePreview(
+  canvas: HTMLCanvasElement,
+  file: File,
+  kind: 'avatar' | 'banner',
+  adjust?: CropAdjustment,
+): Promise<void> {
+  const check = validateImageFile(file)
+  if (!check.ok) throw new Error(check.message)
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(file)
+  } catch {
+    throw new Error('That file is not a readable image.')
+  }
+  const box = cropBox(bitmap.width, bitmap.height, kind, adjust)
+  const maxEdge = kind === 'avatar' ? 240 : 320
+  const scale = Math.min(maxEdge / box.sw, maxEdge / box.sh, 1)
+  canvas.width = Math.max(1, Math.round(box.sw * scale))
+  canvas.height = Math.max(1, Math.round(box.sh * scale))
+  const context = canvas.getContext('2d')
+  if (!context) {
+    bitmap.close()
+    throw new Error('We could not draw a preview.')
+  }
+  context.drawImage(bitmap, box.sx, box.sy, box.sw, box.sh, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+}

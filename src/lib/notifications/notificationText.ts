@@ -31,6 +31,53 @@ function moderationKindText(kind: unknown): string {
   }
 }
 
+/** Action phrase without the actor name (for UI that shows the name beside the Verified seal). */
+export function buildNotificationActionText(row: NotificationRow): string {
+  const target = excerpt(row.targetTitle, row.targetExcerpt)
+  const data = row.data
+
+  switch (row.type) {
+    case 'follow':
+      return 'followed you'
+    case 'like':
+      return target ? `liked “${target}”` : 'liked your post'
+    case 'comment':
+      return target ? `commented on “${target}”` : 'commented on your post'
+    case 'reply':
+      return 'replied to your comment'
+    case 'mention':
+      return target ? `mentioned you in “${target}”` : 'mentioned you'
+    case 'message':
+      return 'sent you a message'
+    case 'collab_invite':
+      return 'invited you to collaborate'
+    case 'community_post':
+      return target ? `New community post: “${target}”` : 'New community post'
+    case 'new_chapter': {
+      const chapterTitle =
+        typeof data.chapter_title === 'string' && data.chapter_title.trim()
+          ? data.chapter_title.trim()
+          : target || 'New chapter'
+      return `published “${chapterTitle}”`
+    }
+    case 'purchase':
+      return 'purchased your work'
+    case 'warning':
+      return typeof data.message === 'string' && data.message.trim()
+        ? `Warning: ${data.message.trim()}`
+        : 'sent you a warning'
+    default:
+      return buildDisplayText(row)
+  }
+}
+
+export function notificationShowsActorName(row: NotificationRow): boolean {
+  if (!row.actor.id) return false
+  return !['announcement', 'challenge_start', 'moderation_notice', 'appeal_decision', 'summary', 'badge_awarded', 'community_post'].includes(
+    row.type,
+  )
+}
+
 export function buildDisplayText(row: NotificationRow): string {
   const who = actorLabel(row)
   const target = excerpt(row.targetTitle, row.targetExcerpt)

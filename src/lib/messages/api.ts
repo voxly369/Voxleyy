@@ -61,6 +61,7 @@ function parseConversation(row: Record<string, unknown>): ConversationSummary | 
     otherShowLocalTime: row.other_show_local_time !== false,
     otherTimezone: text(row.other_timezone) ?? 'UTC',
     otherAccountDeleted,
+    otherVerified: bool(row.other_verified),
     unreadCount: count(row.unread_count),
     preview: text(row.preview),
   }
@@ -280,7 +281,7 @@ export async function fetchRecipientQuietStatus(recipientId: string): Promise<Me
 export async function fetchSharedCreationPreview(creationId: string): Promise<MessageResult<SharedCreationPreview | null>> {
   const { data, error } = await supabase
     .from('creations')
-    .select('id, title, caption, body_text, author:profiles!creations_author_id_fkey(username, display_name)')
+    .select('id, title, caption, body_text, author:profiles_public!creations_author_id_fkey(username, display_name, verified)')
     .eq('id', creationId)
     .maybeSingle()
   if (error) return fail('unavailable', 'Could not load shared post.', error)
@@ -297,6 +298,7 @@ export async function fetchSharedCreationPreview(creationId: string): Promise<Me
       excerpt: bodyText ? bodyText.slice(0, 160) : null,
       authorUsername: text(author?.username) ?? 'writer',
       authorDisplayName: text(author?.display_name) ?? 'Writer',
+      authorVerified: author?.verified === true,
     },
   }
 }
