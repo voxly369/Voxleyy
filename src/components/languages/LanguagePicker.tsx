@@ -61,6 +61,7 @@ export function LanguagePicker({
       />
       <select
         id={id}
+        aria-label={label}
         value={normalized || 'en'}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
