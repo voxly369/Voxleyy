@@ -101,9 +101,9 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
           <div className="flex min-h-11 max-w-full items-center gap-x-1">
             <Link
               to={`/u/${post.author.username}`}
-              className={`min-h-11 min-w-0 shrink font-medium text-ink ${focusRing}`}
+              className={`inline-flex min-h-11 min-w-11 flex-1 items-center font-medium text-ink ${focusRing}`}
             >
-              <span className="block truncate">{post.author.displayName || post.author.username}</span>
+              <span className="truncate">{post.author.displayName || post.author.username}</span>
             </Link>
             {post.author.feedBadges?.length ? (
               <BadgeRowOnName badges={post.author.feedBadges} verified={post.author.verified} />

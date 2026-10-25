@@ -13,13 +13,10 @@ import type { FeedPost } from '../../lib/feed/types.ts'
 import { EmptyState } from '../states/EmptyState.tsx'
 import { ErrorState } from '../states/ErrorState.tsx'
 import { Skeleton } from '../states/Skeleton.tsx'
-import { DiscoverFollowButton } from './DiscoverFollowButton.tsx'
-import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { focusRing } from '../shell/navItems.ts'
 import { HorizontalChipRow } from './HorizontalChipRow.tsx'
 import { DiscoverPostStrip } from './DiscoverPostStrip.tsx'
-import { CountryLink } from '../country/CountryLink.tsx'
-import { DisplayNameWithMarks } from '../profile/DisplayNameWithMarks.tsx'
+import { DiscoverWriterCard } from './DiscoverWriterCard.tsx'
 
 function SectionShell({
   title,
@@ -107,29 +104,18 @@ export function DiscoverExploreTab() {
         ) : (
           <div className="-mx-5 flex gap-4 overflow-x-auto px-5 pb-2 md:mx-0 md:px-0">
             {featured.map((writer) => (
-              <article
+              <DiscoverWriterCard
                 key={writer.writerId}
-                className="flex w-64 shrink-0 flex-col gap-3 rounded-2xl border border-line bg-surface p-4"
-              >
-                <Link to={`/u/${writer.username}`} className={`flex items-center gap-3 ${focusRing}`}>
-                  <ImageWithFallback
-                    src={writer.avatarUrl ?? undefined}
-                    alt=""
-                    label={writer.displayName.charAt(0) || writer.username.charAt(0)}
-                    className="size-12 rounded-full"
-                  />
-                  <div className="min-w-0">
-                    <DisplayNameWithMarks
-                      name={writer.displayName || writer.username}
-                      verified={writer.verified}
-                      nameClassName="font-medium text-ink"
-                    />
-                    <p className="truncate text-sm text-muted">@{writer.username}</p>
-                    {writer.country ? <CountryLink code={writer.country} className="mt-1" /> : null}
-                  </div>
-                </Link>
-                <DiscoverFollowButton userId={writer.writerId} username={writer.username} />
-              </article>
+                variant="featured"
+                writer={{
+                  id: writer.writerId,
+                  username: writer.username,
+                  displayName: writer.displayName,
+                  avatarUrl: writer.avatarUrl,
+                  verified: writer.verified,
+                  country: writer.country,
+                }}
+              />
             ))}
           </div>
         )}
@@ -198,24 +184,18 @@ export function DiscoverExploreTab() {
         ) : (
           <div className="-mx-5 flex gap-4 overflow-x-auto px-5 pb-2 md:mx-0 md:px-0">
             {rising.map((writer) => (
-              <article key={writer.id} className="w-56 shrink-0 rounded-2xl border border-line bg-surface p-4">
-                <Link to={`/u/${writer.username}`} className={`block ${focusRing}`}>
-                  <DisplayNameWithMarks
-                    name={writer.displayName || writer.username}
-                    verified={writer.verified}
-                    nameClassName="font-medium text-ink"
-                  />
-                  <p className="text-sm text-muted">@{writer.username}</p>
-                  {writer.country ? (
-                    <CountryLink
-                      code={writer.country}
-                      className="mt-1"
-                      testId="discover-rising-writer-country-link"
-                    />
-                  ) : null}
-                </Link>
-                <DiscoverFollowButton userId={writer.id} username={writer.username} />
-              </article>
+              <DiscoverWriterCard
+                key={writer.id}
+                variant="rising"
+                countryLinkTestId="discover-rising-writer-country-link"
+                writer={{
+                  id: writer.id,
+                  username: writer.username,
+                  displayName: writer.displayName,
+                  verified: writer.verified,
+                  country: writer.country,
+                }}
+              />
             ))}
           </div>
         )}
