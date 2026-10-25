@@ -157,7 +157,11 @@ export default function FounderPage() {
   }
 
   return (
-    <PageContainer variant="wide" className="flex flex-col gap-6 py-8">
+    <PageContainer
+      variant="wide"
+      className="flex flex-col gap-6 py-8 max-md:pe-[4.75rem] max-md:pt-[calc(env(safe-area-inset-top)+3.25rem)]"
+      data-testid="founder-page"
+    >
       <PageHeader title="Founder" />
       <nav aria-label="Founder sections" className="flex flex-wrap gap-2">
         {TABS.map((item) => {

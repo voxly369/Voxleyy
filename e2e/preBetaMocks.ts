@@ -196,14 +196,20 @@ export function preBetaMockHandleRest(url: string, _method: string, postData: un
     return null
   }
   if (url.includes('/rest/v1/rpc/founder_create_invite_code')) {
+    const body = postData as {
+      p_max_uses?: number
+      p_expires_at?: string | null
+      p_note?: string | null
+    } | null
+    const maxUses = typeof body?.p_max_uses === 'number' ? body.p_max_uses : 1
     inviteCodes.unshift({
       code: 'ZYXWVUTSRQ',
-      max_uses: 1,
+      max_uses: maxUses,
       uses: 0,
-      expires_at: null,
+      expires_at: body?.p_expires_at ?? null,
       revoked: false,
       created_at: '2026-02-01T00:00:00.000Z',
-      note: 'created in e2e',
+      note: body?.p_note ?? 'created in e2e',
     })
     return 'ZYXWVUTSRQ'
   }
