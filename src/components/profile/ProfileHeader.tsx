@@ -106,7 +106,7 @@ export function ProfileHeader({
             <button
               type="button"
               onClick={() => setAboutOpen(true)}
-              className={`self-start text-sm font-medium text-muted underline ${focusRing}`}
+              className={`inline-flex min-h-11 items-center self-start text-sm font-medium text-muted underline ${focusRing}`}
               data-testid="profile-about-link"
             >
               About this profile

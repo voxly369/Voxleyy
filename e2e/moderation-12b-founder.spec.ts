@@ -116,7 +116,7 @@ test.describe('moderation 12B founder workflows', () => {
     await expect(auditLogRows(page)).toHaveCount(20)
     await expect(page.getByRole('button', { name: 'Load more' })).toBeVisible()
     await page.getByRole('button', { name: 'Load more' }).click()
-    expect(await auditLogRows(page).count()).toBeGreaterThan(20)
+    await expect.poll(async () => auditLogRows(page).count()).toBeGreaterThan(20)
     await expect(page.getByRole('button', { name: 'Load more' })).toHaveCount(0)
   })
 
