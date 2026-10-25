@@ -1,7 +1,12 @@
 /** Documented browser persistence used by the Voxly web app (for Privacy draft accuracy). */
 export const CLIENT_STORAGE_INVENTORY = [
   { store: 'localStorage', key: 'voxly-theme', purpose: 'Light/dark theme preference' },
-  { store: 'localStorage', key: 'voxly-last-visit-v1', purpose: 'Last visit day for absence detection on this device' },
+  { store: 'localStorage', key: 'voxly-last-visit-v1', purpose: 'Last visit day for long-absence welcome on this device' },
+  {
+    store: 'localStorage',
+    key: 'voxly-last-entrance-dismissed-at-v1',
+    purpose: 'When the entrance was last dismissed for the 30-minute fresh-open rule',
+  },
   { store: 'localStorage', key: 'voxly-welcome-moment-v1', purpose: 'Welcome moment dismissed per device' },
   { store: 'localStorage', key: 'voxly:confirm-resend', purpose: 'Sign-up confirmation resend rate limit timestamps' },
   { store: 'localStorage', key: 'voxly-username-notice', purpose: 'Dismissed username-assignment notice per account' },
