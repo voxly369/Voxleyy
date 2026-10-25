@@ -46,7 +46,7 @@ export function ProfileHeader({
             to="/settings"
             aria-label="Settings and activity"
             data-testid="profile-settings-button"
-            className={`absolute end-5 top-5 z-20 inline-flex size-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-line bg-surface/95 text-ink backdrop-blur md:hidden ${focusRing}`}
+            className={`absolute start-5 top-5 z-20 inline-flex size-11 min-h-11 min-w-11 items-center justify-center rounded-full border border-line bg-surface/95 text-ink backdrop-blur md:hidden ${focusRing}`}
           >
             <MenuLinesIcon className="size-6" />
           </Link>
