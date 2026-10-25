@@ -1945,7 +1945,8 @@ export type Database = {
           id: string
           is_deleted: boolean
           is_scheduled: boolean
-          sender_id: string
+          sender_account_deleted: boolean
+          sender_id: string | null
           shared_creation_id: string | null
         }
         Insert: Record<string, never>

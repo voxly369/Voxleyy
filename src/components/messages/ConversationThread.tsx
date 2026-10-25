@@ -15,6 +15,7 @@ import {
 } from '../../lib/messages/api.ts'
 import { groupMessagesByDay } from '../../lib/messages/grouping.ts'
 import { shouldShowConsiderateModal } from '../../lib/messages/quietPrompt.ts'
+import { DELETED_ACCOUNT_DISPLAY_NAME } from '../../lib/messages/deletedAccount.ts'
 import type { ConversationSummary, QuietStatus, SharedCreationPreview, ThreadMessage } from '../../lib/messages/types.ts'
 import { useMessages } from '../../lib/messages/useMessages.ts'
 import { ConsiderateSendingModal } from './ConsiderateSendingModal.tsx'
@@ -131,6 +132,7 @@ export function ConversationThread({
       deletedAt: null,
       isDeleted: false,
       isScheduled: Boolean(payload.deliverAt && payload.deliverAt > now),
+      senderAccountDeleted: false,
       localStatus: 'sending',
     }
     setMessages((prev) => [...prev, optimistic])
@@ -210,7 +212,9 @@ export function ConversationThread({
     return <ErrorState title="Messages unavailable" message={error} onRetry={() => void load()} />
   }
 
-  const headerName = other?.otherDisplayName || other?.otherUsername || 'Conversation'
+  const headerName = other?.otherAccountDeleted
+    ? DELETED_ACCOUNT_DISPLAY_NAME
+    : other?.otherDisplayName || other?.otherUsername || 'Conversation'
   const composerSuspended = profile?.status === 'suspended'
 
   return (
@@ -232,10 +236,14 @@ export function ConversationThread({
           className="size-10 rounded-full"
         />
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-semibold text-ink">{headerName}</h2>
-          <p className="truncate text-sm text-muted">@{other?.otherUsername ?? 'writer'}</p>
+          <h2 className="truncate text-lg font-semibold text-ink" data-testid="thread-header-name">
+            {headerName}
+          </h2>
+          {other?.otherAccountDeleted ? null : (
+            <p className="truncate text-sm text-muted">@{other?.otherUsername ?? 'writer'}</p>
+          )}
         </div>
-        {other ? (
+        {other && !other.otherAccountDeleted ? (
           <SafetyOverflowMenu
             subject={{
               reportedUserId: other.otherUserId,
@@ -271,8 +279,8 @@ export function ConversationThread({
                 <MessageBubble
                   key={threadMessage.clientId ?? threadMessage.id}
                   message={threadMessage}
-                  isOwn={message.senderId === user?.id}
-                  reportedUserId={other?.otherUserId}
+                  isOwn={Boolean(user?.id && message.senderId === user.id)}
+                  reportedUserId={other?.otherAccountDeleted ? null : other?.otherUserId}
                   sharedPreview={message.sharedCreationId ? sharedPreviews[message.sharedCreationId] : null}
                   onDeleted={() => void load()}
                   onCancelled={() => void load()}

@@ -53,6 +53,7 @@ function seed() {
       deleted_at: null,
       is_deleted: false,
       is_scheduled: false,
+      sender_account_deleted: false,
     },
     {
       id: '00000000-0000-0000-0000-000000000002',
@@ -65,6 +66,7 @@ function seed() {
       deleted_at: null,
       is_deleted: false,
       is_scheduled: false,
+      sender_account_deleted: false,
     },
     {
       id: E2E_SCHEDULED_MESSAGE_ID,
@@ -124,6 +126,43 @@ export function setMessageSendFails(count: number) {
   sendFailCount = count
 }
 
+/** Peer deleted their account; READER still sees message text and anonymised sender. */
+export function setE2eDeletedAccountPeerMessage() {
+  const now = new Date().toISOString()
+  const body = 'Goodbye from deleted user'
+  conversations = [
+    {
+      conversation_id: E2E_CONVERSATION_ID,
+      last_activity_at: now,
+      muted: false,
+      other_user_id: OTHER.id,
+      other_username: 'deleted-account',
+      other_display_name: 'Deleted account',
+      other_avatar_url: null,
+      other_show_local_time: false,
+      other_timezone: 'UTC',
+      other_account_deleted: true,
+      unread_count: 0,
+      preview: body,
+    },
+  ]
+  messages = [
+    {
+      id: E2E_MESSAGE_ID,
+      conversation_id: E2E_CONVERSATION_ID,
+      sender_id: null,
+      body,
+      shared_creation_id: null,
+      deliver_at: now,
+      created_at: now,
+      deleted_at: null,
+      is_deleted: false,
+      is_scheduled: false,
+      sender_account_deleted: true,
+    },
+  ]
+}
+
 export function messageReportQueueRow(): Record<string, unknown> {
   return {
     report_id: messageReportId,
@@ -164,7 +203,7 @@ function visibleMessages(conversationId: string): MessageRow[] {
     const deliverMs = new Date(deliverAt).getTime()
     if (row.is_scheduled && deliverMs > now) {
       // Scheduled messages visible only to sender in messages_visible semantics
-      return row.sender_id === READER.id
+      return row.sender_id === READER.id || row.sender_id === null
     }
     return true
   })

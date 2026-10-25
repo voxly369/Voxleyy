@@ -14,6 +14,7 @@ function row(id: string, deliverAt: string): VisibleMessage {
     deletedAt: null,
     isDeleted: false,
     isScheduled: false,
+    senderAccountDeleted: false,
   }
 }
 

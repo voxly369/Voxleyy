@@ -3,6 +3,7 @@ import { ConfirmDialog } from '../states/ConfirmDialog.tsx'
 import { focusRing } from '../shell/navItems.ts'
 import { ReportSheet } from '../safety/ReportSheet.tsx'
 import { cancelScheduledMessage, deleteMessage } from '../../lib/messages/api.ts'
+import { DELETED_ACCOUNT_DISPLAY_NAME } from '../../lib/messages/deletedAccount.ts'
 import type { SharedCreationPreview, ThreadMessage } from '../../lib/messages/types.ts'
 import { SharedPostCard } from './SharedPostCard.tsx'
 
@@ -69,6 +70,11 @@ export function MessageBubble({
           </p>
         ) : (
           <>
+            {message.senderAccountDeleted && !isOwn ? (
+              <p className="mb-1 text-xs font-semibold text-muted" data-testid="message-sender-deleted-account">
+                {DELETED_ACCOUNT_DISPLAY_NAME}
+              </p>
+            ) : null}
             {message.body ? <p className="whitespace-pre-wrap break-words">{message.body}</p> : null}
             {sharedPreview ? <SharedPostCard preview={sharedPreview} className="mt-2 !bg-bg/40" /> : null}
             {scheduled ? (

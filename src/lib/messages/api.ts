@@ -44,18 +44,22 @@ function parseConversation(row: Record<string, unknown>): ConversationSummary | 
   const conversationId = text(row.conversation_id)
   const lastActivityAt = text(row.last_activity_at)
   const otherUserId = text(row.other_user_id)
+  const otherAccountDeleted = bool(row.other_account_deleted)
   const otherUsername = text(row.other_username)
-  if (!conversationId || !lastActivityAt || !otherUserId || !otherUsername) return null
+  if (!conversationId || !lastActivityAt || !otherUserId) return null
+  if (!otherAccountDeleted && !otherUsername) return null
+  const username = otherUsername ?? 'deleted-account'
   return {
     conversationId,
     lastActivityAt,
     muted: bool(row.muted),
     otherUserId,
-    otherUsername,
-    otherDisplayName: text(row.other_display_name) ?? otherUsername,
+    otherUsername: username,
+    otherDisplayName: text(row.other_display_name) ?? username,
     otherAvatarUrl: text(row.other_avatar_url),
     otherShowLocalTime: row.other_show_local_time !== false,
     otherTimezone: text(row.other_timezone) ?? 'UTC',
+    otherAccountDeleted,
     unreadCount: count(row.unread_count),
     preview: text(row.preview),
   }
@@ -65,9 +69,11 @@ function parseMessage(row: Record<string, unknown>): VisibleMessage | null {
   const id = text(row.id)
   const conversationId = text(row.conversation_id)
   const senderId = text(row.sender_id)
+  const senderAccountDeleted = bool(row.sender_account_deleted)
   const deliverAt = text(row.deliver_at)
   const createdAt = text(row.created_at)
-  if (!id || !conversationId || !senderId || !deliverAt || !createdAt) return null
+  if (!id || !conversationId || !deliverAt || !createdAt) return null
+  if (!senderId && !senderAccountDeleted) return null
   const body = row.body === null ? null : text(row.body)
   return {
     id,
@@ -80,6 +86,7 @@ function parseMessage(row: Record<string, unknown>): VisibleMessage | null {
     deletedAt: text(row.deleted_at),
     isDeleted: bool(row.is_deleted),
     isScheduled: bool(row.is_scheduled),
+    senderAccountDeleted,
   }
 }
 
@@ -138,7 +145,9 @@ export async function canUserMessage(recipientId: string): Promise<MessageResult
 export async function fetchThreadMessages(conversationId: string): Promise<MessageResult<VisibleMessage[]>> {
   const { data, error } = await supabase
     .from('messages_visible')
-    .select('id, conversation_id, sender_id, body, shared_creation_id, deliver_at, created_at, deleted_at, is_deleted, is_scheduled')
+    .select(
+      'id, conversation_id, sender_id, body, shared_creation_id, deliver_at, created_at, deleted_at, is_deleted, is_scheduled, sender_account_deleted',
+    )
     .eq('conversation_id', conversationId)
     .order('deliver_at', { ascending: true })
   if (error) return fail('unavailable', 'Could not load messages.', error)
