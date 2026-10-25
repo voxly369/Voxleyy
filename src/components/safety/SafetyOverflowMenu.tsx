@@ -114,6 +114,7 @@ export function SafetyOverflowMenu({ subject, testId = 'safety-overflow-menu', o
                   close()
                   onAboutProfile()
                 }}
+                data-testid="profile-about-menu-item"
               >
                 About this profile
               </button>

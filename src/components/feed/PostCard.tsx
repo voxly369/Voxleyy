@@ -10,6 +10,7 @@ import { creationTypeLabel } from '../../lib/creations/creationTypeLabel.ts'
 import type { FeedPost } from '../../lib/feed/types.ts'
 import { BadgeRowOnName } from '../badges/BadgeRowOnName.tsx'
 import { VerifiedSeal } from '../profile/VerifiedSeal.tsx'
+import { showsStandaloneVerifiedSeal } from '../../lib/badges/displayBadgesForFeed.ts'
 import { EngagementBar } from '../engagement/EngagementBar.tsx'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { focusRing } from '../shell/navItems.ts'
@@ -107,7 +108,9 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
             {post.author.feedBadges?.length ? (
               <BadgeRowOnName badges={post.author.feedBadges} verified={post.author.verified} />
             ) : null}
-            {post.author.verified ? <VerifiedSeal size="sm" /> : null}
+            {showsStandaloneVerifiedSeal(post.author.feedBadges ?? [], post.author.verified) ? (
+              <VerifiedSeal size="sm" />
+            ) : null}
           </div>
           <Link
             to={`/u/${post.author.username}`}

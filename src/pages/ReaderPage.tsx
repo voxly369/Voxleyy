@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type TouchEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { VerifiedSeal } from '../components/profile/VerifiedSeal.tsx'
 import { RichTextView } from '../components/creations/RichTextView.tsx'
 import { ReaderAnnotationHost } from '../components/reader/ReaderAnnotationHost.tsx'
 import { ReaderSettingsSheet } from '../components/reader/ReaderSettingsSheet.tsx'
@@ -541,6 +542,19 @@ export default function ReaderPage() {
                   ←
                 </button>
                 <p className="truncate text-sm font-medium">{title}</p>
+                <div
+                  className="flex max-w-full min-w-0 items-center gap-x-1 truncate text-xs opacity-80"
+                  data-testid="reader-author-byline"
+                >
+                  <span className="shrink-0">By</span>
+                  <Link
+                    to={`/u/${work.author.username}`}
+                    className={`min-w-0 truncate ${focusRing}`}
+                  >
+                    {work.author.displayName || work.author.username}
+                  </Link>
+                  {work.author.verified ? <VerifiedSeal size="sm" /> : null}
+                </div>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"

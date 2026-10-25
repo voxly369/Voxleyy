@@ -129,6 +129,7 @@ let e2eFeedOverride: E2eFeedRow[] | null = null
 let e2eCreationDetailOverride: Record<string, unknown> | null = null
 let e2eOwnProfileRole: 'reader' | 'writer' = 'writer'
 let e2eOwnProfileVerified = false
+let e2eOtherAuthorVerified = false
 
 export function setE2eOwnProfileRole(role: 'reader' | 'writer') {
   e2eOwnProfileRole = role
@@ -136,6 +137,10 @@ export function setE2eOwnProfileRole(role: 'reader' | 'writer') {
 
 export function setE2eOwnProfileVerified(verified: boolean) {
   e2eOwnProfileVerified = verified
+}
+
+export function setE2eOtherAuthorVerified(verified: boolean) {
+  e2eOtherAuthorVerified = verified
 }
 
 /** Replace default feed rows for a single e2e file; pass null to reset. */
@@ -186,7 +191,7 @@ export function feedPosts() {
       username: OTHER.username,
       display_name: OTHER.display_name,
       avatar_url: null,
-      verified: false,
+      verified: e2eOtherAuthorVerified,
     },
   }))
 }
@@ -197,7 +202,7 @@ function authorEmbed(id: string, username: string, display_name: string) {
     username,
     display_name,
     avatar_url: null,
-    verified: false,
+    verified: e2eOtherAuthorVerified,
   }
 }
 
@@ -316,7 +321,7 @@ function commentTree() {
         username: OTHER.username,
         display_name: OTHER.display_name,
         avatar_url: null,
-        verified: false,
+        verified: e2eOtherAuthorVerified,
       },
     },
     {

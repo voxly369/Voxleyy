@@ -3,7 +3,7 @@ import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import { FollowButton } from '../components/profile/FollowButton.tsx'
 import { MissingProfile } from '../components/profile/MissingProfile.tsx'
-import { VerifiedBadge } from '../components/profile/VerifiedBadge.tsx'
+import { VerifiedSeal } from '../components/profile/VerifiedSeal.tsx'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { EmptyState } from '../components/states/EmptyState.tsx'
@@ -131,10 +131,12 @@ export default function FollowListPage() {
                   <ImageWithFallback src={entry.profile.avatarUrl ?? undefined} alt="" label={name} />
                 </Link>
                 <div className="min-w-0 flex-1">
-                  <Link to={`/u/${entry.profile.username}`} className={`inline-flex min-h-11 items-center gap-1 ${focusRing}`}>
-                    <span className="truncate font-serif text-xl text-ink">{name}</span>
-                    {entry.profile.verified ? <VerifiedBadge /> : null}
-                  </Link>
+                  <div className="inline-flex max-w-full min-w-0 items-center gap-x-1">
+                    <Link to={`/u/${entry.profile.username}`} className={`inline-flex min-h-11 min-w-0 items-center ${focusRing}`}>
+                      <span className="truncate font-serif text-xl text-ink">{name}</span>
+                    </Link>
+                    {entry.profile.verified ? <VerifiedSeal size="sm" /> : null}
+                  </div>
                   <p className="truncate text-sm text-muted">@{entry.profile.username}</p>
                   {entry.profile.country ? (
                     <CountryLink code={entry.profile.country} testId="follow-list-country-link" />

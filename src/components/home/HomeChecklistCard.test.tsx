@@ -11,6 +11,7 @@ vi.mock('../../lib/shell/FeedbackProvider.tsx', () => ({
 }))
 
 const baseSignals = {
+  hasAvatar: false,
   hasBio: false,
   postCount: 0,
   followCount: 0,
@@ -29,7 +30,7 @@ describe('HomeChecklistCard', () => {
       </MemoryRouter>,
     )
     expect(screen.getByTestId('home-checklist')).toBeInTheDocument()
-    expect(screen.getByText(/0 of 6 complete/)).toBeInTheDocument()
+    expect(screen.getByText(/0 of 7 complete/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Send' }))
     expect(openFeedback).toHaveBeenCalled()
   })

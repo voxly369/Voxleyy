@@ -5,6 +5,7 @@ import { focusRing, accessibleCoralFill } from '../shell/navItems.ts'
 import { useFeedback } from '../../lib/shell/FeedbackProvider.tsx'
 
 const ITEMS: { key: ChecklistKey; label: string; href?: string; action?: 'feedback' }[] = [
+  { key: 'profile_photo', label: 'Add a profile photo', href: '/settings/profile' },
   { key: 'profile_bio', label: 'Add your name and bio', href: '/settings/profile' },
   { key: 'first_post', label: 'Post your first piece', href: '/write/drafts' },
   { key: 'follow_two', label: 'Follow two writers', href: '/discover' },

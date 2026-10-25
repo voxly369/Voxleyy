@@ -41,7 +41,6 @@ test.describe('beta readiness 18B stage A finish', () => {
       mimeType: 'image/gif',
       buffer: Buffer.from('GIF89a'),
     })
-    await page.getByRole('button', { name: 'Use this crop' }).click()
     await expect(page.getByText('Use a JPEG, PNG, or WebP image.')).toBeVisible({ timeout: 15_000 })
   })
 
@@ -53,7 +52,6 @@ test.describe('beta readiness 18B stage A finish', () => {
       mimeType: 'image/webp',
       buffer: Buffer.alloc(6 * 1024 * 1024, 1),
     })
-    await page.getByRole('button', { name: 'Use this crop' }).click()
     await expect(page.getByText('That image is larger than 5 MB.')).toBeVisible({ timeout: 15_000 })
   })
 

@@ -19,6 +19,7 @@ import { supabase } from '../../lib/supabaseClient.ts'
 import { useAuth } from '../../lib/auth/auth-context.ts'
 import { pickDailyPrompt } from '../../lib/discover/dailyPrompt.ts'
 import { useCreateSheet } from '../../lib/shell/useCreateSheet.ts'
+import { ProfileImageField } from '../profile/ProfileImageField.tsx'
 
 const LANGUAGE_OPTIONS = [
   { id: 'en', label: 'English' },
@@ -49,6 +50,7 @@ export function OnboardingFlow({ forceOpen, onFinished, onCloseForced }: Onboard
   const [quietEnabled, setQuietEnabled] = useState(false)
   const [writers, setWriters] = useState<{ id: string; username: string; displayName: string }[]>([])
   const [promptText, setPromptText] = useState<string | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -69,7 +71,7 @@ export function OnboardingFlow({ forceOpen, onFinished, onCloseForced }: Onboard
   }, [load])
 
   useEffect(() => {
-    if (step !== 5) return
+    if (step !== 6) return
     void (async () => {
       const userId = profile?.id
       if (!userId) return
@@ -96,7 +98,7 @@ export function OnboardingFlow({ forceOpen, onFinished, onCloseForced }: Onboard
   }, [step, profile?.id])
 
   useEffect(() => {
-    if (step !== 6) return
+    if (step !== 7) return
     void supabase.rpc('writing_prompt_for_date').then(({ data }) => {
       if (typeof data === 'string') setPromptText(data)
     })
@@ -263,6 +265,22 @@ export function OnboardingFlow({ forceOpen, onFinished, onCloseForced }: Onboard
         ) : null}
 
         {step === 4 ? (
+          <div className="flex flex-col gap-3" data-testid="onboarding-photo-step">
+            <p className="text-sm text-muted">Add a profile photo so friends recognize you on posts and messages. You can skip and add one later in Settings.</p>
+            {profile?.id ? (
+              <ProfileImageField
+                bucket="avatars"
+                userId={profile.id}
+                label="Profile photo"
+                url={avatarUrl}
+                fallbackLabel={profile.display_name || profile.username || 'You'}
+                onChange={setAvatarUrl}
+              />
+            ) : null}
+          </div>
+        ) : null}
+
+        {step === 5 ? (
           <div className="flex flex-col gap-3 text-sm text-muted">
             <p>Quiet mode holds non-essential notifications while you write or read. You can change this anytime in Settings.</p>
             <label className="flex items-center gap-2 text-ink">
@@ -272,7 +290,7 @@ export function OnboardingFlow({ forceOpen, onFinished, onCloseForced }: Onboard
           </div>
         ) : null}
 
-        {step === 5 ? (
+        {step === 6 ? (
           <div className="flex flex-col gap-3">
             {writers.length === 0 ? (
               <p className="text-sm text-muted">Writers are still finding their way here — check Discover soon. You can skip this step.</p>
@@ -299,7 +317,7 @@ export function OnboardingFlow({ forceOpen, onFinished, onCloseForced }: Onboard
           </div>
         ) : null}
 
-        {step === 6 ? (
+        {step === 7 ? (
           <div className="flex flex-col gap-3">
             <p className="text-sm text-muted">Today&apos;s writing prompt</p>
             <p className="font-serif text-lg text-ink">{promptText ?? pickDailyPrompt(['Write the opening line of a story only you could tell']) ?? 'Write something true.'}</p>

@@ -35,7 +35,7 @@ export function badgeIconGlyph(iconKey: string, badgeKey?: BadgeKey): string {
     case 'founder':
       return 'V'
     case 'verified':
-      return '✓'
+      return ''
     case 'streak':
       return '🔥'
     case 'trophy':

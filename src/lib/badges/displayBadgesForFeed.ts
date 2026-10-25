@@ -17,3 +17,9 @@ export function displayBadgesBesideName(badges: readonly FeedBadge[], verified: 
   }
   return slots.slice(0, MAX_FEED_BADGES)
 }
+
+/** Coral Verified seal beside the name when not already shown in the Founder badge row. */
+export function showsStandaloneVerifiedSeal(badges: readonly FeedBadge[], verified: boolean): boolean {
+  if (!verified) return false
+  return !displayBadgesBesideName(badges, verified).some((b) => b.badgeKey === 'verified')
+}

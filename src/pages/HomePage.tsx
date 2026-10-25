@@ -83,7 +83,7 @@ export default function HomePage() {
     void fetchMyProfilePreferences().then((prefs) => {
       if (prefs.ok) setChecklistDismissed(Boolean(prefs.data.checklist_dismissed_at))
     })
-    void fetchChecklistSignals(profile.id, profile.bio ?? null).then(setChecklistSignals)
+    void fetchChecklistSignals(profile.id, profile.bio ?? null, profile.avatar_url ?? null).then(setChecklistSignals)
   }, [profile?.id, profile?.role, profile?.timezone, profile?.bio])
 
   useEffect(() => {

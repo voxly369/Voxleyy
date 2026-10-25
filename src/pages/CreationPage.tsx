@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { VerifiedBadge } from '../components/profile/VerifiedBadge.tsx'
+import { VerifiedSeal } from '../components/profile/VerifiedSeal.tsx'
+import { BadgeRowOnName } from '../components/badges/BadgeRowOnName.tsx'
+import { showsStandaloneVerifiedSeal } from '../lib/badges/displayBadgesForFeed.ts'
 import { PublishSheet } from '../components/creations/PublishSheet.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { PageContainer } from '../components/shell/PageContainer.tsx'
@@ -315,16 +317,23 @@ export default function CreationPage() {
             {work.status === 'published' ? <span>Audience: {audienceLabel(work.audience)}</span> : null}
           </p>
         ) : null}
-        <Link to={`/u/${work.author.username}`} className={`inline-flex items-center gap-2 text-base text-ink ${focusRing}`}>
-          <ImageWithFallback
-            src={work.author.avatarUrl ?? undefined}
-            alt=""
-            label={work.author.displayName || work.author.username}
-            className="size-10"
-          />
-          <span>{work.author.displayName || work.author.username}</span>
-          {work.author.verified ? <VerifiedBadge /> : null}
-        </Link>
+        <div className="inline-flex max-w-full min-w-0 items-center gap-x-1 text-base text-ink" data-testid="creation-author-line">
+          <Link to={`/u/${work.author.username}`} className={`inline-flex min-w-0 items-center gap-2 ${focusRing}`}>
+            <ImageWithFallback
+              src={work.author.avatarUrl ?? undefined}
+              alt=""
+              label={work.author.displayName || work.author.username}
+              className="size-10 shrink-0"
+            />
+            <span className="truncate">{work.author.displayName || work.author.username}</span>
+          </Link>
+          {work.author.feedBadges?.length ? (
+            <BadgeRowOnName badges={work.author.feedBadges} verified={work.author.verified} />
+          ) : null}
+          {showsStandaloneVerifiedSeal(work.author.feedBadges ?? [], work.author.verified) ? (
+            <VerifiedSeal size="sm" />
+          ) : null}
+        </div>
         {engagement ? <div className="xl:hidden">{engagement}</div> : null}
         {work.status === 'published' && isReaderEligibleType(work.type) ? (
           <div className="flex flex-wrap gap-2">

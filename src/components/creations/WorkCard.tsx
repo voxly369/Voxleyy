@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { VerifiedBadge } from '../profile/VerifiedBadge.tsx'
+import { VerifiedSeal } from '../profile/VerifiedSeal.tsx'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { audienceLabel } from '../../lib/creations/audienceOptions.ts'
 import { creationTypeLabel } from '../../lib/creations/creationTypeLabel.ts'
@@ -56,7 +56,7 @@ export function WorkCard(props: WorkCardProps) {
         <p className="truncate font-serif text-lg text-ink">{cardLabel}</p>
         <p className="mt-1 flex items-center gap-1 text-sm text-muted">
           <span className="truncate">{summary.author.displayName || summary.author.username}</span>
-          {summary.author.verified ? <VerifiedBadge /> : null}
+          {summary.author.verified ? <VerifiedSeal size="sm" /> : null}
         </p>
         <p className="mt-1 text-xs uppercase tracking-wide text-muted">
           {summary.status === 'draft' ? 'Draft' : summary.type.replace('_', ' ')}

@@ -124,7 +124,7 @@ export default function ProfileBadgesPage() {
           <li key={row.key} className="rounded-2xl border border-line bg-surface p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="flex items-start gap-3">
-                <BadgeIcon badgeKey={row.key} iconKey={row.iconKey} size="md" />
+                <BadgeIcon badgeKey={row.key} iconKey={row.iconKey} size="lg" shimmer={row.key === 'founder'} />
                 <div>
                   <p className="font-semibold text-ink">{row.name}</p>
                   <p className="text-sm text-muted">{row.description}</p>

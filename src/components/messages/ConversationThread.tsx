@@ -21,6 +21,7 @@ import { LocalTime } from '../time/LocalTime.tsx'
 import type { ConversationSummary, QuietStatus, SharedCreationPreview, ThreadMessage } from '../../lib/messages/types.ts'
 import { useMessages } from '../../lib/messages/useMessages.ts'
 import { ConsiderateSendingModal } from './ConsiderateSendingModal.tsx'
+import { DisplayNameWithMarks } from '../profile/DisplayNameWithMarks.tsx'
 import { MessageBubble } from './MessageBubble.tsx'
 import { MessageComposer } from './MessageComposer.tsx'
 
@@ -238,8 +239,13 @@ export function ConversationThread({
           className="size-10 rounded-full"
         />
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-semibold text-ink" data-testid="thread-header-name">
-            {headerName}
+          <h2 className="min-w-0 max-w-full" data-testid="thread-header-name">
+            <DisplayNameWithMarks
+              name={headerName}
+              verified={Boolean(other && !other.otherAccountDeleted && other.otherVerified)}
+              sealSize="sm"
+              nameClassName="text-lg font-semibold text-ink"
+            />
           </h2>
           {other && !other.otherAccountDeleted ? (
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted">
