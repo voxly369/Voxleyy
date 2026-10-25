@@ -47,7 +47,7 @@ const DETAIL_COLUMNS =
   `id, type, title, caption, body_text, body_json, status, audience, cover_url, genre, mood, language, created_at, updated_at, is_removed, removed_reason, author_id, ${AUTHOR_EMBED}` as const
 
 const EDIT_COLUMNS =
-  'id, type, title, caption, body_text, body_json, cover_url, mood, status, audience, updated_at, is_removed, author_id' as const
+  'id, type, title, caption, body_text, body_json, cover_url, mood, language, status, audience, updated_at, is_removed, author_id' as const
 
 function fail(
   code: CreationFailure['error']['code'],
@@ -329,6 +329,7 @@ export async function getEditableCreation(id: string): Promise<CreationResult<Ed
       bodyText,
       coverUrl: data.cover_url,
       mood: data.mood ?? null,
+      language: text(data.language) ?? 'en',
       status: data.status,
       audience: data.audience,
       updatedAt: data.updated_at,
@@ -348,6 +349,7 @@ export async function saveCreationFields(input: {
   audience: Audience
   tags: string[]
   mood?: string | null
+  language?: string
   forceOverwrite?: boolean
 }): Promise<SaveCreationResult> {
   const userId = await currentUserId()
@@ -360,6 +362,7 @@ export async function saveCreationFields(input: {
     title: input.title,
     caption: input.caption,
     mood: input.mood,
+    language: input.language,
   })
   if (issue) return fail('invalid', issue.message)
 
@@ -373,6 +376,7 @@ export async function saveCreationFields(input: {
         caption: input.caption,
         audience: input.audience,
         mood: input.mood,
+        language: input.language,
       }),
     )
     .eq('id', input.id)

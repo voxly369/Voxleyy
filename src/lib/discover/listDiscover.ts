@@ -94,6 +94,7 @@ function mapRow(
       likedByViewer: false,
       savedByViewer: false,
       tags: [],
+      language: text(row.language) ?? 'en',
     },
   }
 }
@@ -120,7 +121,10 @@ export async function listDiscoverPosts(
     .limit(DISCOVER_PAGE_SIZE + 1)
 
   if (filterFields.mood) query = query.eq('mood', filterFields.mood)
-  if (filterFields.language) query = query.eq('language', filterFields.language)
+  if (filterFields.languages?.length === 1) query = query.eq('language', filterFields.languages[0]!)
+  else if (filterFields.languages && filterFields.languages.length > 1) {
+    query = query.in('language', filterFields.languages)
+  }
   if (filterFields.country) query = query.eq('country', filterFields.country)
   if (filterFields.type) query = query.eq('type', filterFields.type as CreationType)
   if (filterFields.genre && !filterFields.type) query = query.ilike('genre', filterFields.genre)
@@ -162,6 +166,7 @@ export type FeaturedWriter = {
   verified: boolean
   bio: string | null
   followerCount: number
+  country: string | null
 }
 
 export async function listFeaturedWriters(): Promise<
@@ -169,7 +174,7 @@ export async function listFeaturedWriters(): Promise<
 > {
   const { data, error } = await supabase
     .from('founder_featured_writers_public')
-    .select('writer_id, username, display_name, avatar_url, verified, bio, follower_count')
+    .select('writer_id, username, display_name, avatar_url, verified, bio, follower_count, country')
     .order('sort_order', { ascending: true })
 
   if (error) return { ok: false, message: 'We could not load featured writers.' }
@@ -183,6 +188,7 @@ export async function listFeaturedWriters(): Promise<
       verified: row.verified === true,
       bio: (row.bio as string | null) ?? null,
       followerCount: typeof row.follower_count === 'number' ? row.follower_count : 0,
+      country: text(row.country)?.trim().toUpperCase() || null,
     })) ?? []
 
   return { ok: true, data: rows }
@@ -196,6 +202,7 @@ export type RisingWriter = {
   verified: boolean
   followerCount: number
   momentumScore: number
+  country: string | null
 }
 
 export async function listRisingWriters(): Promise<
@@ -203,7 +210,7 @@ export async function listRisingWriters(): Promise<
 > {
   const { data, error } = await supabase
     .from('discover_rising_writers')
-    .select('id, username, display_name, avatar_url, verified, follower_count, momentum_score')
+    .select('id, username, display_name, avatar_url, verified, follower_count, momentum_score, country')
     .order('momentum_score', { ascending: false })
     .limit(12)
 
@@ -220,6 +227,7 @@ export async function listRisingWriters(): Promise<
         verified: row.verified === true,
         followerCount: typeof row.follower_count === 'number' ? row.follower_count : 0,
         momentumScore: typeof row.momentum_score === 'number' ? row.momentum_score : 0,
+        country: text(row.country)?.trim().toUpperCase() || null,
       })) ?? [],
   }
 }

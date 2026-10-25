@@ -10,4 +10,8 @@ describe('discoverQuery', () => {
   it('maps genre slug to creation type filter', () => {
     expect(applyDiscoverFiltersToQuery({ genre: 'poetry' }, 'filtered').type).toBe('poem')
   })
+
+  it('passes multiple language codes', () => {
+    expect(applyDiscoverFiltersToQuery({ languages: ['en', 'af'] }, 'filtered').languages).toEqual(['en', 'af'])
+  })
 })

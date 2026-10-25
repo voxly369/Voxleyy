@@ -12,6 +12,7 @@ describe('validateBookMetadata', () => {
       currency: 'GBP',
       rentalDays: null,
       isbnInternal: null,
+      language: 'en',
     })
     expect(result.ok).toBe(false)
   })
@@ -26,6 +27,7 @@ describe('validateBookMetadata', () => {
       currency: 'GBP',
       rentalDays: null,
       isbnInternal: null,
+      language: 'en',
     })
     expect(result.ok).toBe(true)
   })
@@ -43,6 +45,7 @@ describe('validateBookForPublish', () => {
         currency: 'GBP',
         rentalDays: null,
         isbnInternal: null,
+        language: 'en',
       },
       hasCover: false,
       chapters: [],
@@ -62,6 +65,7 @@ describe('validateBookForPublish', () => {
           currency: 'GBP',
           rentalDays: null,
           isbnInternal: null,
+          language: 'en',
         },
         hasCover: true,
         chapters: [

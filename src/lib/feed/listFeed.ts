@@ -9,7 +9,7 @@ import type { FeedKind, FeedPage, FeedPost } from './types.ts'
 const AUTHOR_EMBED = `author:profiles_public!creations_author_id_fkey(id, username, display_name, avatar_url, verified)`
 
 const FEED_COLUMNS =
-  `id, type, title, caption, body_excerpt, body_truncated, cover_url, audience, published_at, like_count, comment_count, save_count, created_at, author_id, ${AUTHOR_EMBED}` as const
+  `id, type, title, caption, body_excerpt, body_truncated, cover_url, language, audience, published_at, like_count, comment_count, save_count, created_at, author_id, ${AUTHOR_EMBED}` as const
 
 export type FeedFailure = {
   ok: false
@@ -143,6 +143,7 @@ export async function listFeed(kind: FeedKind, cursor: import('./cursor.ts').Fee
           likedByViewer: false,
           savedByViewer: false,
           tags: [] as string[],
+          language: text(row.language) ?? 'en',
         },
       },
     ]

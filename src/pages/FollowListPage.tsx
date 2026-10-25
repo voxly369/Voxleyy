@@ -13,6 +13,7 @@ import { PageSkeleton } from '../components/states/Skeleton.tsx'
 import { getProfileByUsername, listFollowers, listFollowing } from '../lib/profiles/api.ts'
 import type { FollowCursor } from '../lib/profiles/cursor.ts'
 import type { FollowListEntry } from '../lib/profiles/types.ts'
+import { CountryLink } from '../components/country/CountryLink.tsx'
 
 type Ready = {
   key: string
@@ -135,6 +136,9 @@ export default function FollowListPage() {
                     {entry.profile.verified ? <VerifiedBadge /> : null}
                   </Link>
                   <p className="truncate text-sm text-muted">@{entry.profile.username}</p>
+                  {entry.profile.country ? (
+                    <CountryLink code={entry.profile.country} testId="follow-list-country-link" />
+                  ) : null}
                 </div>
                 {entry.isSelf ? null : (
                   <FollowButton

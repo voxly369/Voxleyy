@@ -22,6 +22,7 @@ export type WorkSummary = {
   audience: Audience
   coverUrl: string | null
   createdAt: string
+  language?: string
   author: CreationAuthor
 }
 
@@ -70,6 +71,7 @@ export type EditableCreation = {
   bodyText: string
   coverUrl: string | null
   mood: string | null
+  language: string
   status: PublishStatus
   audience: Audience
   updatedAt: string

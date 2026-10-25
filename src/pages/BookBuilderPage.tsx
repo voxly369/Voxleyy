@@ -157,6 +157,7 @@ export default function BookBuilderPage() {
         currency: book.currency,
         rentalDays: book.rentalDays,
         isbnInternal: book.isbnInternal,
+        language: book.language,
       },
       hasCover: Boolean(book.coverUrl),
       chapters: toc,

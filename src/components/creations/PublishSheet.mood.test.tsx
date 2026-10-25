@@ -29,6 +29,6 @@ describe('PublishSheet mood picker', () => {
     )
     await userEvent.selectOptions(screen.getByLabelText(/mood/i), 'hope')
     await userEvent.click(screen.getByRole('button', { name: 'Publish' }))
-    expect(onConfirm).toHaveBeenCalledWith({ audience: 'public', mood: 'hope' })
+    expect(onConfirm).toHaveBeenCalledWith({ audience: 'public', mood: 'hope', language: 'en' })
   })
 })

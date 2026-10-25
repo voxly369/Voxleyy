@@ -17,6 +17,7 @@ import {
   fetchProfileRole,
   getCreationById,
   publishCreation,
+  saveCreationFields,
   unpublishCreation,
 } from '../lib/creations/api.ts'
 import { becameWriterAfterPublish } from '../lib/creations/roleChange.ts'
@@ -169,17 +170,48 @@ export default function CreationPage() {
     navigate(`/u/${work.author.username}`)
   }
 
-  async function onPublishConfirm(audience: import('../lib/creations/types.ts').Audience) {
+  async function onPublishConfirm(input: {
+    audience: import('../lib/creations/types.ts').Audience
+    mood: string | null
+    language: string
+  }) {
     if (!work) return
     setPublishError(null)
     setPublishBusy(true)
+
+    let updatedAt = work.updatedAt
+    if (work.status !== 'published') {
+      const saved = await saveCreationFields({
+        id: work.id,
+        expectedUpdatedAt: work.updatedAt,
+        title: work.title ?? '',
+        caption: work.caption ?? '',
+        bodyText: work.bodyText ?? '',
+        bodyJson: work.bodyJson ?? { version: 1, format: 'plain', text: work.bodyText ?? '' },
+        audience: input.audience,
+        tags: [],
+        mood: input.mood,
+        language: input.language,
+      })
+      if (!saved.ok) {
+        setPublishBusy(false)
+        if ('conflict' in saved && saved.conflict) {
+          setPublishError('Someone else saved a newer version. Reload and try again.')
+          return
+        }
+        setPublishError('error' in saved ? saved.error.message : 'We could not save language before publishing.')
+        return
+      }
+      updatedAt = saved.updatedAt
+    }
+
     const roleBefore = profile?.id ? await fetchProfileRole(profile.id) : null
     const beforeRole = roleBefore?.ok ? roleBefore.data : null
 
     const result = await publishCreation({
       id: work.id,
-      audience,
-      expectedUpdatedAt: work.updatedAt,
+      audience: input.audience,
+      expectedUpdatedAt: updatedAt,
     })
     setPublishBusy(false)
 
@@ -321,7 +353,12 @@ export default function CreationPage() {
           <p className="text-muted">No text yet.</p>
         )
       ) : work.bodyText || work.bodyJson ? (
-        <RichTextView bodyJson={work.bodyJson} bodyText={work.bodyText ?? ''} creationType={work.type} />
+        <RichTextView
+          bodyJson={work.bodyJson}
+          bodyText={work.bodyText ?? ''}
+          creationType={work.type}
+          contentLanguage={work.language}
+        />
       ) : (
         <p className="text-muted">No text yet.</p>
       )}
@@ -393,10 +430,12 @@ export default function CreationPage() {
         coverUrl={work.coverUrl}
         creationType={work.type}
         initialAudience={work.audience}
+        initialMood={work.mood}
+        initialLanguage={work.language}
         mode={work.status === 'published' ? 'audience' : 'publish'}
         busy={publishBusy}
         error={publishError}
-        onConfirm={({ audience }) => void onPublishConfirm(audience)}
+        onConfirm={(payload) => void onPublishConfirm(payload)}
       />
       {commentsOpen ? (
         <CommentsSheet open={true} creationId={work.id} onClose={() => setCommentsOpen(false)} />

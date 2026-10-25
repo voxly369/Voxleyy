@@ -18,6 +18,7 @@ import { tagPagePath } from '../../lib/discover/tagLink.ts'
 import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
 import { useAuth } from '../../lib/auth/auth-context.ts'
 import { getOrCreateDm } from '../../lib/messages/api.ts'
+import { contentLangProps } from '../../lib/languages/dir.ts'
 
 type PostCardProps = {
   post: FeedPost
@@ -62,6 +63,7 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
   const showReadMore =
     post.bodyTruncated || excerptTruncated || (poemPreview?.truncated ?? false)
   const quoteText = (previewSource || post.caption || post.title || '').trim() || 'Quote'
+  const langProps = contentLangProps(post.language)
 
   async function shareToMessage() {
     if (sharePending) return
@@ -156,11 +158,11 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
             {post.caption?.trim() ? <p className="mt-1 text-sm text-muted">{post.caption.trim()}</p> : null}
             {isPoem && poemPreview ? (
               <div className="mt-1 flex flex-col gap-1">
-                <LiteraryBodyView lines={poemPreview.lines} className="text-base" />
+                <LiteraryBodyView lines={poemPreview.lines} className="text-base" contentLanguage={post.language} />
                 {showReadMore ? <span className="text-coral">Read more</span> : null}
               </div>
             ) : excerpt ? (
-              <p className="mt-3 text-base text-ink">
+              <p className="content-lang mt-3 text-base text-ink" {...langProps}>
                 {excerpt}
                 {showReadMore ? <span className="text-coral"> Read more</span> : null}
               </p>

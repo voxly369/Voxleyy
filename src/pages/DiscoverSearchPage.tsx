@@ -14,6 +14,8 @@ import { DiscoverFollowButton } from '../components/discover/DiscoverFollowButto
 import { formatCountLabel } from '../lib/formatCountLabel.ts'
 import { tagPagePath } from '../lib/discover/tagLink.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
+import { parseDiscoverFilters } from '../lib/discover/filterParams.ts'
+import { CountryLink } from '../components/country/CountryLink.tsx'
 
 const TABS: { id: SearchTab; label: string }[] = [
   { id: 'top', label: 'Top' },
@@ -25,6 +27,7 @@ const TABS: { id: SearchTab; label: string }[] = [
 export default function DiscoverSearchPage() {
   const [params] = useSearchParams()
   const query = params.get('q') ?? ''
+  const languageFilters = parseDiscoverFilters(params).languages ?? []
   const [tab, setTab] = useState<SearchTab>('top')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -41,7 +44,7 @@ export default function DiscoverSearchPage() {
     let active = true
     setLoading(true)
     const timer = window.setTimeout(() => {
-      void runSearch(query, tab).then((result) => {
+      void runSearch(query, tab, languageFilters).then((result) => {
         if (!active) return
         setLoading(false)
         if (!result.ok) {
@@ -57,7 +60,7 @@ export default function DiscoverSearchPage() {
       active = false
       window.clearTimeout(timer)
     }
-  }, [query, tab])
+  }, [query, tab, languageFilters.join(',')])
 
   return (
     <FeedWithRailLayout>
@@ -100,6 +103,9 @@ export default function DiscoverSearchPage() {
                         <span className="block text-sm text-muted">
                           @{writer.username} · {formatCountLabel(writer.followerCount, 'follower')}
                         </span>
+                        {writer.country ? (
+                          <CountryLink code={writer.country} className="mt-1" testId="search-writer-country-link" />
+                        ) : null}
                       </Link>
                       <DiscoverFollowButton userId={writer.id} username={writer.username} />
                     </li>

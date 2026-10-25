@@ -25,6 +25,7 @@ import { worksForPostsGrid } from '../lib/creations/profilePostsMapper.ts'
 import type { PublishedCursor } from '../lib/creations/publishedCursor.ts'
 import type { PublishedWorkSummary } from '../lib/creations/types.ts'
 import { getProfileByUsername, isFollowing } from '../lib/profiles/api.ts'
+import { listAuthorPostLanguages } from '../lib/profiles/postLanguages.ts'
 import { pickMostPlayed } from '../lib/profiles/pickMostPlayed.ts'
 import { visibleProfileTabs, type ProfileTabId } from '../lib/profiles/profileTabs.ts'
 import type { PublicProfile } from '../lib/profiles/types.ts'
@@ -79,6 +80,7 @@ export default function ProfilePage() {
   const [analytics, setAnalytics] = useState<CreatorAnalytics | null>(null)
   const [analyticsLoading, setAnalyticsLoading] = useState(false)
   const [analyticsError, setAnalyticsError] = useState<string | null>(null)
+  const [postLanguages, setPostLanguages] = useState<string[]>([])
   const key = username.toLowerCase()
   const current = view?.key === key ? view : null
   const activeProblem = problem?.key === key ? problem : null
@@ -140,15 +142,17 @@ export default function ProfilePage() {
     let active = true
     setBadgesLoading(true)
     void (async () => {
-      const [pinned, streakResult, featured] = await Promise.all([
+      const [pinned, streakResult, featured, langs] = await Promise.all([
         listPinnedBadges(current.profile.id),
         getUserStreaks(current.profile.id),
         getFeaturedBookId(current.profile.id),
+        listAuthorPostLanguages(current.profile.id),
       ])
       if (!active) return
       setPinnedBadges(pinned.ok ? pinned.data : [])
       setStreaks(streakResult.ok ? streakResult.data : EMPTY_STREAKS)
       setFeaturedBookId(featured.ok ? featured.data : null)
+      setPostLanguages(langs.ok ? langs.languages : [])
       setBadgesLoading(false)
     })()
     return () => {
@@ -280,6 +284,7 @@ export default function ProfilePage() {
           })
         }}
         badgeShelf={<BadgeShelf username={profile.username} pinned={pinnedBadges} loading={badgesLoading} />}
+        postLanguages={postLanguages}
       />
       <ProfileStreakChips streaks={streaks} timeZone={profile.timezone} />
       {showNamePrompt && me ? (

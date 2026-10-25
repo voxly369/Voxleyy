@@ -101,6 +101,7 @@ export function useCreationEditor({ creationId, creationType, seedBody }: UseCre
   const [creationStatus, setCreationStatus] = useState<PublishStatus>('draft')
   const [creationAudience, setCreationAudience] = useState<Audience>('private')
   const [creationMood, setCreationMood] = useState<string | null>(null)
+  const [creationLanguage, setCreationLanguage] = useState('en')
   const [quoteStyle, setQuoteStyle] = useState<QuoteCardStyle>(DEFAULT_QUOTE_CARD_STYLE)
   const [richDoc, setRichDoc] = useState<RichBodyDocument>(() => emptyRichDocument())
   const [tagWarning, setTagWarning] = useState<string | null>(null)
@@ -154,6 +155,7 @@ export function useCreationEditor({ creationId, creationType, seedBody }: UseCre
     setCreationStatus(value.status)
     setCreationAudience(value.audience)
     setCreationMood(value.mood)
+    setCreationLanguage(value.language?.trim().toLowerCase() || 'en')
     const loadedRich = bodyContentFromJson(value.bodyJson, value.bodyText)
     setForm({
       title: value.title,
@@ -498,6 +500,7 @@ export function useCreationEditor({ creationId, creationType, seedBody }: UseCre
     creationStatus,
     creationAudience,
     creationMood,
+    creationLanguage,
     tagWarning,
     getUpdatedAt: () => updatedAtRef.current,
     shouldBlockLeave: shouldBlockNavigation(autosave),

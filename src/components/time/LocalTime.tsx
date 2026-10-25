@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 type LocalTimeProps = {
   timezone: string
   className?: string
+  testId?: string
 }
 
 function friendlyZoneLabel(timezone: string, at: Date): string {
@@ -18,7 +19,7 @@ function friendlyZoneLabel(timezone: string, at: Date): string {
   }
 }
 
-export function LocalTime({ timezone, className = '' }: LocalTimeProps) {
+export function LocalTime({ timezone, className = '', testId = 'profile-local-time' }: LocalTimeProps) {
   const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
@@ -43,7 +44,7 @@ export function LocalTime({ timezone, className = '' }: LocalTimeProps) {
   const zoneLabel = useMemo(() => friendlyZoneLabel(timezone, now), [now, timezone])
 
   return (
-    <p className={`text-sm text-muted ${className}`} data-testid="profile-local-time">
+    <p className={`text-sm text-muted ${className}`} data-testid={testId}>
       <time dateTime={now.toISOString()}>{timeText}</time>
       <span className="sr-only">{` ${zoneLabel}`}</span>
     </p>

@@ -22,10 +22,12 @@ import {
 import { languageNativeName } from '../lib/country/languageNames.ts'
 import type { FeedPost } from '../lib/feed/types.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
+import { useAuth } from '../lib/auth/auth-context.ts'
 
 const CODE_PATTERN = /^[A-Z]{2}$/
 
 export default function CountryPage() {
+  const { profile } = useAuth()
   const { code = '' } = useParams()
   const normalized = code.trim().toUpperCase()
   const valid = CODE_PATTERN.test(normalized)
@@ -89,9 +91,9 @@ export default function CountryPage() {
           <>
             <header className="flex flex-col gap-3">
               <PageHeader title={`${countryFlag(meta.code)} ${meta.name}`} />
-              {meta.primaryTimezone ? (
-                <LocalTime timezone={meta.primaryTimezone} />
-              ) : (
+              {meta.primaryTimezone && profile?.show_local_time ? (
+                <LocalTime timezone={meta.primaryTimezone} testId="country-local-time" />
+              ) : meta.primaryTimezone && !profile?.show_local_time ? null : (
                 <p className="text-sm text-muted">Local time varies across this country.</p>
               )}
               {meta.mainLanguages.length > 0 ? (
@@ -129,6 +131,14 @@ export default function CountryPage() {
                 </button>
               ) : null}
             </section>
+
+            {meta.writerCount === 0 && rising.length === 0 ? (
+              <EmptyState
+                title="No writers from here yet"
+                message="When writers list this country on their profile, they will show up here."
+                dataTestId="country-no-writers"
+              />
+            ) : null}
 
             {rising.length > 0 ? (
               <section className="flex flex-col gap-3" data-testid="country-rising-writers">

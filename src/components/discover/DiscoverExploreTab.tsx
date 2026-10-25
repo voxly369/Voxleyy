@@ -18,6 +18,7 @@ import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { focusRing } from '../shell/navItems.ts'
 import { HorizontalChipRow } from './HorizontalChipRow.tsx'
 import { DiscoverPostStrip } from './DiscoverPostStrip.tsx'
+import { CountryLink } from '../country/CountryLink.tsx'
 
 function SectionShell({
   title,
@@ -119,6 +120,7 @@ export function DiscoverExploreTab() {
                   <div className="min-w-0">
                     <p className="truncate font-medium text-ink">{writer.displayName || writer.username}</p>
                     <p className="truncate text-sm text-muted">@{writer.username}</p>
+                    {writer.country ? <CountryLink code={writer.country} className="mt-1" /> : null}
                   </div>
                 </Link>
                 <DiscoverFollowButton userId={writer.writerId} username={writer.username} />
@@ -195,6 +197,13 @@ export function DiscoverExploreTab() {
                 <Link to={`/u/${writer.username}`} className={`block ${focusRing}`}>
                   <p className="font-medium text-ink">{writer.displayName || writer.username}</p>
                   <p className="text-sm text-muted">@{writer.username}</p>
+                  {writer.country ? (
+                    <CountryLink
+                      code={writer.country}
+                      className="mt-1"
+                      testId="discover-rising-writer-country-link"
+                    />
+                  ) : null}
                 </Link>
                 <DiscoverFollowButton userId={writer.id} username={writer.username} />
               </article>
