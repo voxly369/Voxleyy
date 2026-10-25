@@ -1,4 +1,6 @@
 > **SOURCE OF TRUTH.** This file is the final, authoritative specification for Voxly. If anything in `docs/reference/` (images) or in any older document disagrees with this file, THIS FILE WINS. The images are out of date and show only the general look and feel. Build in numbered prompts, one at a time; features not in the current prompt are scheduled for later, not cancelled.
+>
+> **Build status and phase order:** `docs/ROADMAP.md` records what is built on `main`, what is partial, and the ordered remaining work.
 
 # Voxly: Product and Platform Specification
 
@@ -18,7 +20,7 @@ Voxly is several products working as one: a social feed, a creation suite, a mar
 
 | Reference                  | What Voxly takes                                                                       |
 |----------------------------|----------------------------------------------------------------------------------------|
-| TikTok                     | Full-screen vertical For You feed, sound trends, duets, live rooms, engagement ranking |
+| TikTok                     | Full-screen vertical For You feed, sound trends, duets, engagement ranking (no live broadcast) |
 | Instagram                  | Continuous feed, follow graph, profile grid, grouped Settings                          |
 | Medium                     | Editorial reading typography, clean long-form writing                                  |
 | Substack                   | Writer-owned audience, direct writer-to-reader relationship, broadcast channels        |
@@ -186,17 +188,15 @@ All writing types are welcome: poems, stories, essays, prose, letters, scripts, 
 
 - **Pricing per book.** Free, one-time purchase, time-limited rental, or monthly subscription.
 
-- **Rights registry.** Every published Creation records author, time of first publication and version, giving writers a dated record for ownership disputes.
-
-- **Internal ISBN numbers.** The platform can assign an internal identifier to a book. An unused number expires after 30 days if the book is not published.
+- **Rights registry and Voxly Book ID.** Every published book receives a **Voxly Book ID**: an internal identifier generated in the app, with a valid check digit, unique across the platform. It is never labelled or displayed as an ISBN. The rights registry stores author, first publication time and version for every Creation. A reserved Book ID expires after 30 days if the book is not published. **External ISBN (South Africa):** a real ISBN from the SA ISBN Agency is required only when a writer sells through external retailers later; that process follows the same outline as Amazon KDP, Draft2Digital and Notion Press—metadata form, one generated identifier per format, preview, then publish to the external channel.
 
 - **Background music.** Writers upload their own audio; a licensed library may be added later.
 
-- **Multi-language publishing.** Each Creation declares its language, and readers filter and search by language.
+- **Language on content (English interface).** The app interface stays in English. Each Creation declares its primary language; readers filter and search by language. Writers may add a translation or caption in another language on a post, the way creators do on Instagram, TikTok and Facebook. There is no translated app interface in the first release.
 
 - **Export.** Writers can request a copy of their own work and data at any time, as a privacy right. Readers can never export or download paid or published work.
 
-**Video and audio pipeline.** In-app recording, trimming, filters, compression and thumbnail generation using the browser recording API and open-source compression. Quote card and text flows ship first, then video.
+**Video and audio pipeline.** Creators **record and post** video and voice inside Voxly (in-app recording or import, trimming, filters, compression, thumbnails). There is **no live streaming**, no live broadcast and no live invite. Quote card and text flows ship before full video and voice creation flows.
 
 **Drafts.** Every flow can save a draft. Drafts are private to the author, live in the Drafts tab on their own profile, are never counted as public posts, and are never ranked.
 
@@ -234,6 +234,7 @@ Awarded automatically by stored rules, except Featured and Verified. A user can 
 | Trending       | 1,000 likes on one post                                                    |
 | Rising Creator | 100 followers                                                              |
 | Viral Creator  | 10,000 total likes                                                         |
+| Battle Winner  | Won a Battle round (section 9); also earns a timed feature spot on Discover |
 | Featured       | Awarded by the Founder only                                                |
 | Verified       | Purchased by the user. The only paid badge. One colour everywhere (Voxly coral accent) |
 
@@ -251,7 +252,7 @@ Awarded automatically by stored rules, except Featured and Verified. A user can 
 | Top Seller                                        | Highest sales in the month                                    |
 | Streak badges                                     | 7, 30, 100 and 365 consecutive writing days                   |
 | Community Builder                                 | Membership milestones in a community the writer created       |
-| Pen Pal, Global Correspondent                     | Sustained Pen Pal exchanges, letters across several countries |
+| Pen Pal, Global Correspondent                     | Sustained Pen Pal exchanges (see section 26; not in the first release) |
 | Monthly Top 10                                    | Placed in the platform's top ten writers for the month        |
 
 **Writing streaks.** Tracked daily per writer in the writer's time zone. The profile shows the current and longest streak. A missed day resets the current streak. Reading streaks follow the same model.
@@ -260,7 +261,7 @@ Awarded automatically by stored rules, except Featured and Verified. A user can 
 
 **Country.** One country field, edited in Settings and shown on the profile as a flag plus the name. Used by Discover filters.
 
-**Organisation accounts.** Publishers, schools and writing groups can hold an organisation profile with multiple members publishing under one name, with a clear organisation label.
+**Organisation accounts.** Publishers, schools and writing groups can hold an organisation profile with multiple members publishing under one name, with a clear organisation label. Organisation accounts are part of the **first release** (see `docs/ROADMAP.md`).
 
 ## 7. Marketplace, wallet and Library
 
@@ -338,7 +339,7 @@ A writer posts a poem, quote card, video or voice clip taken from a book and lin
 
 Reading on Voxly should feel as good as a dedicated e-reader.
 
-- Page mode with a page-turn animation, or continuous scroll.
+- **Two reading modes in the first release:** page mode with a page-turn animation, and continuous scroll. The reader remembers the user's choice per account.
 
 - Text size, font (Fraunces, other serif and sans options, a dyslexia-friendly font), line spacing, margins and justification.
 
@@ -390,25 +391,23 @@ Voxly connects people across the world, for example South Africa and the United 
 
 - Every account stores a time zone, detected at sign-up and editable in Settings. People can choose to hide their local time (Settings, Privacy and safety, 'Show my local time').
 
-- **Quiet mode is optional and entirely in the user's control.** It is off by default. A user can leave it off (a night owl, for instance), set a schedule (for example 23:00 to 08:00), or switch it on manually at any moment, like a Do Not Disturb or night mode. They can also choose who may still reach them while it is on: everyone, close contacts, Pen Pals or nobody.
+- **Quiet mode is optional and entirely in the user's control.** It is off by default. A user can leave it off (a night owl, for instance), set a schedule (for example 23:00 to 08:00), or switch it on manually at any moment, like a Do Not Disturb or night mode. They can also choose who may still reach them while it is on: everyone, close contacts or nobody.
 
-- Where shown, a person's local time appears on their profile and in the header of every chat and Pen Pal thread, for example 'Amara, 02:14'.
+- Where shown, a person's local time appears on their profile and in the header of every chat, for example 'Amara, 02:14'.
 
 - **Considerate sending.** The prompt appears only when the recipient's Quiet mode is actually on. The sender sees: 'Amara has Quiet mode on right now. Send quietly, deliver when they are back, or cancel?' If the recipient has Quiet mode off, no prompt appears, whatever the hour.
 
-- While Quiet mode is on, push alerts and sounds are held and the message still arrives in the inbox so nothing is lost. When it ends, a single summary alert is sent.
+- **Notifications while Quiet mode is on:** push alerts and sounds are **held** until Quiet mode ends; the underlying event still arrives in the inbox so nothing is lost. When Quiet mode ends, a single summary alert is sent.
 
-- Optional daily digest: batch notifications into one summary at a time the user chooses.
+- **Daily digest:** batch notifications into one summary at a time the user chooses.
 
-- Scheduled send for messages, and scheduled posts for writers.
+- **Scheduled delivery:** scheduled send for messages and scheduled posts for writers.
 
-- Events, Slam battles and Live rooms are stored in UTC and shown in each viewer's local time with a countdown.
-
-- Founder announcements and monthly reports are delivered at a sensible local time for each user, and follow each user's Quiet mode.
+- **Events and announcements in local time:** events, Slam windows, duets, challenges and Founder announcements are **scheduled by time zone** and shown in each viewer's local time with a countdown. Reminders follow each user's Quiet mode.
 
 ## 9. Discover, search, challenges and growth
 
-Discover is the rule-based discovery layer. Its tabs are Explore, Communities, Slam and Live.
+Discover is the rule-based discovery layer. Its tabs are Explore, Communities and Slam. (There is no Live tab: Voxly does not offer live streaming.)
 
 ### Explore sections, in order
 
@@ -423,7 +422,7 @@ Discover is the rule-based discovery layer. Its tabs are Explore, Communities, S
 | New                                 | Newest published work                                                          |
 | Rising Voices                       | Writers under 1,000 followers gaining momentum, so small creators are surfaced |
 | Top Poems and Top Stories this week | Highest-liked posts by tag                                                     |
-| Trending Sounds                     | Most-used backing tracks; tapping one opens every post that used it            |
+| Trending Sounds                     | Most-used backing tracks; tapping one opens every post that used it (first release) |
 | Trending Challenges                 | Active challenges with deadline and entry count                                |
 | Search                              | Real-time search across writers, posts, books, communities and tags            |
 
@@ -435,29 +434,29 @@ Filters: genre, mood, language, country, trending, new. Mood and genre chip rows
 
 - **Streaks.** See section 6.
 
-- **Duet or response.** Respond to a post with your own version side by side, linked back to the original.
+- **Duets (also called Two Hits) — collaborative.** A writer posts a **part** (text, audio or, once video creation exists, video). Another writer **joins** with a **response part**. The two parts appear together—side by side on wide screens and stacked on phones—each with its own author and credit. Duets are **shared pieces**: nobody wins. **Each author shares to their own followers.** Safe Space, block and report rules apply to both authors. The original author can turn joins off for that post. **Duets ship for writing and audio first; video duets follow once video creation is built.**
+
+- **Battles — competitive.** A writer posts a **challenge part**; an **opponent** answers in a set **round** with a published **start time and end time**. **Anyone can start a Battle.** Followers **vote for a winner**. Battle rules are published on a **rules page the Founder approves**. **Rewards (only, for now):** the winner receives a **Battle Winner** badge (section 6) and a **feature spot on Discover** for a set period. No money is involved until payments are live. Battles can run as **standalone Battles** or **inside Slam events** (section 9).
 
 - **Collabs.** See section 5.
 
-- **Sound trends.** Backing tracks that spread across the platform.
+- **Sound trends and Trending Sounds.** Backing tracks that spread across the platform; part of the first release.
 
 - **No external sharing.** Voxly is in-app only. Work is shared inside Voxly (DMs, Communities, Channels), never exported to or posted on other platforms (see section 23).
 
 - **@Mentions.** Tag any writer in a post or comment; they are notified.
 
-- **Ambient mood.** A user-selected ambient sound and visual preset while reading or browsing.
+- **Ambient mood.** A user-selected ambient sound and visual preset while reading or browsing (first release).
 
-- **Founder announcements** to all users or a segment.
+- **Founder announcements** to all users or a segment, scheduled and shown in each recipient's local time.
 
 ### Performance culture
 
-- **Slam battles.** Head-to-head poetry or voiceover matchups, community-voted, bracket style, weekly, with a live vote count.
-
-- **Live open-mic rooms.** Real-time audio and video performance spaces with floating crowd reactions (fire, snaps, claps).
+- **Slam events.** Scheduled, asynchronous competitions—community-voted, bracket-style or open-entry—with clear start and end times, a Founder-approved rules page, and vote counts while voting is open. Entries are recorded posts (text, audio or video), not live performances.
 
 - **Featured Stage.** A rotating daily or weekly spotlight slot.
 
-Every empty state offers a clear action: Communities, 'Create the first community'; Live, 'Notify me when someone goes live'; Slam, 'Learn how Slam works'.
+Every empty state offers a clear action: Communities, 'Create the first community'; Slam, 'Learn how Slam works'.
 
 ### Slam events
 
@@ -467,7 +466,7 @@ Slam events are scheduled, community-voted competitions and are a core part of V
 
 - **Community Slams.** Any Writer can host their own Slam (to confirm with the Founder: whether this opens to all Writers or only to Writers above a follower or badge threshold). The host sets the theme, rules, format, entry window and schedule, and the same voting, protection and badge rules apply. The Founder can feature, pause or remove any Slam.
 
-- **Formats.** Head-to-head bracket (weekly), open slam (everyone enters one piece and the community votes), and Live Slam performed in a Live room with crowd and judge votes.
+- **Formats.** Head-to-head bracket (weekly), open slam (everyone enters one piece and the community votes), and **Battles** hosted inside the Slam schedule—same Battle rules (section 9), Founder-approved rules page, voting while the round is open.
 
 - **Time zones.** The creator sets the time once; each event then shows start, close and results times in the viewer's own local time, with a countdown and an add-to-calendar button. Reminders follow each user's Quiet mode.
 
@@ -493,7 +492,7 @@ Settings follows the Instagram pattern: a search bar, then grouped, tappable row
 | Creator (Writers only) | Creator Dashboard, Earnings and payouts, Storefront settings                                                                                                                               |
 | Purchases              | Orders, Rentals, Subscriptions                                                                                                                                                             |
 | Your activity          | Saved, Likes, Comments, History                                                                                                                                                            |
-| App                    | Dark or light mode, Language, Accessibility, Download my data / export my work                                                                                                             |
+| App                    | Dark or light mode, Accessibility, Download my data / export my work (interface English only; section 5)                                                                                   |
 | Support                | Help, Report a problem, Appeal a decision                                                                                                                                                  |
 | About                  | Version, About Voxly, Terms of Service, Privacy Policy                                                                                                                                     |
 | Founder (Founder only) | Founder Dashboard                                                                                                                                                                          |
@@ -503,7 +502,13 @@ Settings follows the Instagram pattern: a search bar, then grouped, tappable row
 
 ## 11. Safety, moderation and the Founder dashboard
 
-The Founder is the only moderator and the only administrator. Moderation is manual.
+The Founder is the only moderator and the only administrator. Moderation is manual, with automatic guardrails below.
+
+### Automatic hide and warnings
+
+- When a **post, comment or profile** receives **3 to 5 distinct reports** (exact threshold stored in platform settings), it is **hidden automatically** and flagged for the Founder in the report queue.
+
+- When a **user's posts** have been **flagged through this auto-hide rule 3 times**, the user receives a **final warning** (Founder message plus in-app dialog). **Suspension or ban** is always a **Founder decision** after that warning, never automatic.
 
 ### User safety tools (every user)
 
@@ -532,6 +537,8 @@ The Founder is the only moderator and the only administrator. Moderation is manu
 Row-level rules: any signed-in user can insert a report as themselves and read only their own reports. Only the Founder can read all reports, read the audit log, change user status, remove or restore content, and decide appeals.
 
 ### Founder dashboard
+
+The **Founder Dashboard must be fully built** for launch: every section below wired to real data, with CSV export where specified. **Payment-dependent** sections (revenue totals, payouts due, top earners from sales) populate when payments go live; until then they show empty states, not placeholders labelled 'Coming soon'.
 
 Reached from a row in Settings that only the Founder sees. Anyone else visiting the URL is redirected to Home and the database refuses the data. Mobile-friendly cards rather than wide tables.
 
@@ -569,7 +576,7 @@ Reached from a row in Settings that only the Founder sees. Anyone else visiting 
 
 ## 12. Creator Dashboard (every Writer)
 
-Every Writer has their own dashboard under Settings, separate from the Founder's. A writer sees only their own data, enforced by row-level security.
+Every Writer has their own dashboard under Settings, separate from the Founder's. A writer sees only their own data, enforced by row-level security. The **Creator Dashboard must be fully built** for launch. **Payment-dependent** sections (subscriptions, premium sales, wallet balance, payout history, Request payout) go live with payments; all other sections must work on real data before launch.
 
 1.  **Overview.** Followers gained or lost in 7 and 30 days; total plays, likes, saves and comments.
 
@@ -596,15 +603,15 @@ The following belong to the full Voxly platform and are specified here so the ar
 | Capability                | Specification                                                                                                                        |
 |---------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
 | Rights registry           | Dated record of author, first publication time and version for every Creation; supports ownership disputes                           |
-| Internal ISBN system      | Platform-assigned book identifiers; unused numbers expire after 30 days                                                              |
+| Voxly Book ID             | Internal book identifier with check digit (section 5); never labelled ISBN; external SA ISBN only for off-platform retail           |
 | Cover Studio              | Template-based cover and quote-card designer with fonts, colours and image upload                                                    |
 | Creator mobility          | Writers export all work and leave at any time; export in standard formats                                                            |
 | Appeals                   | Users appeal suspensions, bans and removals; Founder decides; decisions are audit-logged                                             |
-| Multi-language            | Content language field, language filters and a localisable interface                                                                 |
-| Organisation accounts     | Publishers, schools and writing groups with multiple members under one name                                                          |
-| Legacy Literature Archive | A curated public-domain library, labelled and kept separate from user content                                                        |
-| AI Creator Suite          | Optional writing-assist features introduced as an opt-in layer after the core platform is live; never used for ranking or moderation |
-| Disaster recovery         | Scheduled database and storage backups, a documented and tested restore, and an incident procedure                                   |
+| Language on content       | English app interface; content language field, filters, and optional translations/captions on posts (section 5)                      |
+| Organisation accounts     | Publishers, schools and writing groups with multiple members under one name (first release)                                          |
+| Legacy Literature Archive | A curated public-domain library, labelled and kept separate from user content (first release)                                        |
+| AI Creator Suite          | Optional writing-assist layer **after public launch**, when the Founder turns it on; never used for ranking or moderation           |
+| Production operations     | Error logging, monitoring, daily backups and a documented production data plan are **required before launch** (legal/compliance after payments) |
 | Marketplace fairness      | Public ranking rules, no paid placement above rules, fixed 80/20 split, transparent ledger                                           |
 | Constitutional hierarchy  | Product rules in section 1 outrank feature decisions; the Founder is bound by them and every Founder action is logged                |
 
@@ -616,12 +623,12 @@ The following belong to the full Voxly platform and are specified here so the ar
 |--------------------|-------------------------------------------------------------------------------------------------------|
 | Frontend           | React with Vite, mobile-first, responsive with a desktop sidebar layout                               |
 | Backend            | Supabase: Postgres, Auth, Storage, Realtime                                                           |
-| Payments           | Stripe Connect or PayFast (confirm South African payout support)                                      |
+| Payments           | PayFast, Stripe Connect and Stitch (all three); wallet and checkout are the last build phase before launch checks (section 17, `docs/ROADMAP.md`) |
 | Video and audio    | Browser MediaRecorder, Supabase Storage, open-source compression such as FFmpeg, thumbnail generation |
 | Real-time          | Supabase Realtime for messages, notifications, reactions and live vote counts                         |
 | Installable app    | PWA manifest and service worker for iOS and Android home screens, offline support                     |
 | Store distribution | Capacitor wrap of the web app for the App Store and Google Play                                       |
-| Auth               | Email and password, Google sign-in, forgot-password flow, email two-factor, persistent sessions       |
+| Auth               | Email and password, forgot-password flow, email two-factor, persistent sessions; **Google sign-in before the second invite wave**, not before the first beta wave |
 
 ### Core tables (all with row-level security)
 
@@ -640,7 +647,7 @@ The following belong to the full Voxly platform and are specified here so the ar
 | collabs                                        | Two authors and each one's approval state                                                                                                      |
 | products, purchases                            | Storefront listings; buyer, price, rental expiry, subscription state                                                                           |
 | library_items, collections                     | Purchased and saved items, reading progress, reader collections                                                                                |
-| rights_records, isbn_numbers                   | Rights registry and internal identifiers                                                                                                       |
+| rights_records, voxly_book_ids                 | Rights registry and Voxly Book IDs                                                                                                             |
 | wallet_ledger, payouts                         | Insert-only money ledger; payout requests                                                                                                      |
 | conversations, messages, conversation_members  | DMs, communities, channels                                                                                                                     |
 | communities, community_posts                   | Group spaces and their posts                                                                                                                   |
@@ -652,7 +659,7 @@ The following belong to the full Voxly platform and are specified here so the ar
 | reports, moderation_actions, warnings, appeals | Section 11                                                                                                                                     |
 | settings                                       | Per-user notification and privacy preferences                                                                                                  |
 | ranking_settings                               | Adjustable ranking weights                                                                                                                     |
-| slam_battles, live_rooms                       | Performance culture                                                                                                                            |
+| slam_events, battles, duets                    | Slam competitions; competitive Battle rounds; collaborative Duet (Two Hits) pairs                                                          |
 | legacy_works                                   | Legacy Literature Archive                                                                                                                      |
 
 **Storage buckets:** avatars, banners, post media, covers, manuscripts, exports. Paid content files are private and served only to buyers.
@@ -671,9 +678,9 @@ The following belong to the full Voxly platform and are specified here so the ar
 
 6.  Rate limits and spam protection on posting, commenting, messaging, reporting and sign-up.
 
-7.  Terms of Service, Privacy Policy, data download and account deletion are live before real users arrive.
+7.  **Legal and compliance** (Terms, Privacy, cookie/consent, POPIA wording, payment and tax handling for writer payouts, age requirements) are finalised **after payments** are integrated and before public launch.
 
-8.  Error logging, monitoring and daily backups.
+8.  **Monitoring, backups and a production data plan** are live and tested **before launch**, independent of payments.
 
 ## 15. Brand and design system
 
@@ -719,7 +726,7 @@ The following belong to the full Voxly platform and are specified here so the ar
 |-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Entry             | Welcome, Sign up, Sign in, Google sign-in, Forgot password, Two-factor, Account banned, Warning dialog                                                                                       |
 | Feed              | Home, For You, Following, Post detail, Comments, Hashtag page, Sound page                                                                                                                    |
-| Discover          | Explore, Communities, Slam, Live, Search, Challenge page, Leaderboard                                                                                                                        |
+| Discover          | Explore, Communities, Slam, Search, Challenge page, Leaderboard                                                                                                                              |
 | Create            | Create sheet, Recitation Video, Voice Clip, Quote Card, Book / Chapter Clip, WIP / Journal, Written Post, Collab Post, Book Builder, Cover Studio, Manuscript import, Podcast, Course, Event |
 | Profile           | Own profile, Other profile, Edit profile, Followers and Following lists, Badges, Streaks                                                                                                     |
 | Marketplace       | Storefront, Product page, Checkout, Purchase confirmation, Library (Purchased, Saved, History, Collections), Reader                                                                          |
@@ -732,50 +739,69 @@ The following belong to the full Voxly platform and are specified here so the ar
 
 ## 17. Delivery sequence
 
-The whole scope above is the product. This sequence is an internal build order only. Nothing is released in stages: Voxly goes live as one complete, fully wired platform, open to readers and writers from the first day (section 23). Every step is complete when its behaviour works against real data and passes its security checks.
+The whole scope above is the product. **Phase order and build status** are maintained in `docs/ROADMAP.md`. Every step is complete when its behaviour works against real data, passes its security checks, and (where applicable) has a **named passing test on `main`**.
 
-1.  **Foundation.** Sign up, sign in, Google sign-in, forgot password, email two-factor. Profiles with role, status and country. Row-level security on every table. Founder lock on voxly369@gmail.com. Storage buckets, image fallbacks, design system, light and dark mode, navigation.
+High-level order (details and evidence in the roadmap):
 
-2.  **Core feed and creation.** Quote Card and Written Post with tags, captions, drafts and audience. Reader becomes Writer on first publish. Home and Following feeds. Like, comment, save, @mention, follow with real counts.
+1.  **Book writing tools and Cover Studio** (formatting, fonts, preview, EPUB and Markdown import; Canva-style covers).
 
-3.  **Moderation.** Report button and sheet, block, Founder report queue, warnings, suspension and ban enforcement, audit log, appeals.
+2.  **Entrance music** (owner-supplied track in `public/audio`).
 
-4.  **Notifications and profile.** Notification bell and settings, badges, streaks, profile tabs.
+3.  **Remove 'Coming soon'** from Create and Discover until each option is actually built.
 
-5.  **Direct messages.** One-to-one chat with real-time delivery and server-enforced Safe Space.
+4.  **Auto-hide and warnings** (section 11).
 
-6.  **Books and Library.** Book Builder, chapters, reader with progress, saved items, collections, Cover Studio, manuscript import.
+5.  **Signed-out teaser** and **Country Vibe** banner (section 20).
 
-7.  **Storefront and wallet.** Confirm payment provider. Product page, checkout, 80/20 split, ledger, payouts, rights registry, ISBN numbers.
+6.  **Section 24 first-release batch:** shelves, ratings and reviews, scheduled releases; daily goals, streak protection, Writing Month, Daily Line; monthly report, Founder insights and full Founder Dashboard; reading diary, public lists, popular highlights; **leagues and Wrapped** (Kudos removed).
 
-8.  **Dashboards.** Founder Dashboard and Creator Dashboard.
+7.  **Notifications:** held until Quiet mode ends, daily digest, scheduled posts and messages.
 
-9.  **Discovery.** For You with rule-based ranking, all Discover sections, hashtag pages, search, Rising Voices.
+8.  **Emails:** Founder welcome, transactional account emails, month-start events list, month-end recap.
 
-10. **Video and voice.** Recording, trimming, filters, music, compression, thumbnails, podcasts.
+9.  **Events and announcements** in local time, scheduled by time zone.
 
-11. **Community and growth.** Communities, Channels, challenges, Word of the Day, collabs, duets, sound trends, events, courses.
+10. **Communities, channels, community roles, Slam, Battles, Duets, challenges, Discover growth, For You, trending sounds, ambient mood.**
 
-12. **Monetisation depth.** Rentals, subscriptions, merch and subscription analytics.
+11. **Create types:** video, voice clip, podcast, recitation, collab, course, event (record-and-post; no live streaming).
 
-13. **Performance culture.** Slam battles, Live rooms, Featured Stage.
+12. **Writing Clubs and live co-writing** (written parts only).
 
-14. **Platform expansion.** Organisation accounts, multi-language interface, Legacy Literature Archive, AI Creator Suite (opt-in).
+13. **Creator Dashboard** (every non-payment section).
 
-15. **Launch readiness.** Terms, Privacy, data export and deletion, rate limits, monitoring, backups and restore test, trademark clearance, Capacitor packaging for the App Store and Google Play.
+14. **Organisation accounts and Legacy Literature Archive.**
+
+15. **Google sign-in** (before the **second invite wave**, not the first).
+
+16. **Settings:** confirm complete.
+
+17. **Monitoring, backups and production data plan.**
+
+18. **Voxly Book ID, rights registry** and external ISBN process for off-platform retail.
+
+19. **Payments, wallet, checkout** (PayFast, Stripe, Stitch), supporter tiers, commissions and gifts.
+
+20. **Legal and compliance**, then **launch readiness** checks.
+
+**Later (not first release):** Pen Pals (section 26), AI Creator Suite, translated app interface, Capacitor app stores packaging.
 
 ## 18. Decisions to confirm and legal checklist
 
-| Item                                                                                        | Why it matters                                       |
-|---------------------------------------------------------------------------------------------|------------------------------------------------------|
-| Payment provider: Stripe Connect or PayFast, and payout support for writers in South Africa | Gates the marketplace, wallet and Verified purchases |
-| Free or paid reader tiers (ad-supported, or a subscription)                                 | Affects revenue and the Founder revenue dashboard    |
-| Background music: user-uploaded only, or a licensed library                                 | Licensing cost and risk                              |
-| Trademark clearance for 'VOXLY'                                                             | Needed before publishing to the stores               |
-| Terms of Service and Privacy Policy wording on Founder oversight of private content         | POPIA and user trust                                 |
-| Backend confirmation: Supabase as specified                                                 | Affects the data model and real-time design          |
+| Item                                                                                        | Status (Owner)                                                                 |
+|---------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
+| Payment providers: PayFast, Stripe Connect and Stitch                                       | **All three** integrated in the final payments phase before launch             |
+| Free or paid reader tiers (ad-supported, or a subscription)                                 | Still to confirm if needed beyond current scope                                |
+| Background music: user-uploaded only, or a licensed library                                 | User-uploaded first; licensed library optional later                             |
+| Trademark clearance for 'VOXLY'                                                             | Required before Capacitor app store packaging (later roadmap)                    |
+| Terms of Service and Privacy Policy wording on Founder oversight of private content         | Finalise **after payments**, before public launch                               |
+| Backend: Supabase as specified                                                              | **Confirmed**                                                                  |
+| Google sign-in                                                                              | **Before second invite wave**, not before the first                            |
+| Live streaming                                                                              | **Not in product** (record and post only)                                      |
+| Country Vibe visual                                                                         | **Themed banner with mood palette** (not a map)                                |
+| Signed-out public posts                                                                     | **Title and first lines** visible; full content requires sign-in               |
+| Auto-hide threshold                                                                         | **3 to 5 distinct reports** per target; **3 flagged posts** → final warning    |
 
-**Legal checklist before real users:** Terms of Service, Privacy Policy, cookie and consent notice, POPIA compliance, copyright and takedown procedure, payment and tax handling for writer payouts, age requirements, and data export and deletion.
+**Legal checklist:** Terms of Service, Privacy Policy, cookie and consent notice, POPIA compliance, copyright and takedown procedure, payment and tax handling for writer payouts, age requirements, and data export and deletion—completed **after payments**, immediately before public launch. **Monitoring, backups and the production data plan** are required **before** launch (section 14).
 
 ## 19. Bridging worlds: one platform in place of ten
 
@@ -787,36 +813,16 @@ Voxly is not one more social app. It brings together what writers, performers an
 | Photo and feed apps                 | Home feed, profile grid, cross-posting                    |
 | Blogging and newsletter platforms   | Written posts, long-form, writer-owned audience, Channels |
 | Serial-fiction sites                | Books with chapters, serialized reading                   |
-| Self-publishing stores              | Book Builder, storefront, wallet, ISBN, rights registry   |
+| Self-publishing stores              | Book Builder, storefront, wallet, Voxly Book ID, rights registry |
 | Design tools                        | Cover Studio, quote cards                                 |
 | Messaging apps and forums           | DMs, Communities, Channels                                |
-| Live and open-mic apps              | Live rooms, Slam battles, Featured Stage                  |
+| Performance and spotlight apps      | Slam events, Battles, Duets (Two Hits), Featured Stage (no live streaming) |
 | Learning platforms                  | Courses, challenges, prompts                              |
-| Pen-pal and cultural exchange sites | Pen Pals, Country Vibe (below)                            |
+| Pen-pal and cultural exchange sites | Country Vibe (section 20); Pen Pals later (section 26)    |
 
 Every item in this specification is part of the Voxly platform.
 
-## 20. Pen Pals, Country Vibe, location and time zone
-
-*This section records ideas the Founder has discussed. The core intent is stated here; details marked 'to confirm' should be settled with the Founder during design.*
-
-### Pen Pals
-
-Voxly revives the pen pal for the writing age. A writer or reader can find someone in another part of the world and build a lasting exchange of letters, poems and voice notes.
-
-- Opt in to Pen Pals from Settings or the profile. Choose what you offer: country, languages, genres, writing interests, how often you want to write.
-
-- Find a Pen Pal by browsing, filters (country, language, genre, interest) or a suggested match based on shared interests and complementary countries.
-
-- A Pen Pal exchange is a private, ongoing thread of letters: long-form written letters, voice letters, poems and attachments, with a letter-style layout rather than chat bubbles.
-
-- Both people must accept a Pen Pal request. Safe Space, block and report apply in full.
-
-- Streaks and badges for sustained exchanges (for example, 'Pen Pal' and 'Global Correspondent').
-
-- Exchanges can be turned into a Collab Post or published as a shared piece if both agree.
-
-- To confirm: whether letters have an optional delivery delay for a slow-letter feel; whether exchanges can be public.
+## 20. Country Vibe, location and time zone
 
 ### Country Vibe
 
@@ -826,13 +832,11 @@ Every country has a living page showing the voice of that place.
 
 - Discover includes a Browse by Country section and a country filter on every feed and search.
 
-- A 'vibe' view surfaces the mood and themes dominant in a country that week, using the same transparent, rule-based scoring as the rest of the platform.
+- **Country Vibe visual:** a **themed banner with a mood palette** for each country page (not a map). The vibe surfaces the mood and themes dominant in that country that week, using the same transparent, rule-based scoring as the rest of the platform.
 
 - Writers can show their country on the profile and appear on their country's page.
 
 - Founder can feature a Country of the Week.
-
-- To confirm: the exact visual treatment of 'vibe' (for example a map view, a themed banner, or a mood palette).
 
 ### Location
 
@@ -840,17 +844,15 @@ Every country has a living page showing the voice of that place.
 
 - Privacy by default: only country is public; city is hidden unless the user chooses to show it. Exact location is never collected or shown.
 
-- Location powers country pages, Pen Pal matching, local events and Discover filters.
+- Location powers country pages, local events and Discover filters.
 
 ### Time zone
 
 - Each account stores a time zone (detected on sign-up, editable in Settings).
 
-- The profile and Pen Pal threads show the person's local time, so writers know when the other is awake.
+- The profile and chat headers show the person's local time where the product displays it.
 
-- Time zone drives writing streak days, the Word of the Day and challenge deadlines, scheduled posts, notification quiet hours, and the display of events, Live rooms and Slam battles in the viewer's own time.
-
-- Pen Pal matching can show overlap of waking hours.
+- Time zone drives writing streak days, the Word of the Day and challenge deadlines, scheduled posts, notification quiet hours, and the display of events and Slam windows in the viewer's own time.
 
 ### Data additions
 
@@ -858,9 +860,7 @@ Every country has a living page showing the voice of that place.
 |---------------------------------------------------------------------------|------------------------------------------------------------|
 | profiles.country, profiles.city, profiles.timezone, profiles.city_visible | Location and time zone                                     |
 | countries                                                                 | Country reference with flag, languages, default time zones |
-| country_features                                                          | Country of the Week and featured items                     |
-| pen_pal_profiles                                                          | Opt-in, offered languages, genres, interests, frequency    |
-| pen_pal_requests, pen_pal_threads, pen_pal_letters                        | Requests, exchanges and letters                            |
+| country_features                                                          | Country of the Week, vibe banner and featured items        |
 
 ## 21. Welcome and onboarding
 
@@ -870,9 +870,9 @@ The first moments set the feeling of the whole platform: this is a home for writ
 
 - **Welcome moment.** On first launch, and after a long absence, a short branded welcome with the logo animation and a line that names who Voxly is for.
 
-- **Onboarding.** After sign-up: choose what you are (poet, author, spoken-word artist, blogger, video creator, reader), genres, languages, country and time zone, an optional Quiet mode, and whether to join Pen Pals. Then suggested writers to follow and Communities to join.
+- **Onboarding.** After sign-up: choose what you are (poet, author, spoken-word artist, blogger, video creator, reader), genres, languages, country and time zone, and an optional Quiet mode. Then suggested writers to follow and Communities to join.
 
-- **Welcome email** and an in-app inbox message from the Founder.
+- **Emails (first release):** a **Founder welcome email** after sign-up; **transactional emails** for account events (confirm email, password reset, security notices); a **month-start email** listing events for the month ahead; and a **month-end recap email**. An in-app inbox message from the Founder complements the welcome email.
 
 - **Tone.** Warm, literary and encouraging in all copy, including empty states and errors.
 
@@ -902,13 +902,13 @@ Founder-only, row-level secured, with filters by date range, country and role, a
 
 - **Audience.** Distribution by country and time zone, language and role.
 
-- **Slam and Pen Pals.** Participation, votes and active exchanges.
+- **Slam, Battles and Duets.** Participation, battle votes, winners and active duet pairs.
 
 ### Automated monthly report
 
 Generated by rules from real statistics. It requires no manual work.
 
-- **Delivery.** On the first of each month, at a suitable local time for each user, to the in-app inbox ('Voxly Monthly'), with an optional email copy. Users can opt out of the email; the inbox copy remains.
+- **Delivery.** On the first of each month, at a suitable local time for each user, to the in-app inbox ('Voxly Monthly'), plus the **month-end recap email** (section 21). Users can opt out of marketing-style emails; the inbox copy remains unless they disable that notification type.
 
 - **For every writer.** Posts, plays, new followers, best piece of the month, streak, badges earned, sales and earnings summary, comparison with the previous month, and a suggested next step.
 
@@ -945,7 +945,7 @@ Generated by rules from real statistics. It requires no manual work.
 
 - Sharing means sending a link card inside Voxly: to a DM, a Community or a Channel. The recipient opens it in the app.
 
-- Content pages open only for signed-in users. A signed-out visitor sees a sign-in prompt. To confirm: whether a short public teaser (a title and the first few lines) is shown for discovery.
+- **Signed-out teaser:** for **public** posts, a signed-out visitor sees the **title and first lines**; the rest of the content and all non-public work require sign-in.
 
 ### Protecting writers from plagiarism
 
@@ -971,15 +971,15 @@ No system can make copying impossible, and screenshots can never be fully blocke
 
 ### Launch standard
 
-- Voxly launches complete: every feature in this specification, wired to real data, open to all readers and writers from day one. There are no staged public releases and no 'coming soon' screens.
+- Voxly launches when every **first-release** feature in this specification and `docs/ROADMAP.md` is wired to real data. There are no permanent 'Coming soon' labels: options stay **hidden** until built (section 17, roadmap phase 3).
 
-- Anyone can register, follow, post, publish books and sell from the first day.
+- Anyone can register, follow, post and publish books from launch day; **selling** goes live with payments (roadmap phase 19).
 
 - Because fake accounts and demo content are not allowed, the platform is filled by real people. A **Founding Writers programme** invites real writers and performers to publish before public launch, so that the feed, storefronts, Communities and Slam have real content at go-live.
 
 - A private test period with real users precedes go-live, with load testing for launch traffic.
 
-- **Moderation at scale.** With open registration and a Founder-only moderator, the report queue must stay manageable: reports are prioritised by severity and report count, and content that passes a set number of reports from distinct users is hidden automatically, by rule, pending the Founder's review. To confirm the threshold.
+- **Moderation at scale.** Reports are prioritised by severity and report count. **Auto-hide** follows section 11: **3 to 5 distinct reports** hides content and flags the Founder; **3 flagged posts** for a user triggers a **final warning** before any Founder suspension decision.
 
 ## 24. Features borrowed from other platforms
 
@@ -1005,11 +1005,9 @@ These features take proven ideas from other platforms and adapt them to Voxly. A
 
 - This extends the monthly report in section 22.
 
-**3. Kudos, Writing Clubs and group challenges (from Strava)**
+**3. Writing Clubs and group challenges (from Strava)**
 
-- Kudos: a one-tap congratulation on a milestone (a streak, a finished book, a badge).
-
-- Writing Clubs are accountability groups of up to 50 people with shared goals, a club streak, a club leaderboard and club challenges, for example 'write 20,000 words together this month'. They are different from Communities, which are interest-based.
+- Writing Clubs are accountability groups of up to 50 people with shared goals, a club streak, a club leaderboard and club challenges, for example 'write 20,000 words together this month'. They are different from Communities, which are interest-based. (**Kudos** one-tap congratulations are **removed from the plan**.)
 
 **4. Voxly Writing Month (from NaNoWriMo)**
 
@@ -1049,7 +1047,7 @@ These features take proven ideas from other platforms and adapt them to Voxly. A
 
 - The book page shows a countdown and 'Updates every Friday', in the viewer's local time. 'Notify me' reminders respect Quiet mode.
 
-- An optional Premiere: readers who are online at release time can react live, and the author can pin a note.
+- An optional **Premiere window:** when a chapter drops, readers who open it during the premiere window can react in-app (no live stream), and the author can pin a note.
 
 **9. Reading diary and public lists (from Letterboxd)**
 
@@ -1125,10 +1123,10 @@ These features take proven ideas from other platforms and adapt them to Voxly. A
 
 | When                         | Features                                                                                                                                                                                  |
 |------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Soon after the first release | Shelves, ratings and reviews, scheduled releases                                                                                                                                          |
-| With payments                | Supporter tiers and tips, commissions, gifting                                                                                                                                            |
-| With Communities             | Rules, flairs, AMAs, roles, threads, events                                                                                                                                               |
-| Later                        | Daily goals and leagues, Wrapped, Kudos and Clubs, Writing Month, popular highlights, reading diary and lists, audio extras, editor collections, annotations, live co-writing, Daily Line |
+| First release (section 17.6) | Shelves, ratings and reviews, scheduled releases; daily goals, streak protection, **leagues**, **Wrapped**, Writing Month, Daily Line; monthly report and full Founder insights; reading diary, public lists, popular highlights; trending sounds, duets, ambient mood; organisation accounts; Legacy Literature Archive |
+| With Communities build       | Rules, flairs, AMAs, roles, threads, events                                                                                                                                               |
+| With payments (section 17.19)| Supporter tiers and tips, commissions, gifting                                                                                                                                            |
+| Later roadmap (section 26)   | Pen Pals; AI Creator Suite; translated app interface; Capacitor stores; audio extras, editor collections, annotations, live co-writing (written parts), other §24 items not listed above |
 
 ### Data additions
 
@@ -1136,7 +1134,7 @@ These features take proven ideas from other platforms and adapt them to Voxly. A
 |----------------------------------------------------------------------|-------------------------------------------------------|
 | goals, streak_protections, leagues, league_members                   | Daily goals, protections, weekly leagues              |
 | wrapped_cards                                                        | Generated yearly and monthly cards                    |
-| kudos, clubs, club_members, club_challenges                          | Kudos and Writing Clubs                               |
+| clubs, club_members, club_challenges                                   | Writing Clubs                                       |
 | writing_events, writing_event_progress                               | Writing Month and similar challenges                  |
 | shelves, shelf_items, reading_goals                                  | Shelves and reading goals                             |
 | reviews, review_votes                                                | Ratings and reviews                                   |
@@ -1158,7 +1156,51 @@ This document is the single source of truth for Voxly. Every idea the Founder ha
 
 | Item                                       | Status                                                            |
 |--------------------------------------------|-------------------------------------------------------------------|
-| Pen Pals                                   | Principle recorded in section 20; detailed rules to confirm       |
-| Country Vibe                               | Principle recorded in section 20; visual design to confirm        |
-| Location and time zone                     | Specified in section 20                                           |
-| Any further ideas from earlier discussions | To be added by the Founder to this list before development begins |
+| Pen Pals                                   | Full spec in section 26; **not first release**                    |
+| Country Vibe                               | Section 20; **themed banner + mood palette** (Owner)              |
+| Location and time zone                     | Section 20                                                        |
+| Duets (Two Hits)                           | Section 9; collaborative shared pieces                          |
+| Battles                                    | Section 9; competitive rounds; Battle Winner badge + Discover feature |
+| Build phases                               | `docs/ROADMAP.md`                                                 |
+| Any further ideas from earlier discussions | To be added by the Founder to this list                           |
+
+## 26. Later roadmap (not first release)
+
+Features in this section remain part of Voxly but ship **after** the first public launch described in section 17 and `docs/ROADMAP.md`.
+
+### Pen Pals
+
+Voxly revives the pen pal for the writing age. A writer or reader can find someone in another part of the world and build a lasting exchange of letters, poems and voice notes.
+
+- Opt in to Pen Pals from Settings or the profile. Choose what you offer: country, languages, genres, writing interests, how often you want to write.
+
+- Find a Pen Pal by browsing, filters (country, language, genre, interest) or a suggested match based on shared interests and complementary countries.
+
+- A Pen Pal exchange is a private, ongoing thread of letters: long-form written letters, voice letters, poems and attachments, with a letter-style layout rather than chat bubbles.
+
+- Both people must accept a Pen Pal request. Safe Space, block and report apply in full.
+
+- Streaks and badges for sustained exchanges (for example, 'Pen Pal' and 'Global Correspondent').
+
+- Exchanges can be turned into a Collab Post or published as a shared piece if both agree.
+
+- Optional delivery delay for a slow-letter feel, and whether exchanges can be public, remain design choices when Pen Pals are scheduled.
+
+### AI Creator Suite
+
+Opt-in writing-assist tools **after launch**, when the Founder enables them (section 13). Never used for ranking or moderation.
+
+### Translated app interface
+
+The first release keeps the **English interface** (section 5). Localised UI strings may follow on this roadmap.
+
+### Capacitor and app stores
+
+Native packaging for the App Store and Google Play, trademark clearance, and store-specific protections (section 23 screenshots) ship here—not in the first web/PWA launch.
+
+### Data additions (when Pen Pals ship)
+
+| Table or field                     | Purpose                                                    |
+|------------------------------------|------------------------------------------------------------|
+| pen_pal_profiles                   | Opt-in, offered languages, genres, interests, frequency    |
+| pen_pal_requests, pen_pal_threads, pen_pal_letters | Requests, exchanges and letters            |
