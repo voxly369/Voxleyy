@@ -150,9 +150,18 @@ export function FounderFeedbackTab() {
         </button>
       ) : null}
       {message ? (
-        <p role="alert" className="text-sm text-coral">
-          {message}
-        </p>
+        <div className="flex flex-col gap-2" role="alert">
+          <p className="text-sm text-coral">{message}</p>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void load(false, filter, null)}
+            className={`min-h-11 self-start rounded-2xl border border-line px-4 text-sm font-semibold ${focusRing}`}
+            data-testid="founder-feedback-retry"
+          >
+            Retry
+          </button>
+        </div>
       ) : null}
     </section>
   )

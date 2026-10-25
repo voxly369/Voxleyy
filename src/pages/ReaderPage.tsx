@@ -51,6 +51,7 @@ import {
 import { getOfflinePackage } from '../lib/reader/offlineReadingStore.ts'
 import { useOnlineStatus } from '../lib/reader/useOnlineStatus.ts'
 import { useToast } from '../lib/shell/useToast.ts'
+import { contentLangProps } from '../lib/languages/dir.ts'
 
 const SWIPE_THRESHOLD_PX = 48
 
@@ -590,12 +591,15 @@ export default function ReaderPage() {
                 onScroll={onScroll}
                 className={`mx-auto max-w-[65ch] select-text overflow-y-auto py-6 text-inherit md:max-w-[65ch] ${typography}`}
                 style={{ maxHeight: 'calc(100dvh - 5rem)' }}
+                {...contentLangProps(work.language)}
               >
                 <RichTextView
                   readerAnchors
                   bodyJson={work.bodyJson}
                   bodyText={work.bodyText ?? ''}
                   creationType={work.type}
+                  contentLanguage={work.language}
+                  testId="reader-body"
                   highlights={highlights}
                   bookmarkParagraphs={bookmarkParagraphs}
                   onHighlightPress={onHighlightPress}
@@ -636,6 +640,8 @@ export default function ReaderPage() {
                       bodyJson={work.bodyJson}
                       bodyText={work.bodyText ?? ''}
                       creationType={work.type}
+                      contentLanguage={work.language}
+                      testId="reader-body"
                       className="max-w-none gap-4 px-0"
                       highlights={highlights}
                       bookmarkParagraphs={bookmarkParagraphs}

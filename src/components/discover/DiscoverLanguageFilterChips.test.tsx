@@ -2,7 +2,20 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import DiscoverBrowsePage from '../../pages/DiscoverBrowsePage.tsx'
+import DiscoverSearchPage from '../../pages/DiscoverSearchPage.tsx'
 import { DiscoverLanguageFilterChips } from './DiscoverLanguageFilterChips.tsx'
+
+const listDiscoverPosts = vi.fn()
+const runSearch = vi.fn()
+
+vi.mock('../../lib/discover/listDiscover.ts', () => ({
+  listDiscoverPosts: (...args: unknown[]) => listDiscoverPosts(...args),
+}))
+
+vi.mock('../../lib/discover/searchApi.ts', () => ({
+  runSearch: (...args: unknown[]) => runSearch(...args),
+}))
 
 const navigate = vi.fn()
 
@@ -21,11 +34,17 @@ vi.mock('../../lib/onboarding/api.ts', () => ({
   })),
 }))
 
+vi.mock('../../components/shell/FeedWithRailLayout.tsx', () => ({
+  FeedWithRailLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+}))
+
 describe('DiscoverLanguageFilterChips', () => {
   afterEach(() => cleanup())
 
   beforeEach(() => {
     navigate.mockReset()
+    listDiscoverPosts.mockResolvedValue({ ok: true, data: { posts: [], nextCursor: null } })
+    runSearch.mockResolvedValue({ ok: true, data: { writers: [], posts: [], tags: [] } })
   })
 
   it('toggles a language chip and updates browse URL', async () => {
@@ -80,5 +99,28 @@ describe('DiscoverLanguageFilterChips', () => {
     )
     await user.click(screen.getByRole('tab', { name: /العربية/i }))
     expect(navigate).toHaveBeenCalledWith('/discover/search?languages=ar&q=poetry')
+  })
+
+  it('shows browse empty state when language filter returns no posts', async () => {
+    render(
+      <MemoryRouter initialEntries={['/discover/browse?languages=ar']}>
+        <Routes>
+          <Route path="/discover/browse" element={<DiscoverBrowsePage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByTestId('browse-language-empty')).toBeInTheDocument()
+    expect(screen.getByText(/Nothing matched those languages/i)).toBeInTheDocument()
+  })
+
+  it('shows search empty state when language filter returns no posts', async () => {
+    render(
+      <MemoryRouter initialEntries={['/discover/search?q=poetry&languages=ar']}>
+        <Routes>
+          <Route path="/discover/search" element={<DiscoverSearchPage />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    expect(await screen.findByTestId('search-language-empty')).toBeInTheDocument()
   })
 })

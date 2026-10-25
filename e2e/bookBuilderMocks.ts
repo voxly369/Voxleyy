@@ -130,6 +130,7 @@ function seedDefaultBooks() {
       cover_url: 'https://example.com/free-cover.jpg',
       status: 'published',
       audience: 'public',
+      language: 'en',
       author_id: OTHER_ID,
       author: {
         id: OTHER_ID,
@@ -435,6 +436,12 @@ seedDefaultBooks()
 
 export function resetBookBuilderMocks() {
   seedDefaultBooks()
+}
+
+export function setE2eBookCreationLanguage(bookId: string, language: string) {
+  const book = books.get(bookId)
+  if (!book?.creation || typeof book.creation !== 'object') return
+  ;(book.creation as Record<string, unknown>).language = language
 }
 
 export function bookBuilderMockHandleRest(url: string, method: string, postData: unknown): unknown[] | undefined {
