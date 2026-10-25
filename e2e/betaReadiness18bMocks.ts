@@ -206,6 +206,8 @@ export function betaReadiness18bMockHandleRest(url: string, method: string, post
       next_cursor: null,
     }
   }
+  if (url.includes('/rest/v1/rpc/check_upload_quota')) return null
+  if (url.includes('/rest/v1/rpc/queue_storage_object_for_deletion')) return null
   if (url.includes('/rest/v1/rpc/founder_pending_storage_cleanup_count')) return 2
   if (url.includes('/rest/v1/rpc/founder_list_deletion_storage_queue')) {
     return [{ bucket_id: 'avatars', object_path: `${READER_ID}/x.webp`, queued_at: '2026-01-01T00:00:00.000Z' }]

@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Modal } from '../shell/Modal.tsx'
 import { focusRing } from '../shell/navItems.ts'
 import { ConfirmDialog } from '../states/ConfirmDialog.tsx'
@@ -22,6 +23,7 @@ import { showsStandaloneVerifiedSeal } from '../../lib/badges/displayBadgesForFe
 import { DisplayNameWithMarks } from '../profile/DisplayNameWithMarks.tsx'
 import { MentionText } from './MentionText.tsx'
 import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
+import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { listHiddenWords } from '../../lib/safety/hiddenWordsApi.ts'
 import { hiddenWordMatch } from '../../lib/safety/hiddenWordMatch.ts'
 import { useMediaQuery, DESKTOP_NAV_QUERY } from '../../lib/shell/useMediaQuery.ts'
@@ -362,42 +364,56 @@ function CommentRow({
   return (
     <div>
       <div className="flex items-start justify-between gap-2">
-      <p className="text-xs font-medium text-muted">
-        {unavailable ? (
-          node.author.displayName
-        ) : (
-          <>
-            <DisplayNameWithMarks
-              name={node.author.displayName || node.author.username}
-              verified={
-                showsStandaloneVerifiedSeal(node.author.feedBadges ?? [], node.author.verified)
-                  ? node.author.verified
-                  : false
-              }
-              badges={
-                node.author.feedBadges?.length ? (
-                  <BadgeRowOnName badges={node.author.feedBadges} verified={node.author.verified} className="align-middle" />
-                ) : null
-              }
-            />
-          </>
-        )}
-      </p>
-      {!own && !unavailable ? (
-        <SafetyOverflowMenu
-          testId={`comment-safety-${node.id}`}
-          subject={{
-            reportedUserId: node.author.id,
-            displayLabel: node.author.displayName || node.author.username,
-            report: {
-              targetType: 'comment',
-              targetId: node.id,
+        <div className="flex min-w-0 flex-1 items-start gap-2">
+          {!unavailable ? (
+            <Link
+              to={`/u/${node.author.username}`}
+              aria-label={`View ${node.author.displayName || node.author.username}'s profile`}
+              className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center ${focusRing}`}
+            >
+              <ImageWithFallback
+                src={node.author.avatarUrl ?? undefined}
+                alt=""
+                label={(node.author.displayName || node.author.username).charAt(0)}
+                className="size-8 rounded-full"
+              />
+            </Link>
+          ) : null}
+          <p className="min-w-0 text-xs font-medium text-muted">
+            {unavailable ? (
+              node.author.displayName
+            ) : (
+              <DisplayNameWithMarks
+                name={node.author.displayName || node.author.username}
+                verified={
+                  showsStandaloneVerifiedSeal(node.author.feedBadges ?? [], node.author.verified)
+                    ? node.author.verified
+                    : false
+                }
+                badges={
+                  node.author.feedBadges?.length ? (
+                    <BadgeRowOnName badges={node.author.feedBadges} verified={node.author.verified} className="align-middle" />
+                  ) : null
+                }
+              />
+            )}
+          </p>
+        </div>
+        {!own && !unavailable ? (
+          <SafetyOverflowMenu
+            testId={`comment-safety-${node.id}`}
+            subject={{
               reportedUserId: node.author.id,
-              label: 'comment',
-            },
-          }}
-        />
-      ) : null}
+              displayLabel: node.author.displayName || node.author.username,
+              report: {
+                targetType: 'comment',
+                targetId: node.id,
+                reportedUserId: node.author.id,
+                label: 'comment',
+              },
+            }}
+          />
+        ) : null}
       </div>
       {hiddenByWord ? (
         <button
