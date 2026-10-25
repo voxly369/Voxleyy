@@ -22,6 +22,7 @@ export type ConversationSummary = {
   otherUsername: string
   otherDisplayName: string
   otherAvatarUrl: string | null
+  otherCountry: string | null
   otherShowLocalTime: boolean
   otherTimezone: string
   otherAccountDeleted: boolean

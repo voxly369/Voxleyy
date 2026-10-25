@@ -12,6 +12,7 @@ const row: ConversationSummary = {
   otherUsername: 'writertwo',
   otherDisplayName: 'Writer Two',
   otherAvatarUrl: null,
+  otherCountry: null,
   otherShowLocalTime: false,
   otherTimezone: 'UTC',
   otherAccountDeleted: false,

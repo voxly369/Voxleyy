@@ -5440,6 +5440,97 @@ begin
   end loop;
 end $stage_a_rate_limits$;
 
+do $stage_b_feedback_countries$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_founder uuid;
+  v_conv uuid;
+  v_conv2 uuid;
+  v_count integer;
+  v_json jsonb;
+begin
+  select founder, reader_a, reader_b into v_founder, v_a, v_b from rls_ids limit 1;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  v_conv := public.get_or_create_dm(v_b);
+  v_conv2 := public.get_or_create_dm(v_b);
+  perform pg_temp.record('get_or_create_dm one conversation per pair', v_conv = v_conv2, 'ids match');
+  perform pg_temp.record(
+    'conversations_dm_active_pair_idx exists',
+    exists(select 1 from pg_indexes where schemaname = 'public' and indexname = 'conversations_dm_active_pair_idx'),
+    'idx ok'
+  );
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+  begin
+    perform public.submit_app_feedback('idea', 'Anon feedback attempt.', null, null, null);
+    perform pg_temp.record('submit_app_feedback anon refused', false, 'submitted');
+  exception when others then
+    perform pg_temp.record('submit_app_feedback anon refused', true, sqlerrm);
+  end;
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config('request.jwt.claims', json_build_object(
+    'sub', v_a::text, 'role', 'authenticated', 'iat', extract(epoch from now())::bigint
+  )::text, true);
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+
+  begin
+    insert into public.app_feedback (user_id, category, message) values (v_a, 'idea', 'Direct insert should fail.');
+    perform pg_temp.record('app_feedback direct insert blocked', false, 'inserted');
+  exception when others then
+    perform pg_temp.record('app_feedback direct insert blocked', true, sqlerrm);
+  end;
+
+  execute 'set local role authenticated';
+  begin
+    update public.app_feedback set message = 'hacked' where user_id = v_a;
+    get diagnostics v_count = row_count;
+    perform pg_temp.record('app_feedback client update blocked', v_count = 0, 'rows=' || v_count);
+  exception when others then
+    perform pg_temp.record('app_feedback client update blocked', true, sqlerrm);
+  end;
+  execute format('set local role %I', session_user);
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  v_json := public.founder_list_feedback(null, null, 50);
+  select jsonb_array_length(v_json->'rows') into v_count;
+  perform pg_temp.record('founder reads all feedback rows', v_count >= 1, 'rows=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select count(*) into v_count from public.app_feedback where user_id = v_b;
+  perform pg_temp.record('feedback owner cannot read other user rows', v_count = 0, 'rows=' || v_count);
+
+  begin
+    update public.profiles set country = 'XX' where id = v_a;
+    perform pg_temp.record('profiles country FK rejects invalid code', false, 'updated');
+  exception when others then
+    perform pg_temp.record('profiles country FK rejects invalid code', true, sqlerrm);
+  end;
+
+  update public.profiles set country = 'ZA' where id = v_a;
+  v_json := public.get_country_page('ZA');
+  perform pg_temp.record('get_country_page returns ZA', (v_json->>'code') = 'ZA', 'code=' || coalesce(v_json->>'code', 'null'));
+
+  v_json := public.list_country_trending('ZA', null, 5);
+  perform pg_temp.record('list_country_trending json shape', v_json ? 'rows', 'has rows');
+
+  perform pg_temp.record(
+    'profiles_country_active_idx exists',
+    exists(select 1 from pg_indexes where schemaname = 'public' and indexname = 'profiles_country_active_idx'),
+    'idx ok'
+  );
+  perform pg_temp.record(
+    'creations_author_country_published_idx exists',
+    exists(select 1 from pg_indexes where schemaname = 'public' and indexname = 'creations_author_country_published_idx'),
+    'idx ok'
+  );
+
+  select count(*) into v_count from public.countries where code = 'ZA';
+  perform pg_temp.record('countries seed includes ZA', v_count = 1, 'rows=' || v_count);
+end $stage_b_feedback_countries$;
+
 do $$
 declare
   n integer;

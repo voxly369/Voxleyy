@@ -57,6 +57,7 @@ function parseConversation(row: Record<string, unknown>): ConversationSummary | 
     otherUsername: username,
     otherDisplayName: text(row.other_display_name) ?? username,
     otherAvatarUrl: text(row.other_avatar_url),
+    otherCountry: text(row.other_country),
     otherShowLocalTime: row.other_show_local_time !== false,
     otherTimezone: text(row.other_timezone) ?? 'UTC',
     otherAccountDeleted,

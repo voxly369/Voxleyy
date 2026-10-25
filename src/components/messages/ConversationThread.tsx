@@ -16,6 +16,8 @@ import {
 import { groupMessagesByDay } from '../../lib/messages/grouping.ts'
 import { shouldShowConsiderateModal } from '../../lib/messages/quietPrompt.ts'
 import { DELETED_ACCOUNT_DISPLAY_NAME } from '../../lib/messages/deletedAccount.ts'
+import { CountryLink } from '../country/CountryLink.tsx'
+import { LocalTime } from '../time/LocalTime.tsx'
 import type { ConversationSummary, QuietStatus, SharedCreationPreview, ThreadMessage } from '../../lib/messages/types.ts'
 import { useMessages } from '../../lib/messages/useMessages.ts'
 import { ConsiderateSendingModal } from './ConsiderateSendingModal.tsx'
@@ -239,9 +241,13 @@ export function ConversationThread({
           <h2 className="truncate text-lg font-semibold text-ink" data-testid="thread-header-name">
             {headerName}
           </h2>
-          {other?.otherAccountDeleted ? null : (
-            <p className="truncate text-sm text-muted">@{other?.otherUsername ?? 'writer'}</p>
-          )}
+          {other && !other.otherAccountDeleted ? (
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-muted">
+              <p className="truncate">@{other.otherUsername ?? 'writer'}</p>
+              {other.otherCountry ? <CountryLink code={other.otherCountry} /> : null}
+              {other.otherShowLocalTime ? <LocalTime timezone={other.otherTimezone} /> : null}
+            </div>
+          ) : null}
         </div>
         {other && !other.otherAccountDeleted ? (
           <SafetyOverflowMenu

@@ -2102,6 +2102,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      get_country_page: { Args: { p_code: string }; Returns: Json }
+      list_country_trending: {
+        Args: { p_code: string; p_cursor?: string | null; p_limit?: number }
+        Returns: Json
+      }
+      list_country_rising_writers: { Args: { p_code: string; p_limit?: number }; Returns: Json }
+      list_countries_browse: {
+        Args: { p_query?: string | null; p_cursor?: string | null; p_limit?: number }
+        Returns: Json
+      }
       founder_pending_storage_cleanup_count: { Args: Record<string, never>; Returns: number }
       founder_list_deletion_storage_queue: { Args: { p_limit?: number }; Returns: Json }
       check_upload_quota: { Args: { p_bytes: number; p_kind?: string }; Returns: undefined }

@@ -1,20 +1,9 @@
-export const COUNTRIES: readonly { code: string; name: string }[] = [
-  { code: 'AU', name: 'Australia' },
-  { code: 'BR', name: 'Brazil' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'FR', name: 'France' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'GH', name: 'Ghana' },
-  { code: 'IN', name: 'India' },
-  { code: 'IE', name: 'Ireland' },
-  { code: 'KE', name: 'Kenya' },
-  { code: 'MX', name: 'Mexico' },
-  { code: 'NL', name: 'Netherlands' },
-  { code: 'NG', name: 'Nigeria' },
-  { code: 'ZA', name: 'South Africa' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'US', name: 'United States' },
-]
+import { SIGNUP_COUNTRIES } from '../signup/countriesList.generated.ts'
+
+export const COUNTRIES: readonly { code: string; name: string }[] = SIGNUP_COUNTRIES.map((country) => ({
+  code: country.code,
+  name: country.name,
+}))
 
 export const LANGUAGES: readonly { code: string; name: string }[] = [
   { code: 'en', name: 'English' },
@@ -36,7 +25,13 @@ export const LANGUAGES: readonly { code: string; name: string }[] = [
 export function countryName(code: string | null): string | null {
   if (!code) return null
   const trimmed = code.trim().toUpperCase()
-  return COUNTRIES.find((country) => country.code === trimmed)?.name ?? trimmed
+  return SIGNUP_COUNTRIES.find((country) => country.code === trimmed)?.name ?? trimmed
+}
+
+export function countryPrimaryTimezone(code: string | null): string | null {
+  if (!code) return null
+  const trimmed = code.trim().toUpperCase()
+  return SIGNUP_COUNTRIES.find((country) => country.code === trimmed)?.primaryTimezone ?? null
 }
 
 export function countryFlag(code: string | null): string {

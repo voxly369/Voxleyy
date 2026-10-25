@@ -1,11 +1,22 @@
 import { useLocation } from 'react-router-dom'
 import { focusRing } from '../shell/navItems.ts'
 import { useFeedback } from '../../lib/shell/FeedbackProvider.tsx'
+import { useCreateSheet } from '../../lib/shell/useCreateSheet.ts'
 
 export function FeedbackFab() {
   const { openFeedback } = useFeedback()
+  const { createSheetOpen } = useCreateSheet()
   const location = useLocation()
-  if (location.pathname.startsWith('/messages')) return null
+  const path = location.pathname
+  if (
+    createSheetOpen ||
+    path.startsWith('/messages') ||
+    path.startsWith('/create') ||
+    path.includes('/builder') ||
+    path.includes('/cover')
+  ) {
+    return null
+  }
 
   return (
     <button
