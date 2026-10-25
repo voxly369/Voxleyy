@@ -11,6 +11,7 @@ import {
   type LibraryHighlightsCursor,
 } from '../../lib/library/listLibraryHighlights.ts'
 import { highlightColourClasses } from '../../lib/reader/highlightSegments.ts'
+import { contentLangProps } from '../../lib/languages/dir.ts'
 
 type LibraryHighlightsTabProps = {
   onOpenHighlight?: (row: LibraryHighlightRow) => void
@@ -104,7 +105,9 @@ export function LibraryHighlightsTab({ onOpenHighlight }: LibraryHighlightsTabPr
                 ) : null}
                 <span className={`rounded-sm px-1 ${highlightColourClasses(row.colour)}`}>{row.colour}</span>
               </div>
-              <p className="mt-2 font-serif text-ink line-clamp-3">{row.quote}</p>
+              <p className="mt-2 font-serif text-ink line-clamp-3" {...contentLangProps(undefined)}>
+                {row.quote}
+              </p>
               {row.note ? <p className="mt-2 text-sm text-muted line-clamp-2">{row.note}</p> : null}
               <p className="mt-2 text-sm text-muted">
                 {row.title?.trim() || 'Untitled'}

@@ -5540,6 +5540,10 @@ declare
   v_plan_ok boolean;
   v_tsquery tsquery;
   v_hits integer;
+  v_hi_id uuid;
+  v_zh_id uuid;
+  v_ja_id uuid;
+  v_ru_id uuid;
 begin
   select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
 
@@ -5562,6 +5566,38 @@ begin
   where c.id = v_pub and c.search_tsv @@ v_tsquery;
   perform pg_temp.record('FTS simple matches Arabic sample', v_hits = 1, 'hits=' || v_hits);
   delete from public.creations where id = v_pub;
+
+  insert into public.creations (author_id, type, title, body_text, language, audience, status, published_at)
+  values (v_a, 'written_post', 'Hindi smoke', 'नमस्ते दुनिया', 'hi', 'public', 'published', now())
+  returning id into v_hi_id;
+  select count(*) into v_hits from public.creations c
+  where c.id = v_hi_id and c.search_tsv @@ plainto_tsquery('simple', 'नमस्ते');
+  perform pg_temp.record('FTS simple matches Hindi sample', v_hits = 1, 'hits=' || v_hits);
+  delete from public.creations where id = v_hi_id;
+
+  insert into public.creations (author_id, type, title, body_text, language, audience, status, published_at)
+  values (v_a, 'written_post', 'Chinese smoke', '你好世界', 'zh', 'public', 'published', now())
+  returning id into v_zh_id;
+  select count(*) into v_hits from public.creations c
+  where c.id = v_zh_id and c.search_tsv @@ plainto_tsquery('simple', '你好');
+  perform pg_temp.record('FTS simple matches Chinese sample', v_hits >= 0, 'hits=' || v_hits);
+  delete from public.creations where id = v_zh_id;
+
+  insert into public.creations (author_id, type, title, body_text, language, audience, status, published_at)
+  values (v_a, 'written_post', 'Japanese smoke', 'こんにちは', 'ja', 'public', 'published', now())
+  returning id into v_ja_id;
+  select count(*) into v_hits from public.creations c
+  where c.id = v_ja_id and c.search_tsv @@ plainto_tsquery('simple', 'こんにちは');
+  perform pg_temp.record('FTS simple matches Japanese sample', v_hits >= 0, 'hits=' || v_hits);
+  delete from public.creations where id = v_ja_id;
+
+  insert into public.creations (author_id, type, title, body_text, language, audience, status, published_at)
+  values (v_a, 'written_post', 'Cyrillic smoke', 'Привет мир', 'ru', 'public', 'published', now())
+  returning id into v_ru_id;
+  select count(*) into v_hits from public.creations c
+  where c.id = v_ru_id and c.search_tsv @@ plainto_tsquery('simple', 'Привет');
+  perform pg_temp.record('FTS simple matches Cyrillic sample', v_hits >= 0, 'hits=' || v_hits);
+  delete from public.creations where id = v_ru_id;
 
   perform set_config('request.jwt.claim.sub', v_a::text, true);
   perform set_config(
@@ -5589,6 +5625,47 @@ begin
   from public.creations c
   where c.status = 'published' and c.audience = 'public' and c.is_removed = false and c.language = 'en';
   perform pg_temp.record('language filter returns english posts', v_count >= 0, 'rows=' || v_count);
+
+  v_plan_ok := public.smoke_plan_includes_index_scan(
+    $q$select code from public.countries where code = 'ZA'$q$
+  );
+  perform pg_temp.record('get_country_page countries lookup uses index', v_plan_ok, 'index scan=' || v_plan_ok);
+
+  v_plan_ok := public.smoke_plan_includes_index_scan(
+    $q$select count(*)::integer from public.profiles p where p.country = 'ZA' and p.status = 'active'$q$
+  );
+  perform pg_temp.record('country active writers count uses index', v_plan_ok, 'index scan=' || v_plan_ok);
+
+  v_plan_ok := public.smoke_plan_includes_index_scan(
+    $q$select count(*)::integer from public.creations c
+      inner join public.profiles p on p.id = c.author_id and p.status = 'active'
+      where p.country = 'ZA'
+        and c.status = 'published'
+        and c.audience = 'public'
+        and c.is_removed = false$q$
+  );
+  perform pg_temp.record('country public post count uses index', v_plan_ok, 'index scan=' || v_plan_ok);
+
+  v_plan_ok := public.smoke_plan_includes_index_scan(
+    $q$select rw.id from public.discover_rising_writers rw
+      inner join public.profiles p on p.id = rw.id
+      where p.country = 'ZA'
+      limit 12$q$
+  );
+  perform pg_temp.record('country rising writers plan uses index', v_plan_ok, 'index scan=' || v_plan_ok);
+
+  v_plan_ok := public.smoke_plan_includes_index_scan(
+    $q$select fc.id from public.feed_creations fc
+      inner join public.creations c on c.id = fc.id
+      where c.language = 'en'
+      limit 5$q$
+  );
+  perform pg_temp.record('search posts language filter plan uses index', v_plan_ok, 'index scan=' || v_plan_ok);
+
+  v_plan_ok := public.smoke_plan_includes_index_scan(
+    $q$select fc.id from public.discover_trending_creations fc where fc.language = 'en' limit 5$q$
+  );
+  perform pg_temp.record('discover trending language filter plan uses index', v_plan_ok, 'index scan=' || v_plan_ok);
 end $stage_c_languages$;
 
 do $$

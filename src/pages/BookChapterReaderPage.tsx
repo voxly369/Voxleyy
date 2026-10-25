@@ -38,6 +38,8 @@ import { shouldSaveProgress } from '../lib/reader/throttleProgress.ts'
 import { clampPageIndex, columnPageCount, pagesRemaining } from '../lib/reader/pagingMath.ts'
 import { measureScrollReadingPosition, scrollToReadingPosition } from '../lib/reader/readingPosition.ts'
 import { useAuth } from '../lib/auth/auth-context.ts'
+import { contentLanguageForBook } from '../lib/languages/contentLanguageForBook.ts'
+import { contentLangProps } from '../lib/languages/dir.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 
 export default function BookChapterReaderPage() {
@@ -48,6 +50,7 @@ export default function BookChapterReaderPage() {
   const readerTab = searchParams.get('tab') === 'highlights' ? 'highlights' : 'read'
   const [title, setTitle] = useState('Reading')
   const [bookTitle, setBookTitle] = useState('')
+  const [bookContentLanguage, setBookContentLanguage] = useState('en')
   const [bodyDoc, setBodyDoc] = useState(() => bodyContentFromJson(null, ''))
   const [bodyText, setBodyText] = useState('')
   const [toc, setToc] = useState<BookTocChapter[]>([])
@@ -129,6 +132,7 @@ export default function BookChapterReaderPage() {
         return
       }
       setBookTitle(book.title)
+      setBookContentLanguage(contentLanguageForBook(book.language))
       setTitle(chapter.title)
       setBodyText(chapter.bodyText ?? '')
       setBodyDoc(bodyContentFromJson(chapter.bodyJson as never, chapter.bodyText))
@@ -302,7 +306,9 @@ export default function BookChapterReaderPage() {
                 <ul className="flex flex-col gap-3">
                   {savedHighlights.map((row) => (
                     <li key={row.id} className="rounded-xl border border-line p-3 text-sm">
-                      {row.quote}
+                      <p data-testid="book-chapter-highlight-snippet" {...contentLangProps(bookContentLanguage)}>
+                        {row.quote}
+                      </p>
                     </li>
                   ))}
                 </ul>
@@ -345,11 +351,15 @@ export default function BookChapterReaderPage() {
                     lineHeight: readerLineHeightValue(prefs.lineSpacing),
                   }}
                 >
-                  <h1 className="mb-6 font-serif text-3xl text-ink">{title}</h1>
+                  <h1 className="mb-6 font-serif text-3xl text-ink" {...contentLangProps(bookContentLanguage)}>
+                    {title}
+                  </h1>
                   <RichTextView
                     bodyJson={bodyDoc as never}
                     bodyText={plain}
                     creationType="story"
+                    contentLanguage={bookContentLanguage}
+                    testId="book-chapter-body"
                     readerAnchors
                     highlights={highlights}
                     onHighlightPress={onHighlightPress}
@@ -368,12 +378,17 @@ export default function BookChapterReaderPage() {
                 fontFamily: readerFontFamily(prefs.font),
                 lineHeight: readerLineHeightValue(prefs.lineSpacing),
               }}
+              {...contentLangProps(bookContentLanguage)}
             >
-              <h1 className="mb-6 font-serif text-3xl text-ink">{title}</h1>
+              <h1 className="mb-6 font-serif text-3xl text-ink" {...contentLangProps(bookContentLanguage)}>
+                {title}
+              </h1>
               <RichTextView
                 bodyJson={bodyDoc as never}
                 bodyText={plain}
                 creationType="story"
+                contentLanguage={bookContentLanguage}
+                testId="book-chapter-body"
                 readerAnchors
                 highlights={highlights}
                 onHighlightPress={onHighlightPress}
