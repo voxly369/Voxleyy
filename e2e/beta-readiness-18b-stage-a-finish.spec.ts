@@ -137,6 +137,7 @@ test.describe('beta readiness 18B stage A finish', () => {
         'base64',
       ),
     })
+    await page.getByRole('button', { name: 'Use this crop' }).click()
     await expect(page.getByText('Daily upload limit reached')).toBeVisible({ timeout: 15_000 })
   })
 

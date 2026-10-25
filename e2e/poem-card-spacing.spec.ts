@@ -81,7 +81,7 @@ test.describe('Poem card spacing', () => {
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto('/')
     await expect(page.getByText(/stubborn thing/i)).toBeVisible()
-    const cardStanza = page.locator('article').first().locator('[class*="gap-0"]').first()
+    const cardStanza = page.locator('article').first().locator('.flex.flex-col.gap-0').first()
     await expect(cardStanza).toBeVisible()
     const cardGapBox = await cardStanza.evaluate((el) => {
       const parent = el.parentElement
@@ -92,7 +92,7 @@ test.describe('Poem card spacing', () => {
 
     await page.goto(`/c/${SAMPLE_CREATION_ID}`)
     await expect(page.getByText(/stubborn thing/i)).toBeVisible()
-    const postStanza = page.locator('[class*="gap-0"]').first()
+    const postStanza = page.locator('.flex.flex-col.gap-0').first()
     await expect(postStanza).toBeVisible()
     const postGapBox = await postStanza.evaluate((el) => {
       const parent = el.parentElement
