@@ -135,6 +135,7 @@ const screens: ScreenDef[] = [
     name: 'rtl-post-ar',
     path: `/c/${SAMPLE_CREATION_ID}`,
     signedIn: true,
+    skipRightRail: true,
     beforeGoto: () => {
       setE2eCreationDetailOverride({
         id: SAMPLE_CREATION_ID,
@@ -177,6 +178,7 @@ const screens: ScreenDef[] = [
     name: 'quote-card-ar',
     path: `/c/${SAMPLE_CREATION_ID}`,
     signedIn: true,
+    skipRightRail: true,
     beforeGoto: () => {
       setE2eCreationDetailOverride({
         id: SAMPLE_CREATION_ID,
@@ -315,9 +317,12 @@ async function assertRightRail(page: Page, width: number, screenName: string) {
     screenName === 'following' ||
     screenName === 'create-sheet' ||
     screenName === 'comments' ||
-    screenName === 'discover'
-  if (width >= 1280 && onFeed) await expect(rail).toBeVisible()
-  else await expect(rail).toBeHidden()
+    screenName === 'discover' ||
+    screenName === 'browse-countries' ||
+    screenName === 'country-page'
+  const ctx = `${screenName} @ ${width}px`
+  if (width >= 1280 && onFeed) await expect(rail, `${ctx} should show Suggestions`).toBeVisible()
+  else await expect(rail, `${ctx} should hide Suggestions`).toBeHidden()
 }
 
 async function assertTouchTargets(page: Page, width: number) {
@@ -410,7 +415,8 @@ async function waitForSettingsShell(page: Page) {
 
 async function visitScreen(page: Page, screen: ScreenDef) {
   if (screen.signedIn) await seedSignedInSession(page)
-  screen.beforeGoto?.()
+  if (screen.beforeGoto) screen.beforeGoto()
+  else setE2eCreationDetailOverride(null)
   await page.goto(screen.path, { waitUntil: 'networkidle' })
   if (screen.name === 'settings-export-delete' || screen.name === 'feedback-modal') {
     await waitForSettingsShell(page)

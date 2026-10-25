@@ -73,9 +73,7 @@ test.describe('Book chapter reader', () => {
     await page.goto(`/read/book/${E2E_FREE_BOOK_ID}/${E2E_FREE_CHAPTER_ID}`)
     await selectWordInParagraph(page, 0, 'Highlightable')
     await page.getByRole('button', { name: 'Highlight Green' }).click()
-    await page.waitForResponse(
-      (resp) => resp.url().includes('/rest/v1/reader_highlights') && resp.request().method() === 'POST',
-    )
+    await expect(page.locator('mark')).toContainText('Highlightable', { timeout: 30_000 })
     await page.reload()
     await page.getByRole('button', { name: 'Page mode' }).click()
     await expect(page.locator('[data-reader-page-viewport] mark')).toContainText('Highlightable')
