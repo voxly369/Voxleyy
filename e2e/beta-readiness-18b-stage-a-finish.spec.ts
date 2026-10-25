@@ -36,22 +36,24 @@ test.describe('beta readiness 18B stage A finish', () => {
   test('rejects wrong file type on avatar upload', async ({ page }) => {
     await seedSignedInSession(page)
     await page.goto('/settings/profile', { waitUntil: 'networkidle' })
-    await page.locator('#avatars-upload').setInputFiles({
+    await page.locator('#avatars-gallery').setInputFiles({
       name: 'avatar.gif',
       mimeType: 'image/gif',
       buffer: Buffer.from('GIF89a'),
     })
+    await page.getByRole('button', { name: 'Use this crop' }).click()
     await expect(page.getByText('Use a JPEG, PNG, or WebP image.')).toBeVisible({ timeout: 15_000 })
   })
 
   test('rejects oversized avatar upload', async ({ page }) => {
     await seedSignedInSession(page)
     await page.goto('/settings/profile', { waitUntil: 'networkidle' })
-    await page.locator('#avatars-upload').setInputFiles({
+    await page.locator('#avatars-gallery').setInputFiles({
       name: 'huge.webp',
       mimeType: 'image/webp',
       buffer: Buffer.alloc(6 * 1024 * 1024, 1),
     })
+    await page.getByRole('button', { name: 'Use this crop' }).click()
     await expect(page.getByText('That image is larger than 5 MB.')).toBeVisible({ timeout: 15_000 })
   })
 
@@ -75,7 +77,7 @@ test.describe('beta readiness 18B stage A finish', () => {
       })
     })
     await page.goto('/settings/profile', { waitUntil: 'networkidle' })
-    await page.locator('#avatars-upload').setInputFiles({
+    await page.locator('#avatars-gallery').setInputFiles({
       name: 'avatar.png',
       mimeType: 'image/png',
       buffer: Buffer.from(
@@ -83,6 +85,7 @@ test.describe('beta readiness 18B stage A finish', () => {
         'base64',
       ),
     })
+    await page.getByRole('button', { name: 'Use this crop' }).click()
     await expect(page.getByText('Daily upload limit reached')).toBeVisible({ timeout: 15_000 })
   })
 
@@ -125,8 +128,8 @@ test.describe('beta readiness 18B stage A finish', () => {
       })
     })
     await page.goto('/settings/profile', { waitUntil: 'networkidle' })
-    await expect(page.locator('#avatars-upload')).toBeVisible()
-    await page.locator('#avatars-upload').setInputFiles({
+    await expect(page.locator('#avatars-gallery')).toBeVisible()
+    await page.locator('#avatars-gallery').setInputFiles({
       name: 'avatar.png',
       mimeType: 'image/png',
       buffer: Buffer.from(
@@ -134,6 +137,7 @@ test.describe('beta readiness 18B stage A finish', () => {
         'base64',
       ),
     })
+    await page.getByRole('button', { name: 'Use this crop' }).click()
     await expect(page.getByText('Daily upload limit reached')).toBeVisible({ timeout: 15_000 })
   })
 

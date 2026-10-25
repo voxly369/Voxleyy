@@ -15,7 +15,7 @@ Never use or expose the Supabase service-role key. Never put secrets in any vari
 
 Users can never change their own role, status, verified flag, or badges. Reader is the default role. Writer is granted automatically on first publish. There is no moderator role and no admin role. The Founder account is only voxly369@gmail.com, and only when that email is confirmed. Only that Founder moderates or administers.
 
-Use Inter for interface text. Use Fraunces for reading and writing text, screen titles, and the wordmark. The accent is coral #FF5A3C. The verified badge is purple #8B5CF6. Dark mode is the default.
+Use Inter for interface text. Use Fraunces for reading and writing text, screen titles, and the wordmark. The accent is coral #FF5A3C. The verified badge uses the same coral accent everywhere. Dark mode is the default.
 
 Every image has a fallback and never shows a broken icon.
 

@@ -15,9 +15,10 @@ export type SafetyMenuSubject = {
 type SafetyOverflowMenuProps = {
   subject: SafetyMenuSubject
   testId?: string
+  onAboutProfile?: () => void
 }
 
-export function SafetyOverflowMenu({ subject, testId = 'safety-overflow-menu' }: SafetyOverflowMenuProps) {
+export function SafetyOverflowMenu({ subject, testId = 'safety-overflow-menu', onAboutProfile }: SafetyOverflowMenuProps) {
   const [open, setOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const [confirmBlock, setConfirmBlock] = useState(false)
@@ -104,6 +105,19 @@ export function SafetyOverflowMenu({ subject, testId = 'safety-overflow-menu' }:
             aria-label="Safety options"
             className="absolute right-0 z-30 mt-1 w-48 rounded-2xl border border-line bg-surface p-2 shadow-lg"
           >
+            {onAboutProfile ? (
+              <button
+                type="button"
+                role="menuitem"
+                className={`flex min-h-11 w-full items-center rounded-xl px-3 text-left text-base text-ink ${focusRing}`}
+                onClick={() => {
+                  close()
+                  onAboutProfile()
+                }}
+              >
+                About this profile
+              </button>
+            ) : null}
             <button
               type="button"
               role="menuitem"

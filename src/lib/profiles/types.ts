@@ -28,6 +28,7 @@ export type PublicProfile = {
   language: string
   role: UserRole
   verified: boolean
+  verifiedAt: string | null
   followerCount: number
   followingCount: number
   creationCount: number

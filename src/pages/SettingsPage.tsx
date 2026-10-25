@@ -104,7 +104,7 @@ export default function SettingsPage() {
             to="/settings/profile"
             className={`inline-flex min-h-11 items-center rounded-2xl bg-raised px-4 text-base font-semibold text-ink ${focusRing}`}
           >
-            Profile
+            Edit profile & photos
           </Link>
           <Link
             to="/library"

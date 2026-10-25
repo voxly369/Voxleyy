@@ -113,7 +113,7 @@ function ownProfile(id: string, username: string, display_name: string, creation
     role: 'writer',
     status: 'active',
     suspended_until: null,
-    verified: false,
+    verified: e2eOwnProfileVerified,
     who_can_message: 'everyone',
     follower_count: 12,
     following_count: 2,
@@ -128,9 +128,14 @@ export type E2eFeedRow = ReturnType<typeof feedPosts>[number]
 let e2eFeedOverride: E2eFeedRow[] | null = null
 let e2eCreationDetailOverride: Record<string, unknown> | null = null
 let e2eOwnProfileRole: 'reader' | 'writer' = 'writer'
+let e2eOwnProfileVerified = false
 
 export function setE2eOwnProfileRole(role: 'reader' | 'writer') {
   e2eOwnProfileRole = role
+}
+
+export function setE2eOwnProfileVerified(verified: boolean) {
+  e2eOwnProfileVerified = verified
 }
 
 /** Replace default feed rows for a single e2e file; pass null to reset. */
@@ -585,6 +590,7 @@ export async function installSupabaseMocks(page: Page) {
   resetAuthMocks()
   resetMfaMocks()
   e2eOwnProfileRole = 'writer'
+  e2eOwnProfileVerified = false
 
   await page.route('**/*', async (route) => {
     const session = sessionResponse(READER.id, READER.email)

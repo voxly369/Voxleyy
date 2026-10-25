@@ -5668,6 +5668,47 @@ begin
   perform pg_temp.record('discover trending language filter plan uses index', v_plan_ok, 'index scan=' || v_plan_ok);
 end $stage_c_languages$;
 
+do $stage_d_verified_at$
+declare
+  v_a uuid;
+  v_founder uuid;
+  v_ts timestamptz;
+begin
+  reset role;
+  select reader_a, founder into v_a, v_founder from rls_ids limit 1;
+
+  update public.profiles set verified = false, verified_at = null where id = v_a;
+  update public.profiles set verified = true where id = v_a;
+  select verified_at into v_ts from public.profiles where id = v_a;
+  perform pg_temp.record('verified_at set when verified becomes true', v_ts is not null, 'ts=' || coalesce(v_ts::text, 'null'));
+
+  update public.profiles set verified = false where id = v_a;
+  select verified_at into v_ts from public.profiles where id = v_a;
+  perform pg_temp.record('verified_at null for unverified', v_ts is null, 'ts=' || coalesce(v_ts::text, 'null'));
+
+  select verified_at into v_ts from public.profiles where id = v_founder;
+  perform pg_temp.record('founder verified_at backfilled', v_ts is not null, 'ts=' || coalesce(v_ts::text, 'null'));
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  begin
+    update public.profiles set verified_at = now() where id = v_a;
+    perform pg_temp.record('client cannot write verified_at', false, 'updated');
+  exception when others then
+    perform pg_temp.record('client cannot write verified_at', true, sqlerrm);
+  end;
+
+  select verified_at into v_ts
+  from public.profiles_public
+  where id = v_a;
+  perform pg_temp.record('unverified public profile hides verified_at', v_ts is null, 'ts=' || coalesce(v_ts::text, 'null'));
+end $stage_d_verified_at$;
+
 do $$
 declare
   n integer;

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { focusRing } from '../shell/navItems.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
-import { prepareProfileImage } from '../../lib/profiles/imageProcess.ts'
+import type { PreparedImage } from '../../lib/profiles/imageProcess.ts'
 import { clearProfileImage, saveProfileImage, type MediaBucket } from '../../lib/profiles/upload.ts'
+import { ProfileImageCropModal } from './ProfileImageCropModal.tsx'
 
 type ProfileImageFieldProps = {
   bucket: MediaBucket
@@ -15,24 +16,21 @@ type ProfileImageFieldProps = {
 
 export function ProfileImageField({ bucket, userId, label, url, fallbackLabel, onChange }: ProfileImageFieldProps) {
   const [progress, setProgress] = useState<number | null>(null)
-  const [preparing, setPreparing] = useState(false)
   const [error, setError] = useState('')
-  const inputId = `${bucket}-upload`
-  const busy = preparing || progress !== null
+  const [cropFile, setCropFile] = useState<File | null>(null)
+  const [cropOpen, setCropOpen] = useState(false)
+  const galleryId = `${bucket}-gallery`
+  const cameraId = `${bucket}-camera`
+  const busy = progress !== null
 
-  async function onFile(file: File | undefined) {
+  function pickFile(file: File | undefined) {
     if (!file || busy) return
     setError('')
-    setPreparing(true)
-    let prepared: Awaited<ReturnType<typeof prepareProfileImage>>
-    try {
-      prepared = await prepareProfileImage(file, bucket === 'avatars' ? 'avatar' : 'banner')
-    } catch (caught) {
-      setPreparing(false)
-      setError(caught instanceof Error ? caught.message : 'We could not prepare that image.')
-      return
-    }
-    setPreparing(false)
+    setCropFile(file)
+    setCropOpen(true)
+  }
+
+  async function uploadPrepared(prepared: PreparedImage) {
     setProgress(0)
     const saved = await saveProfileImage({
       bucket,
@@ -64,7 +62,17 @@ export function ProfileImageField({ bucket, userId, label, url, fallbackLabel, o
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-medium text-ink" id={`${inputId}-label`}>
+      <ProfileImageCropModal
+        open={cropOpen}
+        file={cropFile}
+        bucket={bucket}
+        onClose={() => {
+          setCropOpen(false)
+          setCropFile(null)
+        }}
+        onPrepared={(prepared) => void uploadPrepared(prepared)}
+      />
+      <p className="text-sm font-medium text-ink" id={`${galleryId}-label`}>
         {label}
       </p>
       <ImageWithFallback
@@ -75,21 +83,40 @@ export function ProfileImageField({ bucket, userId, label, url, fallbackLabel, o
       />
       <div className="flex flex-wrap gap-2">
         <label
-          htmlFor={inputId}
+          htmlFor={galleryId}
           className={`inline-flex min-h-11 cursor-pointer items-center rounded-2xl bg-ink px-4 text-sm font-semibold text-bg ${busy ? 'opacity-60' : ''} ${focusRing}`}
         >
-          {busy ? 'Please wait…' : 'Upload'}
+          {busy ? 'Please wait…' : 'Choose from gallery'}
           <input
-            id={inputId}
-            aria-labelledby={`${inputId}-label`}
+            id={galleryId}
+            aria-labelledby={`${galleryId}-label`}
             className="sr-only"
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/png,image/jpeg,image/webp,image/*"
             disabled={busy}
             onChange={(event) => {
               const file = event.target.files?.[0]
               event.target.value = ''
-              void onFile(file)
+              pickFile(file)
+            }}
+          />
+        </label>
+        <label
+          htmlFor={cameraId}
+          className={`inline-flex min-h-11 cursor-pointer items-center rounded-2xl border border-line px-4 text-sm font-semibold text-ink ${busy ? 'opacity-60' : ''} ${focusRing}`}
+        >
+          Take photo
+          <input
+            id={cameraId}
+            className="sr-only"
+            type="file"
+            accept="image/*"
+            capture="environment"
+            disabled={busy}
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              pickFile(file)
             }}
           />
         </label>
@@ -104,11 +131,6 @@ export function ProfileImageField({ bucket, userId, label, url, fallbackLabel, o
           </button>
         ) : null}
       </div>
-      {preparing ? (
-        <p role="status" aria-live="polite" className="text-sm text-muted">
-          Preparing image…
-        </p>
-      ) : null}
       {progress !== null ? (
         <div className="flex flex-col gap-1">
           <progress value={progress} max={100} className="h-2 w-full" aria-label={`${label} upload progress`}>
@@ -122,6 +144,9 @@ export function ProfileImageField({ bucket, userId, label, url, fallbackLabel, o
       {error ? (
         <p role="alert" aria-live="polite" className="text-sm text-coral">
           {error}
+          <button type="button" className={`ms-2 underline ${focusRing}`} onClick={() => setError('')}>
+            Retry
+          </button>
         </p>
       ) : null}
     </div>

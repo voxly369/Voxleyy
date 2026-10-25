@@ -20,7 +20,6 @@ export default {
           800: '#9B2C1C',
           900: '#7A261A',
         },
-        verified: '#8B5CF6',
         bg: 'rgb(var(--c-bg) / <alpha-value>)',
         surface: 'rgb(var(--c-surface) / <alpha-value>)',
         raised: 'rgb(var(--c-raised) / <alpha-value>)',

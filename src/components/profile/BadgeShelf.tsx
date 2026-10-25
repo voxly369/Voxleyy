@@ -29,7 +29,7 @@ export function BadgeShelf({ username, pinned, loading }: BadgeShelfProps) {
           className={`min-h-11 text-sm font-medium text-coral ${focusRing}`}
           data-testid="badge-shelf-see-all"
         >
-          See all
+          See all badges
         </Link>
       </div>
       {pinned.length === 0 ? (
