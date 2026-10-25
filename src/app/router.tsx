@@ -36,6 +36,7 @@ const BookBuilderPage = lazy(() => import('../pages/BookBuilderPage.tsx'))
 const BookChapterEditPage = lazy(() => import('../pages/BookChapterEditPage.tsx'))
 const BookPage = lazy(() => import('../pages/BookPage.tsx'))
 const CoverStudioPage = lazy(() => import('../pages/CoverStudioPage.tsx'))
+const CoverDesignsListPage = lazy(() => import('../pages/CoverDesignsListPage.tsx'))
 const BookPreviewPage = lazy(() => import('../pages/BookPreviewPage.tsx'))
 const FounderPage = lazy(() => import('../pages/FounderPage.tsx'))
 const CreatorDashboardPage = lazy(() => import('../pages/CreatorDashboardPage.tsx'))
@@ -134,6 +135,7 @@ const router = createBrowserRouter(
                 { path: '/books/:id/preview/chapter/:chapterId', element: <BookPreviewPage /> },
                 { path: '/books/:id/preview', element: <BookPreviewPage /> },
                 { path: '/books/:id/cover', element: <CoverStudioPage /> },
+                { path: '/cover-designs', element: <CoverDesignsListPage /> },
                 { path: '/books/:id', element: <BookPage /> },
                 { path: '/create', element: <CreatePage /> },
                 { path: '/create/new/:type', element: <CreationEditorPage /> },

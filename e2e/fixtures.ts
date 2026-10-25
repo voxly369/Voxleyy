@@ -7,6 +7,7 @@ import {
   seedReadingProgress,
 } from './libraryReadingMocks.ts'
 import { bookBuilderMockHandleRest, resetBookBuilderMocks, softDeleteBookInMock } from './bookBuilderMocks.ts'
+import { coverStudioMockHandleRest, resetCoverStudioMocks } from './coverStudioMocks.ts'
 import {
   moderationBlockedUserIds,
   moderationMockHandleRest,
@@ -410,6 +411,8 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
   if (libraryResult !== undefined) return libraryResult
   const bookResult = bookBuilderMockHandleRest(url, method, postData)
   if (bookResult !== undefined) return bookResult
+  const coverStudioResult = coverStudioMockHandleRest(url, method, postData)
+  if (coverStudioResult !== undefined) return coverStudioResult
   const preBetaResult = preBetaMockHandleRest(url, method, postData)
   if (preBetaResult !== undefined) return preBetaResult
   const beta18bResult = betaReadiness18bMockHandleRest(url, method, postData)

@@ -2,10 +2,12 @@ import { Link } from 'react-router-dom'
 import { focusRing } from '../components/shell/navItems.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 import { resolveEntranceMusic } from '../lib/entrance/entranceMusicConfig.ts'
+import { coverFontLicenceNotices } from '../lib/coverStudio/fonts/fontLicences.ts'
 
 export default function LicencesPage() {
   useDocumentTitle('Font licences')
   const entranceTrack = resolveEntranceMusic()
+  const coverStudioFonts = coverFontLicenceNotices()
 
   return (
     <div className="flex flex-col gap-4">
@@ -36,6 +38,22 @@ export default function LicencesPage() {
         <h2 className="font-serif text-lg text-ink">Inter</h2>
         <p className="mt-2 text-sm text-ink">Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)</p>
         <p className="mt-2 text-sm text-ink">Licensed under the SIL Open Font License, Version 1.1.</p>
+      </section>
+
+      <section className="rounded-xl border border-line bg-bg p-4" data-testid="licence-cover-studio-fonts">
+        <h2 className="font-serif text-lg text-ink">Cover Studio fonts</h2>
+        <p className="mt-2 text-sm text-muted">
+          Self-hosted typefaces available in Cover Studio (see /licences for app reading fonts above).
+        </p>
+        <ul className="mt-4 flex flex-col gap-4">
+          {coverStudioFonts.map((font) => (
+            <li key={font.fontId} className="border-t border-line pt-4 first:border-t-0 first:pt-0">
+              <h3 className="font-medium text-ink">{font.name}</h3>
+              <p className="mt-1 text-sm text-ink">{font.copyright}</p>
+              <p className="mt-1 text-sm text-ink">{font.licence}</p>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {entranceTrack ? (

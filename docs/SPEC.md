@@ -184,7 +184,7 @@ All writing types are welcome: poems, stories, essays, prose, letters, scripts, 
 
 - **Manuscript import** for .docx, .txt and .pdf with rule-based chapter-break detection (split on headings or on chapter markers the writer confirms).
 
-- **Cover Studio.** Design a cover with templates, fonts, colours and image upload, or import a finished cover.
+- **Cover Studio.** Layer-based 1600×2400 cover designer with templates, stickers, brand palette, zoom/pan canvas, safe area and grid guides, undo/redo, saved designs (up to 50 per account), PNG export to the book cover, or import a finished cover (centre-cropped 2:3).
 
 - **Pricing per book.** Free, one-time purchase, time-limited rental, or monthly subscription.
 
@@ -604,7 +604,7 @@ The following belong to the full Voxly platform and are specified here so the ar
 |---------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
 | Rights registry           | Dated record of author, first publication time and version for every Creation; supports ownership disputes                           |
 | Voxly Book ID             | Internal book identifier with check digit (section 5); never labelled ISBN; external SA ISBN only for off-platform retail           |
-| Cover Studio              | Template-based cover and quote-card designer with fonts, colours and image upload                                                    |
+| Cover Studio              | Canva-style book cover designer: templates, text/shape/image/sticker layers, self-hosted font catalog, autosaved `cover_designs`, PNG export and finished-cover import at 1600×2400 |
 | Creator mobility          | Writers export all work and leave at any time; export in standard formats                                                            |
 | Appeals                   | Users appeal suspensions, bans and removals; Founder decides; decisions are audit-logged                                             |
 | Language on content       | English app interface; content language field, filters, and optional translations/captions on posts (section 5)                      |
