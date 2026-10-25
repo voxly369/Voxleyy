@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { focusRing } from '../shell/navItems.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
-import { countryFlag, countryName } from '../../lib/profiles/countries.ts'
+import { CountryLink } from '../country/CountryLink.tsx'
 import type { PublicProfile } from '../../lib/profiles/types.ts'
 import { MenuLinesIcon } from '../icons/MenuLinesIcon.tsx'
 import { CountLink, SafeWebsite } from './SafeWebsite.tsx'
@@ -23,9 +23,6 @@ type ProfileHeaderProps = {
 
 export function ProfileHeader({ profile, isOwn, following, followerCount, onFollowingChange, badgeShelf }: ProfileHeaderProps) {
   const name = profile.displayName || profile.username
-  const country = countryName(profile.country)
-  const flag = countryFlag(profile.country)
-
   return (
     <header className="flex flex-col">
       <div className="relative">
@@ -82,11 +79,8 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
         <p className="text-base text-muted">@{profile.username}</p>
         {profile.bio ? <p className="whitespace-pre-wrap text-base text-ink">{profile.bio}</p> : null}
         {badgeShelf ? <div className="-mx-5 mt-1">{badgeShelf}</div> : null}
-        {country ? (
-          <p className="text-sm text-muted">
-            <span aria-hidden="true">{flag} </span>
-            {country}
-          </p>
+        {profile.country ? (
+          <CountryLink code={profile.country} testId="profile-country-link" />
         ) : null}
         {profile.cityVisible && profile.city ? <p className="text-sm text-muted">{profile.city}</p> : null}
         {profile.showLocalTime ? <LocalTime timezone={profile.timezone} /> : null}

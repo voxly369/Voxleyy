@@ -5,6 +5,7 @@ let onboardingStep = 0
 let feedbackCount = 0
 let founderWelcomeSent = false
 let feedbackSubmitCount = 0
+let feedbackMarkedDone = false
 let lastEntranceLocalDate: string | null = null
 let showEntranceScreen = true
 let welcomeMomentSeenAt: string | null = '2026-01-01T00:00:00.000Z'
@@ -26,6 +27,7 @@ export function resetBetaReadiness18bMocks() {
   feedbackCount = 0
   founderWelcomeSent = false
   feedbackSubmitCount = 0
+  feedbackMarkedDone = false
   lastEntranceLocalDate = '2099-01-01'
   showEntranceScreen = false
   welcomeMomentSeenAt = '2026-01-01T00:00:00.000Z'
@@ -153,8 +155,8 @@ export function betaReadiness18bMockHandleRest(url: string, method: string, post
           page_path: '/settings',
           app_version: '0.0.0',
           viewport: '375x667',
-          read_at: null,
-          done_at: null,
+          read_at: feedbackMarkedDone ? '2026-01-02T12:00:00.000Z' : null,
+          done_at: feedbackMarkedDone ? '2026-01-02T12:00:00.000Z' : null,
           founder_note: null,
           created_at: '2026-01-02T12:00:00.000Z',
         },
@@ -163,7 +165,35 @@ export function betaReadiness18bMockHandleRest(url: string, method: string, post
     }
   }
   if (url.includes('/rest/v1/rpc/founder_feedback_unread_count')) return 1
-  if (url.includes('/rest/v1/rpc/founder_update_feedback')) return null
+  if (url.includes('/rest/v1/rpc/founder_update_feedback')) {
+    feedbackMarkedDone = true
+    return null
+  }
+  if (url.includes('/rest/v1/rpc/get_country_page')) {
+    return {
+      code: 'ZA',
+      name: 'South Africa',
+      primary_timezone: 'Africa/Johannesburg',
+      main_languages: ['en', 'af', 'zu'],
+      writer_count: 2,
+      post_count: 5,
+    }
+  }
+  if (url.includes('/rest/v1/rpc/list_country_trending')) {
+    return { rows: [], next_cursor: null }
+  }
+  if (url.includes('/rest/v1/rpc/list_country_rising_writers')) {
+    return { rows: [] }
+  }
+  if (url.includes('/rest/v1/rpc/list_countries_browse')) {
+    return {
+      rows: [
+        { code: 'ZA', name: 'South Africa', primary_timezone: 'Africa/Johannesburg' },
+        { code: 'US', name: 'United States', primary_timezone: 'America/New_York' },
+      ],
+      next_cursor: null,
+    }
+  }
   if (url.includes('/rest/v1/rpc/founder_pending_storage_cleanup_count')) return 2
   if (url.includes('/rest/v1/rpc/founder_list_deletion_storage_queue')) {
     return [{ bucket_id: 'avatars', object_path: `${READER_ID}/x.webp`, queued_at: '2026-01-01T00:00:00.000Z' }]

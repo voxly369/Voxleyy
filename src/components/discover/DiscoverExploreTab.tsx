@@ -145,6 +145,16 @@ export function DiscoverExploreTab() {
         )}
       </SectionShell>
 
+      <SectionShell title="Countries" testId="discover-browse-countries">
+        <Link
+          to="/discover/countries"
+          className={`inline-flex min-h-11 items-center rounded-2xl border border-line bg-surface px-4 text-sm font-semibold text-ink ${focusRing}`}
+          data-testid="discover-browse-countries-link"
+        >
+          Browse countries
+        </Link>
+      </SectionShell>
+
       <HorizontalChipRow
         title="Browse by Mood"
         chips={DISCOVER_MOODS.map((m) => ({ slug: m.slug, label: m.label, kind: 'mood' }))}

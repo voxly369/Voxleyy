@@ -13,6 +13,8 @@ const HomePage = lazy(() => import('../pages/HomePage.tsx'))
 const DiscoverPage = lazy(() => import('../pages/DiscoverPage.tsx'))
 const DiscoverSearchPage = lazy(() => import('../pages/DiscoverSearchPage.tsx'))
 const DiscoverBrowsePage = lazy(() => import('../pages/DiscoverBrowsePage.tsx'))
+const DiscoverCountriesPage = lazy(() => import('../pages/DiscoverCountriesPage.tsx'))
+const CountryPage = lazy(() => import('../pages/CountryPage.tsx'))
 const TagPage = lazy(() => import('../pages/TagPage.tsx'))
 const CreatePage = lazy(() => import('../pages/CreatePage.tsx'))
 const CreationEditorPage = lazy(() => import('../pages/CreationEditorPage.tsx'))
@@ -123,6 +125,8 @@ const router = createBrowserRouter(
                 { path: '/discover', element: <DiscoverPage /> },
                 { path: '/discover/search', element: <DiscoverSearchPage /> },
                 { path: '/discover/browse', element: <DiscoverBrowsePage /> },
+                { path: '/discover/countries', element: <DiscoverCountriesPage /> },
+                { path: '/country/:code', element: <CountryPage /> },
                 { path: '/tags/:tag', element: <TagPage /> },
                 { path: '/books/new', element: <BookNewPage /> },
                 { path: '/books/:id/builder/chapter/:chapterId', element: <BookChapterEditPage /> },

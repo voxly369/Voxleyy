@@ -128,6 +128,8 @@ const screens: ScreenDef[] = [
   { name: 'saved', path: '/library/saved', signedIn: true },
   { name: 'library', path: '/library', signedIn: true },
   { name: 'discover', path: '/discover', signedIn: true },
+  { name: 'browse-countries', path: '/discover/countries', signedIn: true },
+  { name: 'country-page', path: '/country/ZA', signedIn: true },
   { name: 'settings', path: '/settings', signedIn: true },
   { name: 'sign-in', path: '/login', signedIn: false, skipNav: true, skipRightRail: true },
   {

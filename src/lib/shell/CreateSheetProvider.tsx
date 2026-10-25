@@ -24,7 +24,10 @@ export function CreateSheetProvider({ children }: { children: ReactNode }) {
     [],
   )
 
-  const value = useMemo(() => ({ openCreateSheet, closeCreateSheet }), [openCreateSheet, closeCreateSheet])
+  const value = useMemo(
+    () => ({ openCreateSheet, closeCreateSheet, createSheetOpen: open }),
+    [openCreateSheet, closeCreateSheet, open],
+  )
 
   function onPick(type: CreationType) {
     closeCreateSheet()
