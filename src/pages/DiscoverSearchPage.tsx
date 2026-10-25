@@ -16,6 +16,8 @@ import { tagPagePath } from '../lib/discover/tagLink.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 import { parseDiscoverFilters } from '../lib/discover/filterParams.ts'
 import { CountryLink } from '../components/country/CountryLink.tsx'
+import { DiscoverLanguageFilterChips } from '../components/discover/DiscoverLanguageFilterChips.tsx'
+import { languageFilterEmptyMessage } from '../lib/languages/showPostLanguageLabel.ts'
 
 const TABS: { id: SearchTab; label: string }[] = [
   { id: 'top', label: 'Top' },
@@ -67,6 +69,7 @@ export default function DiscoverSearchPage() {
       <PageContainer variant="wide" className="flex flex-col gap-6 py-8">
         <PageHeader title="Search" />
         <DiscoverSearchField defaultValue={query} />
+        <DiscoverLanguageFilterChips page="search" />
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Search result types">
           {TABS.map((item) => (
             <button
@@ -144,7 +147,15 @@ export default function DiscoverSearchPage() {
               </section>
             ) : null}
             {results.writers.length === 0 && results.posts.length === 0 && results.tags.length === 0 ? (
-              <EmptyState title="No results" message={`Nothing matched “${query}”. Try another search.`} />
+              <EmptyState
+                title="No results"
+                message={
+                  languageFilters.length > 0
+                    ? languageFilterEmptyMessage(true, 'search')
+                    : `Nothing matched “${query}”. Try another search.`
+                }
+                dataTestId={languageFilters.length > 0 ? 'search-language-empty' : undefined}
+              />
             ) : null}
           </div>
         ) : null}

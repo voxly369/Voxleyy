@@ -7,6 +7,7 @@ import { DiscoverSearchField } from '../components/discover/DiscoverSearchField.
 import { DiscoverExploreTab } from '../components/discover/DiscoverExploreTab.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
+import { DiscoverLanguageFilterChips } from '../components/discover/DiscoverLanguageFilterChips.tsx'
 
 type DiscoverTab = 'explore' | 'communities' | 'slam' | 'live'
 
@@ -26,6 +27,7 @@ export default function DiscoverPage() {
       <PageContainer variant="wide" className="flex flex-col gap-6 py-6 md:py-8">
         <PageHeader title="Discover" />
         <DiscoverSearchField className="w-full" />
+        {tab === 'explore' ? <DiscoverLanguageFilterChips page="discover" /> : null}
         <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Discover sections">
           {TABS.map((item) => (
             <button

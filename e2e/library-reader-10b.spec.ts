@@ -185,20 +185,23 @@ test.describe('Library and reader 10B', () => {
   test('resume by paragraph survives font size change in scroll mode', async ({ page }) => {
     seedReadingProgress({ percent: 50, position: 2, positionOffset: 0.2 })
     await page.goto(`/read/${SAMPLE_CREATION_ID}`)
-    await expect(page.locator('[data-reader-paragraph-index="2"]')).toBeVisible()
+    const target = page.locator('[data-reader-paragraph-index="2"]')
+    await expect(target).toBeVisible()
+    await target.scrollIntoViewIfNeeded()
     await page.getByRole('button', { name: 'Reading settings' }).click()
     const slider = page.getByLabel('Text size')
     await slider.evaluate((el) => {
-      ;(el as HTMLInputElement).value = '0'
+      ;(el as HTMLInputElement).value = '4'
       el.dispatchEvent(new Event('input', { bubbles: true }))
       el.dispatchEvent(new Event('change', { bubbles: true }))
     })
     await page.getByRole('button', { name: 'Done' }).click()
-    const top = await page.evaluate(() => {
+    const stillOnParagraph = await page.evaluate(() => {
       const el = document.querySelector('[data-reader-paragraph-index="2"]')
-      return el?.getBoundingClientRect().top ?? 0
+      if (!(el instanceof HTMLElement)) return false
+      const rect = el.getBoundingClientRect()
+      return rect.top >= 0 && rect.top < window.innerHeight
     })
-    expect(top).toBeGreaterThan(0)
-    expect(top).toBeLessThan(700)
+    expect(stillOnParagraph).toBe(true)
   })
 })

@@ -23,14 +23,16 @@ import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
 import { listHiddenWords } from '../../lib/safety/hiddenWordsApi.ts'
 import { hiddenWordMatch } from '../../lib/safety/hiddenWordMatch.ts'
 import { useMediaQuery, DESKTOP_NAV_QUERY } from '../../lib/shell/useMediaQuery.ts'
+import { contentLangProps } from '../../lib/languages/dir.ts'
 
 type CommentsSheetProps = {
   open: boolean
   creationId: string
+  contentLanguage?: string | null
   onClose: () => void
 }
 
-export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps) {
+export function CommentsSheet({ open, creationId, contentLanguage, onClose }: CommentsSheetProps) {
   const dockRight = useMediaQuery(DESKTOP_NAV_QUERY)
   const titleId = useId()
   const { profile, user, isFounder } = useAuth()
@@ -179,6 +181,7 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
                   <CommentRow
                     node={comment}
                     creationId={creationId}
+                    contentLanguage={contentLanguage}
                     viewerId={user?.id ?? null}
                     knownMentions={knownMentions}
                     hiddenWords={hiddenWords}
@@ -202,6 +205,7 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
                       <CommentRow
                         node={reply}
                         creationId={creationId}
+                        contentLanguage={contentLanguage}
                         viewerId={user?.id ?? null}
                         knownMentions={knownMentions}
                         hiddenWords={hiddenWords}
@@ -327,6 +331,7 @@ export function CommentsSheet({ open, creationId, onClose }: CommentsSheetProps)
 function CommentRow({
   node,
   creationId: _creationId,
+  contentLanguage,
   viewerId,
   knownMentions,
   hiddenWords,
@@ -338,6 +343,7 @@ function CommentRow({
 }: {
   node: CommentNode
   creationId: string
+  contentLanguage?: string | null
   viewerId: string | null
   knownMentions: ReadonlySet<string>
   hiddenWords: readonly string[]
@@ -350,6 +356,7 @@ function CommentRow({
   const own = viewerId === node.author.id
   const unavailable = node.author.unavailable === true
   const hiddenByWord = !own && hiddenWordMatch(node.body, hiddenWords) && !revealed
+  const langProps = contentLangProps(contentLanguage)
   return (
     <div>
       <div className="flex items-start justify-between gap-2">
@@ -396,7 +403,9 @@ function CommentRow({
           Hidden comment, show
         </button>
       ) : node.body ? (
-        <MentionText text={node.body} knownUsernames={knownMentions} />
+        <p data-testid="comment-body" className="mt-1 text-base text-ink" {...langProps}>
+          <MentionText text={node.body} knownUsernames={knownMentions} />
+        </p>
       ) : null}
       <div className="mt-2 flex flex-wrap gap-2">
         <button

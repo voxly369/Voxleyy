@@ -14,6 +14,7 @@ import { Skeleton } from '../components/states/Skeleton.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 import { DiscoverLanguageFilterChips } from '../components/discover/DiscoverLanguageFilterChips.tsx'
+import { languageFilterEmptyMessage } from '../lib/languages/showPostLanguageLabel.ts'
 
 export default function DiscoverBrowsePage() {
   const [params] = useSearchParams()
@@ -53,11 +54,15 @@ export default function DiscoverBrowsePage() {
     <FeedWithRailLayout>
       <PageContainer variant="wide" className="flex flex-col gap-6 py-8">
         <PageHeader title="Browse" />
-        <DiscoverLanguageFilterChips />
+        <DiscoverLanguageFilterChips page="browse" />
         {loading ? <Skeleton variant="text-lines" lines={6} /> : null}
         {error ? <ErrorState title="Results did not load" message={error} onRetry={() => window.location.reload()} /> : null}
         {!loading && !error && posts.length === 0 ? (
-          <EmptyState title="Nothing matched" message="Try another mood, genre, or filter." />
+          <EmptyState
+            title="Nothing matched"
+            message={languageFilterEmptyMessage(Boolean(filters.languages?.length), 'browse')}
+            dataTestId="browse-language-empty"
+          />
         ) : null}
         {!loading && !error ? <DiscoverPostStrip posts={posts} layout="grid" onPostUpdate={onPostUpdate} /> : null}
         {cursor ? (
