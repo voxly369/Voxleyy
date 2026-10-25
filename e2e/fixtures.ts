@@ -612,6 +612,8 @@ export async function installSupabaseMocks(page: Page) {
   resetE2eReaderAvatarUrl()
   e2eOwnProfileRole = 'writer'
   e2eOwnProfileVerified = false
+  e2eFeedOverride = null
+  setE2eCreationDetailOverride(null)
 
   await page.route('**/*', async (route) => {
     const session = sessionResponse(READER.id, READER.email)
