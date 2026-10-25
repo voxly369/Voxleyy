@@ -3,6 +3,7 @@ import {
   installSupabaseMocks,
   seedSignedInSession,
   SAMPLE_CREATION_ID,
+  setE2eCreationDetailOverride,
 } from './fixtures.ts'
 import { setE2eEntranceVisible, setE2eOnboardingComplete } from './betaReadiness18bMocks.ts'
 import { setE2eBetaSignupConfig, setE2eConsentsCurrent } from './preBetaMocks.ts'
@@ -130,6 +131,81 @@ const screens: ScreenDef[] = [
   { name: 'discover', path: '/discover', signedIn: true },
   { name: 'browse-countries', path: '/discover/countries', signedIn: true },
   { name: 'country-page', path: '/country/ZA', signedIn: true },
+  {
+    name: 'rtl-post-ar',
+    path: `/c/${SAMPLE_CREATION_ID}`,
+    signedIn: true,
+    beforeGoto: () => {
+      setE2eCreationDetailOverride({
+        id: SAMPLE_CREATION_ID,
+        type: 'written_post',
+        title: 'مرحبا',
+        caption: null,
+        body_text: 'هذا نص عربي طويل بما يكفي لعرض التخطيط على الشاشة.',
+        body_json: {
+          version: 1,
+          format: 'rich',
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: 'هذا نص عربي طويل بما يكفي لعرض التخطيط على الشاشة.' }],
+            },
+          ],
+        },
+        language: 'ar',
+        status: 'published',
+        audience: 'public',
+        is_removed: false,
+        removed_reason: null,
+        cover_url: null,
+        genre: null,
+        mood: null,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        author_id: '22222222-2222-2222-2222-222222222222',
+        author: {
+          id: '22222222-2222-2222-2222-222222222222',
+          username: 'writertwo',
+          display_name: 'Writer Two',
+          avatar_url: null,
+          verified: false,
+        },
+      })
+    },
+  },
+  {
+    name: 'quote-card-ar',
+    path: `/c/${SAMPLE_CREATION_ID}`,
+    signedIn: true,
+    beforeGoto: () => {
+      setE2eCreationDetailOverride({
+        id: SAMPLE_CREATION_ID,
+        type: 'quote_card',
+        title: null,
+        caption: null,
+        body_text: 'القول بالعربية للبطاقة',
+        body_json: { version: 1, format: 'quote_card', style: { background: '#1a1a1a', color: '#ffffff', size: 'medium' } },
+        language: 'ar',
+        status: 'published',
+        audience: 'public',
+        is_removed: false,
+        removed_reason: null,
+        cover_url: null,
+        genre: null,
+        mood: null,
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+        author_id: '22222222-2222-2222-2222-222222222222',
+        author: {
+          id: '22222222-2222-2222-2222-222222222222',
+          username: 'writertwo',
+          display_name: 'Writer Two',
+          avatar_url: null,
+          verified: false,
+        },
+      })
+    },
+  },
   { name: 'settings', path: '/settings', signedIn: true },
   { name: 'sign-in', path: '/login', signedIn: false, skipNav: true, skipRightRail: true },
   {

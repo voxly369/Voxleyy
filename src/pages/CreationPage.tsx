@@ -35,6 +35,9 @@ import { isReaderEligibleType } from '../lib/reader/readerEligible.ts'
 import { fetchPostProgress } from '../lib/reader/progressApi.ts'
 import { supabase } from '../lib/supabaseClient.ts'
 import { recordCreationView } from '../lib/views/recordView.ts'
+import { contentLangProps } from '../lib/languages/dir.ts'
+import { PostLanguageLabel } from '../components/languages/PostLanguageLabel.tsx'
+import { useViewerContentLanguages } from '../lib/languages/useViewerContentLanguages.ts'
 
 type LocationState = {
   published?: boolean
@@ -46,6 +49,7 @@ export default function CreationPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { profile } = useAuth()
+  const viewerLanguages = useViewerContentLanguages()
   const [attempt, setAttempt] = useState(0)
   const [work, setWork] = useState<CreationDetail | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -299,7 +303,10 @@ export default function CreationPage() {
       ) : null}
       <div className="flex min-w-0 flex-col gap-6 xl:col-start-1">
       <header className="flex flex-col gap-3">
-        <h1 className="font-serif text-3xl text-ink">{title}</h1>
+        <h1 className="font-serif text-3xl text-ink" data-testid="creation-title" {...contentLangProps(work.language)}>
+          {title}
+        </h1>
+        <PostLanguageLabel postLanguage={work.language} viewerLanguages={viewerLanguages} />
         {work.isOwn ? (
           <p className="flex flex-wrap items-center gap-2 text-sm text-muted">
             <span className="rounded-full bg-raised px-2 py-1 font-semibold uppercase tracking-wide">
@@ -348,6 +355,8 @@ export default function CreationPage() {
             text={work.bodyText}
             style={quoteStyleFromJson(work.bodyJson)}
             handle={work.author.username}
+            contentLanguage={work.language}
+            testId="creation-body"
           />
         ) : (
           <p className="text-muted">No text yet.</p>
@@ -358,6 +367,7 @@ export default function CreationPage() {
           bodyText={work.bodyText ?? ''}
           creationType={work.type}
           contentLanguage={work.language}
+          testId="creation-body"
         />
       ) : (
         <p className="text-muted">No text yet.</p>
@@ -438,7 +448,12 @@ export default function CreationPage() {
         onConfirm={(payload) => void onPublishConfirm(payload)}
       />
       {commentsOpen ? (
-        <CommentsSheet open={true} creationId={work.id} onClose={() => setCommentsOpen(false)} />
+        <CommentsSheet
+          open={true}
+          creationId={work.id}
+          contentLanguage={work.language}
+          onClose={() => setCommentsOpen(false)}
+        />
       ) : null}
       <ConfirmDialog
         open={confirmDelete}

@@ -501,6 +501,10 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
       if (e2eCreationDetailOverride && '__notFound' in e2eCreationDetailOverride) return []
       return [e2eCreationDetailOverride ?? creationDetail(SAMPLE_CREATION_ID)]
     }
+    if (id && e2eCreationDetailOverride && !('__notFound' in e2eCreationDetailOverride)) {
+      const detail = e2eCreationDetailOverride as { id?: string }
+      if (detail.id === id) return [e2eCreationDetailOverride]
+    }
     if (id === DRAFT_ID) return [editableDraft()]
 
     if (url.includes(`author_id=eq.${OTHER.id}`) && url.includes('status=eq.published')) {

@@ -21,6 +21,7 @@ type RichTextViewProps = {
   highlights?: readonly AnchoredHighlight[]
   bookmarkParagraphs?: readonly number[]
   onHighlightPress?: (highlightId: string) => void
+  testId?: string
 }
 
 function renderInline(inline: RichInline, key: number) {
@@ -121,6 +122,7 @@ export function RichTextView({
   highlights = [],
   bookmarkParagraphs = [],
   onHighlightPress,
+  testId,
 }: RichTextViewProps) {
   const literary = creationType ? usesLiterarySurface(creationType) : true
   const langProps = contentLangProps(contentLanguage)
@@ -152,7 +154,11 @@ export function RichTextView({
     : null
 
   return (
-    <div className={`content-lang flex max-w-[65ch] flex-col gap-4 ${className}`} {...langProps}>
+    <div
+      className={`content-lang flex max-w-[65ch] flex-col gap-4 ${className}`}
+      {...langProps}
+      {...(testId ? { 'data-testid': testId } : {})}
+    >
       {content.map((block, index) => {
         const paraIndex = readerIndexByBlock?.get(index) ?? null
         const node = renderBlock(

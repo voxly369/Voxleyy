@@ -19,6 +19,8 @@ import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
 import { useAuth } from '../../lib/auth/auth-context.ts'
 import { getOrCreateDm } from '../../lib/messages/api.ts'
 import { contentLangProps } from '../../lib/languages/dir.ts'
+import { PostLanguageLabel } from '../languages/PostLanguageLabel.tsx'
+import { useViewerContentLanguages } from '../../lib/languages/useViewerContentLanguages.ts'
 
 type PostCardProps = {
   post: FeedPost
@@ -28,6 +30,7 @@ type PostCardProps = {
 
 export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) {
   const { profile } = useAuth()
+  const viewerLanguages = useViewerContentLanguages()
   const navigate = useNavigate()
   const isOwn = profile?.id === post.author.id
   const [sharePending, setSharePending] = useState(false)
@@ -114,7 +117,10 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
           </Link>
         </div>
         <div className="flex items-center gap-1">
-          <span className="text-xs uppercase tracking-wide text-muted">{creationTypeLabel(post.type)}</span>
+          <span className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-wide text-muted">{creationTypeLabel(post.type)}</span>
+            <PostLanguageLabel postLanguage={post.language} viewerLanguages={viewerLanguages} />
+          </span>
           <button
             type="button"
             disabled={sharePending}
@@ -148,7 +154,12 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
       >
         {isQuote ? (
           <>
-            <QuoteCardView text={quoteText} style={quoteStyleFromJson(null)} handle={post.author.username} />
+            <QuoteCardView
+              text={quoteText}
+              style={quoteStyleFromJson(null)}
+              handle={post.author.username}
+              contentLanguage={post.language}
+            />
             {showReadMore ? <span className="mt-2 block text-base text-coral">Read more</span> : null}
           </>
         ) : (
