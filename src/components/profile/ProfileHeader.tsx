@@ -8,7 +8,6 @@ import { MenuLinesIcon } from '../icons/MenuLinesIcon.tsx'
 import { CountLink, SafeWebsite } from './SafeWebsite.tsx'
 import { FollowButton } from './FollowButton.tsx'
 import { ProfileMessageButton } from './ProfileMessageButton.tsx'
-import { VerifiedSeal } from './VerifiedSeal.tsx'
 import { DisplayNameWithMarks } from './DisplayNameWithMarks.tsx'
 import { AboutProfileSheet } from './AboutProfileSheet.tsx'
 import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
@@ -72,22 +71,12 @@ export function ProfileHeader({
             <DisplayNameWithMarks
               as="h1"
               name={name}
-              verified={false}
+              verified={profile.verified}
               sealSize="md"
+              onVerifiedSealClick={profile.verified ? () => setAboutOpen(true) : undefined}
               nameClassName="text-4xl text-ink"
-              className="min-w-0 flex-1"
+              className="min-w-0 max-w-full flex-1"
             />
-            {profile.verified ? (
-              <button
-                type="button"
-                onClick={() => setAboutOpen(true)}
-                className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center ${focusRing}`}
-                aria-label="About this profile"
-                data-testid="profile-verified-seal-button"
-              >
-                <VerifiedSeal size="md" />
-              </button>
-            ) : null}
             {!isOwn ? (
               <SafetyOverflowMenu
                 subject={{
@@ -102,16 +91,7 @@ export function ProfileHeader({
                 }}
                 onAboutProfile={() => setAboutOpen(true)}
               />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setAboutOpen(true)}
-                className={`inline-flex min-h-11 items-center rounded-full px-3 text-sm font-medium text-muted ${focusRing}`}
-                data-testid="profile-about-menu-button"
-              >
-                About this profile
-              </button>
-            )}
+            ) : null}
             {profile.role === 'writer' ? (
               <span className="rounded-full bg-raised px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
                 Writer
@@ -119,6 +99,16 @@ export function ProfileHeader({
             ) : null}
           </div>
           <p className="text-base text-muted">@{profile.username}</p>
+          {isOwn || profile.verified ? (
+            <button
+              type="button"
+              onClick={() => setAboutOpen(true)}
+              className={`self-start text-sm font-medium text-muted underline-offset-2 hover:underline ${focusRing}`}
+              data-testid="profile-about-link"
+            >
+              About this profile
+            </button>
+          ) : null}
           {profile.bio ? <p className="whitespace-pre-wrap text-base text-ink">{profile.bio}</p> : null}
           {badgeShelf ? <div className="-mx-5 mt-1">{badgeShelf}</div> : null}
           {profile.country ? <CountryLink code={profile.country} testId="profile-country-link" /> : null}

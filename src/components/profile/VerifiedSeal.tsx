@@ -1,12 +1,7 @@
 import { VERIFIED_SEAL_FILL_DARK, VERIFIED_SEAL_FILL_LIGHT } from '../../lib/design/verifiedSealColors.ts'
+import { VERIFIED_SEAL_PX, type VerifiedSealSize } from '../../lib/design/verifiedSealSizes.ts'
 
-export type VerifiedSealSize = 'sm' | 'md' | 'lg'
-
-const SIZE_PX: Record<VerifiedSealSize, number> = {
-  sm: 14,
-  md: 18,
-  lg: 22,
-}
+export type { VerifiedSealSize }
 
 type VerifiedSealProps = {
   size?: VerifiedSealSize
@@ -15,13 +10,16 @@ type VerifiedSealProps = {
 
 /** Original eight-lobe rosette with tapered check — coral accent, not interactive. */
 export function VerifiedSeal({ size = 'sm', className = '' }: VerifiedSealProps) {
-  const px = SIZE_PX[size]
+  const px = VERIFIED_SEAL_PX[size]
+  const strokeWidth = px <= 18 ? 2.1 : 1.75
   return (
     <span
       role="img"
       aria-label="Verified account"
       className={`inline-block shrink-0 align-middle ${className}`}
       style={{ width: px, height: px, lineHeight: 0 }}
+      data-testid="verified-seal"
+      data-seal-size={size}
     >
       <svg viewBox="0 0 24 24" width={px} height={px} aria-hidden="true" className="block">
         <path
@@ -37,7 +35,7 @@ export function VerifiedSeal({ size = 'sm', className = '' }: VerifiedSealProps)
         <path
           fill="none"
           stroke="#fff"
-          strokeWidth="1.65"
+          strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeLinejoin="round"
           d="M8.2 12.1 10.6 14.5 15.8 9.3"
