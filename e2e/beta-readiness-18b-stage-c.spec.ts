@@ -15,14 +15,15 @@ test.describe('beta readiness 18B stage C', () => {
 
   test('My languages shortcut applies preferred languages on browse', async ({ page }) => {
     await page.goto('/discover/browse', { waitUntil: 'domcontentloaded' })
-    await page.getByTestId('language-filter-my-languages').click()
-    await expect(page).toHaveURL(/languages=af/)
-    await expect(page).toHaveURL(/languages=en/)
+    const myLanguages = page.getByTestId('language-filter-my-languages')
+    await expect(myLanguages).toBeEnabled({ timeout: 15_000 })
+    await myLanguages.click()
+    await expect(page).toHaveURL(/languages=af(%2C|,)en/)
   })
 
   test('search page keeps language filters in the URL', async ({ page }) => {
     await page.goto('/discover/search?q=poetry', { waitUntil: 'domcontentloaded' })
-    await page.getByRole('tab', { name: /Arabic/i }).click()
+    await page.getByRole('tab', { name: /العربية/i }).click()
     await expect(page).toHaveURL(/languages=ar/)
     await expect(page).toHaveURL(/q=poetry/)
   })

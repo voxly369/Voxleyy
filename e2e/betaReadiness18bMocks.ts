@@ -67,7 +67,7 @@ export function betaReadiness18bMockHandleRest(url: string, method: string, post
       onboarding_step: onboardingStep,
       writer_roles: ['poet'],
       favorite_genres: ['poetry'],
-      languages: ['en'],
+      languages: ['en', 'af'],
       welcome_moment_seen_at: welcomeMomentSeenAt,
       last_entrance_local_date: lastEntranceLocalDate,
       show_entrance_screen: showEntranceScreen,
