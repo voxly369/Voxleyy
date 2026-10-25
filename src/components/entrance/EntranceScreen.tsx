@@ -52,6 +52,7 @@ export function EntranceScreen({
   const [sceneActive, setSceneActive] = useState(true)
   const panelRef = useRef<HTMLDivElement>(null)
   const widthRef = useRef(400)
+  const [panelWidth, setPanelWidth] = useState(400)
   const pointerStart = useRef<{ x: number; y: number; t: number } | null>(null)
   const lastMove = useRef<{ x: number; t: number } | null>(null)
 
@@ -155,7 +156,15 @@ export function EntranceScreen({
   }, [open])
 
   useEffect(() => {
-    if (panelRef.current) widthRef.current = panelRef.current.offsetWidth || window.innerWidth
+    if (!open) return
+    function measure() {
+      const w = panelRef.current?.offsetWidth || window.innerWidth
+      widthRef.current = w
+      setPanelWidth(w)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
   }, [open])
 
   const onPointerDown = (event: ReactPointerEvent) => {
@@ -200,7 +209,7 @@ export function EntranceScreen({
   })
   const fullName = profile.display_name.trim() || profile.username
   const cName = countryName(profile.country)
-  const parallax = swipeProgressFromOffset(dragOffset, widthRef.current || 1)
+  const parallax = swipeProgressFromOffset(dragOffset, panelWidth || 1)
   const panelTransform = reducedMotion
     ? undefined
     : {
