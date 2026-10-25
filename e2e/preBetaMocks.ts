@@ -43,6 +43,8 @@ let inviteCodes: Array<Record<string, unknown>> = [
   },
 ]
 
+let exportMyDataCallCount = 0
+
 let clientErrorGroups: Array<Record<string, unknown>> = [
   {
     message: 'TypeError: Cannot read properties of undefined',
@@ -65,7 +67,16 @@ export function setE2eInviteOnlyPlatform(enabled: boolean) {
 }
 
 export function setE2eConsentsOutdated() {
-  consentRecords = [{ document: 'terms', version: 'old-version', accepted_at: '2025-01-01T00:00:00.000Z' }]
+  consentRecords = [
+    { document: 'terms', version: 'old-version', accepted_at: '2025-01-01T00:00:00.000Z' },
+    { document: 'privacy', version: 'old-version', accepted_at: '2025-01-01T00:00:00.000Z' },
+  ]
+}
+
+export function setE2eConsentRecords(
+  records: Array<{ document: string; version: string; accepted_at: string }>,
+) {
+  consentRecords = records
 }
 
 export function resetPreBetaMocks() {
@@ -82,6 +93,7 @@ export function resetPreBetaMocks() {
     { document: 'terms', version: CURRENT_CONSENT_VERSION, accepted_at: '2026-01-01T00:00:00.000Z' },
     { document: 'privacy', version: CURRENT_CONSENT_VERSION, accepted_at: '2026-01-01T00:00:00.000Z' },
   ]
+  exportMyDataCallCount = 0
   inviteCodes = [
     {
       code: 'ABCDEFGHJK',
@@ -131,7 +143,30 @@ export function preBetaMockHandleRest(url: string, _method: string, postData: un
     return null
   }
   if (url.includes('/rest/v1/rpc/export_my_data')) {
-    return { user: { email: 'reader@example.com' }, exports: [] }
+    exportMyDataCallCount += 1
+    if (exportMyDataCallCount > 1) {
+      return {
+        __httpError: { status: 400, message: 'You can download your data once per day.' },
+      }
+    }
+    return {
+      exported_at: '2026-01-01T00:00:00.000Z',
+      truncated: false,
+      profile: { id: '11111111-1111-1111-1111-111111111111', username: 'readerone' },
+      notification_settings: {},
+      creations: [],
+      comments: [],
+      likes: [],
+      saves: [],
+      follows: [],
+      collections: [],
+      highlights: [],
+      bookmarks: [],
+      reading_progress: [],
+      badges: [],
+      messages_sent: [],
+      consents: [],
+    }
   }
   if (url.includes('/rest/v1/rpc/delete_my_account')) {
     return null

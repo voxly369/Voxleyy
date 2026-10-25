@@ -5104,6 +5104,294 @@ begin
   perform pg_temp.record('founder_active_daily_quote_count', v_count >= 120, 'active=' || v_count);
 end $beta_readiness_18b$;
 
+do $stage_a_account_lifecycle$
+declare
+  v_del uuid := gen_random_uuid();
+  v_other uuid;
+  v_founder uuid;
+  v_pub uuid;
+  v_own uuid;
+  v_book uuid;
+  v_ch uuid;
+  v_conv uuid;
+  v_msg uuid;
+  v_count integer;
+  v_likes_before integer;
+  v_likes_after integer;
+  v_other_creations integer;
+  v_json jsonb;
+  v_body text;
+  v_cols text;
+  v_vals text;
+  v_i integer;
+  v_uid uuid;
+begin
+  select reader_b, founder into v_other, v_founder from rls_ids limit 1;
+  select id into v_pub from public.creations
+  where author_id = v_other and audience = 'public' and status = 'published' and is_removed = false
+  limit 1;
+
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_del, v_del::text || '@stage-a-del.test', now());
+  update public.profiles set beta_access_granted = true where id = v_del;
+
+  perform set_config('request.jwt.claim.sub', v_del::text, true);
+  perform set_config('request.jwt.claims', json_build_object(
+    'sub', v_del::text, 'role', 'authenticated', 'iat', extract(epoch from now())::bigint
+  )::text, true);
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_del, 'poem', 'Delete me', 'public', 'published', 'body') returning id into v_own;
+  insert into public.comments (creation_id, author_id, body) values (v_pub, v_del, 'comment');
+  insert into public.likes (user_id, creation_id) values (v_del, v_pub);
+  insert into public.saves (user_id, creation_id) values (v_del, v_pub);
+  insert into public.follows (follower_id, followee_id) values (v_del, v_other) on conflict do nothing;
+  insert into public.reader_collections (user_id, name) values (v_del, 'My list') returning id into v_ch;
+  insert into public.reader_highlights (
+    user_id, creation_id, start_paragraph, start_char, end_paragraph, end_char, quote, colour
+  ) values (v_del, v_pub, 0, 0, 0, 3, 'hi', 'yellow');
+  insert into public.reader_bookmarks (user_id, creation_id, paragraph, paragraph_offset)
+  values (v_del, v_pub, 0, 0);
+  insert into public.post_reading_progress (user_id, creation_id, percent, position)
+  values (v_del, v_pub, 50, 100) on conflict do nothing;
+  insert into public.notifications (recipient_id, actor_id, type, target_type, target_id, data)
+  values (v_del, v_other, 'like', 'creation', v_pub, '{}'::jsonb);
+  begin
+    insert into public.user_badges (user_id, badge_id) select v_del, id from public.badges limit 1;
+  exception when others then
+    null;
+  end;
+  insert into public.user_streaks (user_id, writing_current, writing_longest, writing_last_active_day)
+  values (v_del, 1, 1, current_date) on conflict (user_id) do update set writing_current = 1;
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_del, 'book', 'My book', 'public', 'draft', '') returning id into v_book;
+  insert into public.books (id, author_id, description) values (v_book, v_del, 'desc');
+  insert into public.chapters (book_id, position, title, body_text, status)
+  values (v_book, 1, 'One', 'chapter body', 'draft');
+
+  v_conv := public.get_or_create_dm(v_other);
+  v_msg := public.send_message(v_conv, 'Goodbye from deleted user');
+
+  select like_count into v_likes_before from public.creations where id = v_pub;
+  select count(*) into v_other_creations from public.creations where author_id = v_other;
+
+  execute format('set local role %I', session_user);
+  v_cols := 'bucket_id, name';
+  v_vals := quote_literal('avatars') || ', ' || quote_literal(v_del::text || '/avatar.webp');
+  if exists (select 1 from information_schema.columns where table_schema = 'storage' and table_name = 'objects' and column_name = 'owner') then
+    v_cols := v_cols || ', owner';
+    v_vals := v_vals || ', ' || quote_literal(v_del::text) || '::uuid';
+  end if;
+  execute format('insert into storage.objects (%s) values (%s)', v_cols, v_vals);
+  v_vals := quote_literal('covers') || ', ' || quote_literal(v_del::text || '/cover.webp');
+  if position('owner' in v_cols) > 0 then
+    v_vals := v_vals || ', ' || quote_literal(v_del::text) || '::uuid';
+  end if;
+  execute format('insert into storage.objects (%s) values (%s)', v_cols, v_vals);
+
+  perform set_config('request.jwt.claim.sub', v_del::text, true);
+  perform set_config('request.jwt.claims', json_build_object(
+    'sub', v_del::text, 'role', 'authenticated', 'iat', extract(epoch from now())::bigint
+  )::text, true);
+  perform public.delete_my_account('stage_a_smoke');
+
+  perform pg_temp.record('delete_my_account removes own creations', (select count(*) from public.creations where author_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own comments', (select count(*) from public.comments where author_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own likes', (select count(*) from public.likes where user_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own saves', (select count(*) from public.saves where user_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own follows', (select count(*) from public.follows where follower_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own collections', (select count(*) from public.reader_collections where user_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own highlights', (select count(*) from public.reader_highlights where user_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own bookmarks', (select count(*) from public.reader_bookmarks where user_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own reading progress', (select count(*) from public.post_reading_progress where user_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own notifications', (select count(*) from public.notifications where recipient_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own badges', (select count(*) from public.user_badges where user_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own streaks', (select count(*) from public.user_streaks where user_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own books', (select count(*) from public.books where author_id = v_del) = 0, 'rows');
+  perform pg_temp.record('delete_my_account removes own chapters', (select count(*) from public.chapters where book_id = v_book) = 0, 'rows');
+  select like_count into v_likes_after from public.creations where id = v_pub;
+  perform pg_temp.record('delete_my_account keeps other user like_count consistent', v_likes_after <= v_likes_before, 'before=' || v_likes_before || ' after=' || v_likes_after);
+  perform pg_temp.record('delete_my_account leaves other user creations untouched', (select count(*) from public.creations where author_id = v_other) = v_other_creations, 'rows=' || v_other_creations);
+  select count(*) into v_count from public.messages where id = v_msg;
+  perform pg_temp.record('delete_my_account removes sent message rows on cascade', v_count = 0, 'rows=' || v_count);
+  select count(*) into v_count
+  from public.deletion_storage_queue q
+  where q.done_at is null
+    and q.bucket_id in ('avatars', 'covers', 'banners', 'media', 'manuscripts')
+    and q.object_path like v_del::text || '/%';
+  perform pg_temp.record('deletion_storage_queue queued avatar and cover paths', v_count >= 1, 'rows=' || v_count);
+
+  begin
+    perform public.delete_my_account('second_call');
+    perform pg_temp.record('delete_my_account second call safe', true, 'no-op ok');
+  exception when others then
+    perform pg_temp.record('delete_my_account second call safe', false, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config('request.jwt.claims', json_build_object(
+    'sub', v_founder::text, 'role', 'authenticated', 'iat', extract(epoch from now())::bigint
+  )::text, true);
+  begin
+    perform public.delete_my_account('founder_attempt');
+    perform pg_temp.record('delete_my_account founder cannot be deleted', false, 'deleted');
+  exception when others then
+    perform pg_temp.record('delete_my_account founder cannot be deleted', true, sqlerrm);
+  end;
+end $stage_a_account_lifecycle$;
+
+do $stage_a_export_limits$
+declare
+  v_export uuid := gen_random_uuid();
+  v_json jsonb;
+begin
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_export, v_export::text || '@export-limit.test', now());
+  update public.profiles set beta_access_granted = true where id = v_export;
+  perform set_config('request.jwt.claim.sub', v_export::text, true);
+  perform set_config('request.jwt.claims', json_build_object(
+    'sub', v_export::text, 'role', 'authenticated', 'iat', extract(epoch from now())::bigint
+  )::text, true);
+  v_json := public.export_my_data();
+  perform pg_temp.record('export_my_data truncated false for normal account', coalesce((v_json->>'truncated')::boolean, false) = false, 'truncated=' || coalesce(v_json->>'truncated', 'null'));
+  begin
+    perform public.export_my_data();
+    perform pg_temp.record('export_my_data daily limit second call refused', false, 'second export ok');
+  exception when others then
+    perform pg_temp.record('export_my_data daily limit second call refused', true, sqlerrm);
+  end;
+  perform pg_temp.record('export_my_data never includes another user profile id', (v_json->'profile'->>'id')::uuid = v_export, 'id ok');
+  execute 'set local role anon';
+  begin
+    perform public.export_my_data();
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('export_my_data anon refused', false, 'exported');
+  exception when others then
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('export_my_data anon refused', true, sqlerrm);
+  end;
+  execute 'set local role authenticated';
+end $stage_a_export_limits$;
+
+do $stage_a_rate_limits$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_pub uuid;
+  v_i integer;
+  v_uid uuid;
+begin
+  select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
+  select id into v_pub from public.creations
+  where audience = 'public' and status = 'published' and is_removed = false limit 1;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  for v_i in 1..121 loop
+    begin
+      delete from public.follows where follower_id = v_a and followee_id = v_b;
+      insert into public.follows (follower_id, followee_id) values (v_a, v_b) on conflict do nothing;
+      delete from public.follows where follower_id = v_a and followee_id = v_b;
+      if v_i = 121 then
+        perform pg_temp.record('unfollow rate limit enforced', false, '121 unfollows ok');
+      end if;
+    exception when others then
+      if v_i = 121 then
+        perform pg_temp.record('unfollow rate limit enforced', true, sqlerrm);
+      end if;
+      exit;
+    end;
+  end loop;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  for v_i in 1..31 loop
+    begin
+      update public.profiles set bio = 'edit ' || v_i::text where id = v_a;
+      if v_i = 31 then
+        perform pg_temp.record('profile edit rate limit enforced', false, '31 edits ok');
+      end if;
+    exception when others then
+      if v_i = 31 then
+        perform pg_temp.record('profile edit rate limit enforced', true, sqlerrm);
+      end if;
+      exit;
+    end;
+  end loop;
+
+  for v_i in 1..51 loop
+    begin
+      perform public.check_upload_quota(1024, 'avatars');
+      if v_i = 51 then
+        perform pg_temp.record('upload quota daily count enforced', false, '51 uploads ok');
+      end if;
+    exception when others then
+      if v_i = 51 then
+        perform pg_temp.record('upload quota daily count enforced', true, sqlerrm);
+      end if;
+      exit;
+    end;
+  end loop;
+
+  for v_i in 1..501 loop
+    begin
+      insert into public.reader_highlights (
+        user_id, creation_id, start_paragraph, start_char, end_paragraph, end_char, quote, colour
+      ) values (v_a, v_pub, 0, v_i, 0, v_i + 1, 'q', 'yellow');
+      if v_i = 501 then
+        perform pg_temp.record('highlight rate limit enforced', false, '501 highlights ok');
+      end if;
+    exception when others then
+      if v_i = 501 then
+        perform pg_temp.record('highlight rate limit enforced', true, sqlerrm);
+      end if;
+      exit;
+    end;
+  end loop;
+
+  for v_i in 1..501 loop
+    begin
+      insert into public.reader_bookmarks (user_id, creation_id, paragraph, paragraph_offset)
+      values (v_a, v_pub, 0, v_i);
+      if v_i = 501 then
+        perform pg_temp.record('bookmark rate limit enforced', false, '501 bookmarks ok');
+      end if;
+    exception when others then
+      if v_i = 501 then
+        perform pg_temp.record('bookmark rate limit enforced', true, sqlerrm);
+      end if;
+      exit;
+    end;
+  end loop;
+
+  for v_i in 1..51 loop
+    begin
+      insert into public.reader_collections (user_id, name) values (v_a, 'c' || v_i::text);
+      if v_i = 51 then
+        perform pg_temp.record('collection rate limit enforced', false, '51 collections ok');
+      end if;
+    exception when others then
+      if v_i = 51 then
+        perform pg_temp.record('collection rate limit enforced', true, sqlerrm);
+      end if;
+      exit;
+    end;
+  end loop;
+
+  for v_i in 1..2001 loop
+    begin
+      perform public.record_creation_view(v_pub);
+      if v_i = 2001 then
+        perform pg_temp.record('view recording rate limit enforced', false, '2001 views ok');
+      end if;
+    exception when others then
+      if v_i = 2001 then
+        perform pg_temp.record('view recording rate limit enforced', true, sqlerrm);
+      end if;
+      exit;
+    end;
+  end loop;
+end $stage_a_rate_limits$;
+
 do $$
 declare
   n integer;

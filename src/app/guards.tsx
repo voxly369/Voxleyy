@@ -48,11 +48,13 @@ function ConsentReacceptGate() {
 
   if (needsReaccept && !allowedPath) {
     return (
-      <ConsentReacceptModal
-        open
-        documents={pendingDocs}
-        onAccepted={() => setPendingDocs([])}
-      />
+      <ModalStackProvider>
+        <ConsentReacceptModal
+          open
+          documents={pendingDocs}
+          onAccepted={() => setPendingDocs([])}
+        />
+      </ModalStackProvider>
     )
   }
 

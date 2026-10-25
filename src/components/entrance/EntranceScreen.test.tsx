@@ -38,6 +38,13 @@ vi.mock('../../lib/supabaseClient.ts', () => ({
       if (name === 'writing_prompt_for_date') return { data: 'Threshold' }
       return { data: null }
     }),
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn(async () => ({ data: null, error: null })),
+        })),
+      })),
+    })),
   },
 }))
 
@@ -102,6 +109,9 @@ describe('EntranceScreen', () => {
   it('exposes greeting in aria-live region', async () => {
     renderEntrance()
     expect(await screen.findByTestId('entrance-screen')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(document.querySelector('[aria-live="polite"]')).toBeTruthy()
+    })
     const live = document.querySelector('[aria-live="polite"]')
     expect(live).toBeTruthy()
     expect(live).toHaveTextContent(/Sam|Good/)

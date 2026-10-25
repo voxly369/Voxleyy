@@ -130,6 +130,18 @@ const screens: ScreenDef[] = [
   { name: 'discover', path: '/discover', signedIn: true },
   { name: 'settings', path: '/settings', signedIn: true },
   { name: 'sign-in', path: '/login', signedIn: false, skipNav: true, skipRightRail: true },
+  {
+    name: 'auth-confirm-success',
+    path: '/auth/confirm',
+    signedIn: false,
+    skipNav: true,
+    skipRightRail: true,
+    setup: async (page) => {
+      await page.addInitScript(() => {
+        window.history.replaceState({}, '', '/auth/confirm')
+      })
+    },
+  },
 ]
 
 function attachConsoleGuard(page: Page) {
