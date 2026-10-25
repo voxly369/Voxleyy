@@ -4,6 +4,7 @@
  */
 import type { Route } from '@playwright/test'
 import { OTHER, READER } from './fixtures.ts'
+import { setE2eReaderAvatarUrl } from './profileAvatarState.ts'
 
 type Json = Record<string, unknown> | unknown[] | string | number | boolean | null
 
@@ -289,6 +290,13 @@ export function notificationMockHandleRest(url: string, method: string, postData
   }
 
   if (url.includes('/rest/v1/profiles') && method === 'PATCH') {
+    const body = rpcBody(postData)
+    if (typeof body.avatar_url === 'string') {
+      setE2eReaderAvatarUrl(body.avatar_url)
+    }
+    if (body.avatar_url === null) {
+      setE2eReaderAvatarUrl(null)
+    }
     return []
   }
 

@@ -32,6 +32,7 @@ import {
   resetMfaMocks,
 } from './mfaMocks.ts'
 import { Buffer } from 'node:buffer'
+import { getE2eReaderAvatarUrl, resetE2eReaderAvatarUrl } from './profileAvatarState.ts'
 
 export const PROJECT_REF = 'ktgxdqplvggeyrnuqljx'
 export const AUTH_STORAGE_KEY = `sb-${PROJECT_REF}-auth-token`
@@ -101,7 +102,7 @@ function ownProfile(id: string, username: string, display_name: string, creation
     username,
     display_name,
     bio: 'A thoughtful bio for testing.',
-    avatar_url: null,
+    avatar_url: id === READER.id ? getE2eReaderAvatarUrl() : null,
     banner_url: null,
     website: null,
     country: 'ZA',
@@ -201,8 +202,8 @@ function authorEmbed(id: string, username: string, display_name: string) {
     id,
     username,
     display_name,
-    avatar_url: null,
-    verified: e2eOtherAuthorVerified,
+    avatar_url: id === READER.id ? getE2eReaderAvatarUrl() : null,
+    verified: id === READER.id ? false : e2eOtherAuthorVerified,
   }
 }
 
@@ -337,7 +338,7 @@ function commentTree() {
         id: READER.id,
         username: READER.username,
         display_name: READER.display_name,
-        avatar_url: null,
+        avatar_url: getE2eReaderAvatarUrl(),
         verified: false,
       },
     },
@@ -594,6 +595,7 @@ export async function installSupabaseMocks(page: Page) {
   setE2eEntranceVisible(false)
   resetAuthMocks()
   resetMfaMocks()
+  resetE2eReaderAvatarUrl()
   e2eOwnProfileRole = 'writer'
   e2eOwnProfileVerified = false
 
@@ -735,6 +737,8 @@ export {
   setE2eInviteOnlyPlatform,
   setE2eInviteCodeValid,
 } from './preBetaMocks.ts'
+
+export { getE2eReaderAvatarUrl } from './profileAvatarState.ts'
 
 export {
   bumpMessageUnread,

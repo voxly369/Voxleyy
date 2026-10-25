@@ -5757,6 +5757,34 @@ begin
   exception when others then
     perform pg_temp.record('storage avatars insert blocked for other user path', true, sqlerrm);
   end;
+
+  execute format('set local role %I', session_user);
+
+  select count(*) into v_count
+  from storage.buckets b
+  where b.id = 'avatars'
+    and b.file_size_limit = 5242880
+    and b.allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp']::text[];
+  perform pg_temp.record('avatars bucket mime and size match client rules', v_count = 1, 'match_rows=' || v_count);
+
+  select count(*) into v_count
+  from storage.buckets b
+  where b.id = 'banners'
+    and b.file_size_limit = 5242880
+    and b.allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp']::text[];
+  perform pg_temp.record('banners bucket mime and size match client rules', v_count = 1, 'match_rows=' || v_count);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  execute 'set local role authenticated';
+  perform public.queue_storage_object_for_deletion('avatars', v_a::text || '/replaced.webp');
+  execute format('set local role %I', session_user);
+  select count(*) into v_count
+  from public.deletion_storage_queue q
+  where q.bucket_id = 'avatars'
+    and q.object_path = v_a::text || '/replaced.webp'
+    and q.done_at is null;
+  perform pg_temp.record('deletion queue receives row on avatar replace enqueue', v_count = 1, 'rows=' || v_count);
+
   reset role;
 end $stage_18c_storage$;
 

@@ -11,6 +11,7 @@ import {
   OTHER,
   READER,
   feedPosts,
+  getE2eReaderAvatarUrl,
 } from './fixtures.ts'
 
 const LAYOUT_WIDTHS = [375, 767, 768, 1024, 1279, 1280, 1440] as const
@@ -226,6 +227,48 @@ test.describe('18C hardening profile photos', () => {
     for (let i = 0; i < count; i += 1) {
       if (await removeButtons.nth(i).isVisible()) await removeButtons.nth(i).click()
     }
+  })
+
+  test('uploaded avatar appears on published post and own comment', async ({ page }) => {
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    )
+    await page.goto('/settings/profile', { waitUntil: 'domcontentloaded' })
+    await page.locator('#avatars-gallery').setInputFiles({
+      name: 'avatar.png',
+      mimeType: 'image/png',
+      buffer: png,
+    })
+    await page.getByRole('button', { name: 'Use this crop' }).click()
+    await expect(page.getByRole('img', { name: `${READER.display_name} avatar` })).toBeVisible({ timeout: 20_000 })
+
+    const avatarUrl = getE2eReaderAvatarUrl()
+    expect(avatarUrl).toMatch(new RegExp(`avatars/${READER.id}/`))
+
+    const readerPost = {
+      ...feedPosts()[0],
+      id: '00000000-0000-0000-0000-000000000099',
+      author_id: READER.id,
+      author: {
+        id: READER.id,
+        username: READER.username,
+        display_name: READER.display_name,
+        avatar_url: avatarUrl,
+        verified: false,
+      },
+    }
+    setE2eFeedOverride([readerPost])
+
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    const feedAvatar = page.locator('article').first().locator(`img[src="${avatarUrl}"]`)
+    await expect(feedAvatar).toBeVisible()
+
+    await page.goto(`/c/${SAMPLE_CREATION_ID}`, { waitUntil: 'domcontentloaded' })
+    await page.getByRole('button', { name: /comments/i }).first().click()
+    await expect(page.getByText('Reply text')).toBeVisible()
+    const commentAvatar = page.locator(`img[src="${avatarUrl}"]`).last()
+    await expect(commentAvatar).toBeVisible()
   })
 })
 
