@@ -60,7 +60,7 @@ export function AboutProfileSheet({ open, onClose, profile }: AboutProfileSheetP
             <div>
               <dt className="text-muted">{aboutProfileCopy.verifiedLabel}</dt>
               <dd className="mt-1 flex items-center gap-2 text-ink">
-                <VerifiedSeal size="sm" />
+                <VerifiedSeal size="md" />
                 <span>{verifiedSince}</span>
               </dd>
             </div>

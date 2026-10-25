@@ -59,4 +59,16 @@ describe('AboutProfileSheet', () => {
     expect(screen.getByText(/Account based in/i)).toBeInTheDocument()
     expect(screen.getByText(/South Africa/i)).toBeInTheDocument()
   })
+
+  it('uses shared VerifiedSeal at lg on the name line and md on the verified row', () => {
+    renderSheet({
+      ...base,
+      verified: true,
+      verifiedAt: '2025-03-15T00:00:00.000Z',
+    })
+    const seals = screen.getAllByTestId('verified-seal')
+    expect(seals).toHaveLength(2)
+    expect(seals[0]).toHaveAttribute('data-seal-size', 'lg')
+    expect(seals[1]).toHaveAttribute('data-seal-size', 'md')
+  })
 })

@@ -131,6 +131,11 @@ let e2eCreationDetailOverride: Record<string, unknown> | null = null
 let e2eOwnProfileRole: 'reader' | 'writer' = 'writer'
 let e2eOwnProfileVerified = false
 let e2eOtherAuthorVerified = false
+let e2eOwnProfileDisplayName: string | null = null
+
+function e2eReaderDisplayName(): string {
+  return e2eOwnProfileDisplayName ?? READER.display_name
+}
 
 export function setE2eOwnProfileRole(role: 'reader' | 'writer') {
   e2eOwnProfileRole = role
@@ -142,6 +147,10 @@ export function setE2eOwnProfileVerified(verified: boolean) {
 
 export function setE2eOtherAuthorVerified(verified: boolean) {
   e2eOtherAuthorVerified = verified
+}
+
+export function setE2eOwnProfileDisplayName(displayName: string | null) {
+  e2eOwnProfileDisplayName = displayName
 }
 
 /** Replace default feed rows for a single e2e file; pass null to reset. */
@@ -413,7 +422,7 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
       return [ownProfile(OTHER.id, OTHER.username, OTHER.display_name, 12)]
     }
     if (url.includes('username=eq.readerone') || url.includes(`id=eq.${READER.id}`)) {
-      const row = { ...ownProfile(READER.id, READER.username, READER.display_name, 0), role: e2eOwnProfileRole }
+      const row = { ...ownProfile(READER.id, READER.username, e2eReaderDisplayName(), 0), role: e2eOwnProfileRole }
       const status = moderationOwnProfileStatus()
       if (status) {
         return [{ ...row, status, suspended_until: status === 'suspended' ? '2030-01-01T00:00:00.000Z' : null }]
@@ -425,7 +434,7 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
         ownProfile(`33333333-3333-3333-3333-${String(i + 1).padStart(12, '0')}`, `writer${i}`, `Writer ${i}`),
       )
     }
-    return [{ ...ownProfile(READER.id, READER.username, READER.display_name), role: e2eOwnProfileRole }]
+    return [{ ...ownProfile(READER.id, READER.username, e2eReaderDisplayName()), role: e2eOwnProfileRole }]
   }
 
   if (url.includes('/rest/v1/feed_creations') || url.includes('/rest/v1/following_feed')) {
@@ -612,6 +621,7 @@ export async function installSupabaseMocks(page: Page) {
   resetE2eReaderAvatarUrl()
   e2eOwnProfileRole = 'writer'
   e2eOwnProfileVerified = false
+  e2eOwnProfileDisplayName = null
   e2eFeedOverride = null
 
   await page.route('**/*', async (route) => {

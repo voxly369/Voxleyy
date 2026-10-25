@@ -181,7 +181,7 @@ test.describe('18C hardening about profile', () => {
     test(`about sheet layout ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 })
       await page.goto(`/u/${READER.username}`, { waitUntil: 'domcontentloaded' })
-      await page.getByTestId('profile-about-menu-button').click()
+      await page.getByTestId('profile-about-link').click()
       await expect(page.getByTestId('about-profile-sheet')).toBeVisible()
     })
   }
@@ -190,7 +190,7 @@ test.describe('18C hardening about profile', () => {
     for (const width of [375, 1280] as const) {
       await page.setViewportSize({ width, height: 900 })
       await page.goto(`/u/${READER.username}`, { waitUntil: 'domcontentloaded' })
-      await page.getByTestId('profile-about-menu-button').click()
+      await page.getByTestId('profile-about-link').click()
       const results = await new AxeBuilder({ page }).include('[data-testid="about-profile-sheet"]').analyze()
       expect(results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious')).toEqual([])
     }
