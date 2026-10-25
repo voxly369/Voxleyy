@@ -297,7 +297,7 @@ export function notificationMockHandleRest(url: string, method: string, postData
     if (body.avatar_url === null) {
       setE2eReaderAvatarUrl(null)
     }
-    return []
+    return [{ id: READER.id, ...body, updated_at: new Date().toISOString() }]
   }
 
   if (url.includes('/rest/v1/notifications') && method === 'PATCH') {

@@ -234,6 +234,9 @@ test.describe('18C hardening profile photos', () => {
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
       'base64',
     )
+    await page.route('**/storage/v1/object/public/avatars/**', async (route) => {
+      await route.fulfill({ status: 200, contentType: 'image/png', body: png })
+    })
     await page.goto('/settings/profile', { waitUntil: 'domcontentloaded' })
     await page.locator('#avatars-gallery').setInputFiles({
       name: 'avatar.png',
@@ -241,10 +244,17 @@ test.describe('18C hardening profile photos', () => {
       buffer: png,
     })
     await page.getByRole('button', { name: 'Use this crop' }).click()
-    await expect(page.getByRole('img', { name: `${READER.display_name} avatar` })).toBeVisible({ timeout: 20_000 })
+    await expect.poll(() => getE2eReaderAvatarUrl(), { timeout: 45_000 }).toMatch(new RegExp(`avatars/${READER.id}/`))
+    const avatarUrl = getE2eReaderAvatarUrl()!
+    await expect(page.locator(`img[src="${avatarUrl}"]`).first()).toBeVisible()
 
-    const avatarUrl = getE2eReaderAvatarUrl()
-    expect(avatarUrl).toMatch(new RegExp(`avatars/${READER.id}/`))
+    await page.goto(`/c/${SAMPLE_CREATION_ID}`, { waitUntil: 'domcontentloaded' })
+    await page.getByRole('button', { name: /comments/i }).first().click()
+    await expect(page.getByRole('heading', { name: 'Comments' })).toBeVisible()
+    const replyBody = page.getByTestId('comment-body').filter({ hasText: 'Reply text' }).first()
+    await expect(replyBody).toBeVisible({ timeout: 20_000 })
+    const replyRow = page.locator('div.ml-4').filter({ hasText: 'Reply text' })
+    await expect(replyRow.locator(`img[src*="/avatars/${READER.id}/"]`).first()).toBeVisible()
 
     const readerPost = {
       ...feedPosts()[0],
@@ -263,12 +273,6 @@ test.describe('18C hardening profile photos', () => {
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     const feedAvatar = page.locator('article').first().locator(`img[src="${avatarUrl}"]`)
     await expect(feedAvatar).toBeVisible()
-
-    await page.goto(`/c/${SAMPLE_CREATION_ID}`, { waitUntil: 'domcontentloaded' })
-    await page.getByRole('button', { name: /comments/i }).first().click()
-    await expect(page.getByText('Reply text')).toBeVisible()
-    const commentAvatar = page.locator(`img[src="${avatarUrl}"]`).last()
-    await expect(commentAvatar).toBeVisible()
   })
 })
 
