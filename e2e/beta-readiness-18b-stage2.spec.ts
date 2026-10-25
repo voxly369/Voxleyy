@@ -65,15 +65,15 @@ test.describe('beta readiness 18B stage 2', () => {
     await page.goto('/', { waitUntil: 'networkidle' })
     await expect(page.getByTestId('onboarding-flow')).toBeVisible()
     await page.getByTestId('onboarding-skip').click()
-    await expect(page.getByTestId('onboarding-step-label')).toContainText('Step 2 of 7')
+    await expect(page.getByTestId('onboarding-step-label')).toContainText('Step 2 of 8')
   })
 
   test('onboarding complete via finish on last step', async ({ page }) => {
     setE2eEntranceVisible(false)
-    setE2eOnboardingIncomplete(6)
+    setE2eOnboardingIncomplete(7)
     await page.goto('/', { waitUntil: 'networkidle' })
     await expect(page.getByTestId('onboarding-flow')).toBeVisible()
-    await expect(page.getByTestId('onboarding-step-label')).toContainText('Step 7 of 7')
+    await expect(page.getByTestId('onboarding-step-label')).toContainText('Step 8 of 8')
     await page.getByTestId('onboarding-finish').click()
     await expect(page.getByTestId('onboarding-flow')).toHaveCount(0)
     await expect(page.getByTestId('home-greeting')).toBeVisible()
@@ -83,9 +83,9 @@ test.describe('beta readiness 18B stage 2', () => {
     setE2eEntranceVisible(false)
     setE2eOnboardingIncomplete(3)
     await page.goto('/', { waitUntil: 'networkidle' })
-    await expect(page.getByTestId('onboarding-step-label')).toContainText('Step 4 of 7')
+    await expect(page.getByTestId('onboarding-step-label')).toContainText('Step 4 of 8')
     await page.reload({ waitUntil: 'networkidle' })
-    await expect(page.getByTestId('onboarding-step-label')).toContainText('Step 4 of 7')
+    await expect(page.getByTestId('onboarding-step-label')).toContainText('Step 4 of 8')
   })
 
   test('settings show entrance toggle', async ({ page }) => {

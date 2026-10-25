@@ -321,7 +321,7 @@ function commentTree() {
         username: OTHER.username,
         display_name: OTHER.display_name,
         avatar_url: null,
-        verified: false,
+        verified: e2eOtherAuthorVerified,
       },
     },
     {

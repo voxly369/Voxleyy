@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { focusRing } from '../shell/navItems.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import type { PreparedImage } from '../../lib/profiles/imageProcess.ts'
+import { validateImageFile } from '../../lib/profiles/imageFile.ts'
 import { clearProfileImage, saveProfileImage, type MediaBucket } from '../../lib/profiles/upload.ts'
 import { ProfileImageCropModal } from './ProfileImageCropModal.tsx'
 
@@ -26,6 +27,11 @@ export function ProfileImageField({ bucket, userId, label, url, fallbackLabel, o
   function pickFile(file: File | undefined) {
     if (!file || busy) return
     setError('')
+    const check = validateImageFile(file)
+    if (!check.ok) {
+      setError(check.message)
+      return
+    }
     setCropFile(file)
     setCropOpen(true)
   }

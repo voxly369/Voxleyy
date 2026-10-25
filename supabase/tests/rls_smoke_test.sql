@@ -5732,11 +5732,16 @@ begin
     true
   );
   execute 'set local role authenticated';
-  perform public.queue_storage_object_for_deletion('avatars', v_a::text || '/smoke-old.webp');
-  select count(*) into v_count
-  from public.deletion_storage_queue
-  where bucket_id = 'avatars' and object_path = v_a::text || '/smoke-old.webp' and done_at is null;
-  perform pg_temp.record('queue_storage_object_for_deletion enqueues row', v_count >= 1, 'rows=' || v_count);
+  begin
+    perform public.queue_storage_object_for_deletion('avatars', v_b::text || '/not-owned.webp');
+    perform pg_temp.record('queue_storage_object_for_deletion rejects other user path', false, 'allowed');
+  exception when others then
+    perform pg_temp.record(
+      'queue_storage_object_for_deletion rejects other user path',
+      sqlerrm like '%forbidden%',
+      sqlerrm
+    );
+  end;
 
   perform set_config('search_path', 'pg_temp, public, auth, storage', true);
   if exists (select 1 from information_schema.columns where table_schema = 'storage' and table_name = 'objects' and column_name = 'owner') then
