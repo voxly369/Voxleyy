@@ -452,7 +452,21 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
       },
     ]
   }
-  if (url.includes('/rest/v1/founder_featured_writers_public')) return []
+  if (url.includes('/rest/v1/founder_featured_writers_public')) {
+    return [
+      {
+        writer_id: READER.id,
+        username: READER.username,
+        display_name: READER.display_name,
+        avatar_url: getE2eReaderAvatarUrl(),
+        verified: false,
+        bio: null,
+        follower_count: 12,
+        country: 'ZA',
+        sort_order: 0,
+      },
+    ]
+  }
 
   if (url.includes('/rest/v1/rpc/writing_prompt_for_date')) return 'Write about the horizon.'
   if (url.includes('/rest/v1/rpc/tag_public_post_count')) return 2
@@ -598,6 +612,7 @@ export async function installSupabaseMocks(page: Page) {
   resetE2eReaderAvatarUrl()
   e2eOwnProfileRole = 'writer'
   e2eOwnProfileVerified = false
+  e2eFeedOverride = null
 
   await page.route('**/*', async (route) => {
     const session = sessionResponse(READER.id, READER.email)

@@ -15,7 +15,7 @@ export function CountryLink({ code, className = '', testId }: CountryLinkProps) 
   return (
     <Link
       to={`/country/${code}`}
-      className={`inline-flex min-h-11 items-center gap-1 text-sm text-muted underline underline-offset-2 ${focusRing} ${className}`}
+      className={`inline-flex min-h-11 min-w-11 items-center gap-1 text-sm text-muted underline underline-offset-2 ${focusRing} ${className}`}
       data-testid={testId}
     >
       <span aria-hidden="true">{flag}</span>
