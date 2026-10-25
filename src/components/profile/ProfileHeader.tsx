@@ -37,7 +37,7 @@ export function ProfileHeader({
   const [aboutOpen, setAboutOpen] = useState(false)
 
   return (
-    <header className="flex flex-col">
+    <header className="flex flex-col" data-testid="profile-header">
       <AboutProfileSheet open={aboutOpen} onClose={() => setAboutOpen(false)} profile={profile} />
       <div className="relative">
         {isOwn ? (
@@ -67,33 +67,36 @@ export function ProfileHeader({
       </div>
       <div className="mt-14 flex flex-col gap-3 px-5 lg:mt-6 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
         <div className="flex min-w-0 flex-col gap-3 lg:flex-1">
-          <div className="flex max-w-full flex-wrap items-center gap-2">
-            <DisplayNameWithMarks
-              as="h1"
-              name={name}
-              verified={profile.verified}
-              sealSize="md"
-              onVerifiedSealClick={profile.verified ? () => setAboutOpen(true) : undefined}
-              nameClassName="text-4xl text-ink"
-              className="min-w-0 max-w-full flex-1"
-            />
-            {!isOwn ? (
-              <SafetyOverflowMenu
-                subject={{
-                  reportedUserId: profile.id,
-                  displayLabel: name,
-                  report: {
-                    targetType: 'profile',
-                    targetId: profile.id,
-                    reportedUserId: profile.id,
-                    label: 'profile',
-                  },
-                }}
-                onAboutProfile={() => setAboutOpen(true)}
+          <div className="flex w-full min-w-0 flex-col gap-2">
+            <div className="flex w-full min-w-0 items-center gap-2">
+              <DisplayNameWithMarks
+                as="h1"
+                name={name}
+                verified={profile.verified}
+                sealSize="md"
+                onVerifiedSealClick={profile.verified ? () => setAboutOpen(true) : undefined}
+                reserveVerifiedSealSpace={profile.verified}
+                nameClassName="text-xl text-ink min-[376px]:text-2xl min-[480px]:text-3xl sm:text-4xl"
+                className="min-w-0 w-full max-w-full"
               />
-            ) : null}
+              {!isOwn ? (
+                <SafetyOverflowMenu
+                  subject={{
+                    reportedUserId: profile.id,
+                    displayLabel: name,
+                    report: {
+                      targetType: 'profile',
+                      targetId: profile.id,
+                      reportedUserId: profile.id,
+                      label: 'profile',
+                    },
+                  }}
+                  onAboutProfile={() => setAboutOpen(true)}
+                />
+              ) : null}
+            </div>
             {profile.role === 'writer' ? (
-              <span className="rounded-full bg-raised px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
+              <span className="w-fit rounded-full bg-raised px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted">
                 Writer
               </span>
             ) : null}

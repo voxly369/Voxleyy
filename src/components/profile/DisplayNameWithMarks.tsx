@@ -11,6 +11,8 @@ type DisplayNameWithMarksProps = {
   truncate?: boolean
   /** Opens About this profile when the verified seal is tapped (profile header). */
   onVerifiedSealClick?: () => void
+  /** Reserves space for a clickable verified seal so the name truncates only when needed. */
+  reserveVerifiedSealSpace?: boolean
   className?: string
   nameClassName?: string
   as?: 'span' | 'h1'
@@ -23,6 +25,7 @@ export function DisplayNameWithMarks({
   badges = null,
   truncate = true,
   onVerifiedSealClick,
+  reserveVerifiedSealSpace = false,
   className = '',
   nameClassName = '',
   as: Tag = 'span',
@@ -30,10 +33,17 @@ export function DisplayNameWithMarks({
   const seal = verified ? <VerifiedSeal size={sealSize} /> : null
   return (
     <Tag
-      className={`inline-flex max-w-full min-w-0 items-center gap-x-1 ${className}`}
+      className={`flex max-w-full min-w-0 items-center gap-x-1 ${className}`}
       data-testid="display-name-with-marks"
     >
-      <span className={`min-w-0 ${truncate ? 'truncate' : ''} ${nameClassName}`}>{name}</span>
+      <span
+        data-testid="display-name-text"
+        className={`min-w-0 ${truncate ? 'truncate' : ''} ${
+          reserveVerifiedSealSpace ? 'max-w-[calc(100%-2.75rem)]' : ''
+        } ${nameClassName}`}
+      >
+        {name}
+      </span>
       {verified && seal ? (
         <>
           <span className="sr-only">, </span>

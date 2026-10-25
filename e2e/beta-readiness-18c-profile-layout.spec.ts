@@ -13,10 +13,10 @@ const PROFILE_SEAL_WIDTHS = [375, 767, 1024, 1440] as const
 
 test.describe('18C profile header seal and name layout', () => {
   test.beforeEach(async ({ page }) => {
-    setE2eOwnProfileVerified(true)
-    setE2eOwnProfileDisplayName(EIGHTEEN_CHAR_NAME)
     await seedSignedInSession(page)
     await installSupabaseMocks(page)
+    setE2eOwnProfileVerified(true)
+    setE2eOwnProfileDisplayName(EIGHTEEN_CHAR_NAME)
   })
 
   test('profile header shows full 18-character display name at 375px', async ({ page }) => {
@@ -24,12 +24,14 @@ test.describe('18C profile header seal and name layout', () => {
     await page.goto(`/u/${READER.username}`, { waitUntil: 'domcontentloaded' })
     const name = page.getByRole('heading', { level: 1, name: EIGHTEEN_CHAR_NAME })
     await expect(name).toBeVisible()
-    const truncated = await name.evaluate((el) => {
-      const text = el.querySelector('span')
-      if (!text) return true
-      return text.scrollWidth > text.clientWidth + 1
-    })
-    expect(truncated).toBe(false)
+    const textSpan = page.getByTestId('profile-header').getByTestId('display-name-text')
+    await expect(textSpan).toHaveText(EIGHTEEN_CHAR_NAME)
+    const metrics = await textSpan.evaluate((el) => ({
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+      fontSize: getComputedStyle(el).fontSize,
+    }))
+    expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1)
   })
 
   test('profile header About this profile link sits under handle', async ({ page }) => {
@@ -64,7 +66,8 @@ test.describe('18C profile header seal and name layout', () => {
     for (const width of [375, 1280] as const) {
       await page.setViewportSize({ width, height: 900 })
       await page.goto(`/u/${READER.username}`, { waitUntil: 'domcontentloaded' })
-      const results = await new AxeBuilder({ page }).include('header').analyze()
+      await expect(page.getByTestId('profile-header')).toBeVisible()
+      const results = await new AxeBuilder({ page }).include('[data-testid="profile-header"]').analyze()
       expect(results.violations.filter((v) => v.impact === 'critical' || v.impact === 'serious')).toEqual([])
     }
   })
