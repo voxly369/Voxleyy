@@ -384,6 +384,54 @@ export type Database = {
           },
         ]
       }
+      cover_designs: {
+        Row: {
+          id: string
+          user_id: string
+          book_id: string | null
+          name: string
+          design_json: Json
+          thumbnail_path: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          book_id?: string | null
+          name: string
+          design_json: Json
+          thumbnail_path?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          book_id?: string | null
+          name?: string
+          design_json?: Json
+          thumbnail_path?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cover_designs_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "creations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cover_designs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_members: {
         Row: {
           conversation_id: string

@@ -5801,6 +5801,48 @@ begin
   reset role;
 end $stage_18c_storage$;
 
+-- Prompt 19B: cover_designs RLS (own rows only, 50-design cap)
+do $stage_19b_cover_designs$
+declare
+  v_a uuid := gen_random_uuid();
+  v_b uuid := gen_random_uuid();
+  v_book uuid;
+  n integer;
+  v_design jsonb := '{"version":1,"width":1600,"height":2400,"background":{"type":"solid","color":"#3d2c24"},"layers":[]}'::jsonb;
+begin
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_a, 'cover.a@voxly.test', now());
+  perform pg_temp.create_test_user(v_b, 'cover.b@voxly.test', now());
+
+  insert into public.creations (id, author_id, type, title, audience, status, body_text)
+  values (gen_random_uuid(), v_a, 'book', 'RLS cover book', 'private', 'draft', '')
+  returning id into v_book;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_a::text, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  insert into public.cover_designs (user_id, book_id, name, design_json)
+  values (v_a, v_book, 'Smoke design', v_design);
+  select count(*) into n from public.cover_designs where user_id = v_a;
+  perform pg_temp.record('cover_designs insert own row', n = 1, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_b::text, 'role', 'authenticated')::text, true);
+  select count(*) into n from public.cover_designs where user_id = v_a;
+  perform pg_temp.record('cover_designs other user cannot read', n = 0, 'rows=' || n);
+
+  begin
+    insert into public.cover_designs (user_id, book_id, name, design_json)
+    values (v_a, v_book, 'Intrusion', v_design);
+    perform pg_temp.record('cover_designs insert as other user blocked', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record('cover_designs insert as other user blocked', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  reset role;
+end $stage_19b_cover_designs$;
+
 do $$
 declare
   n integer;
