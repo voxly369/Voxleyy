@@ -52,6 +52,7 @@ export default function SettingsPage() {
   const [signingOut, setSigningOut] = useState(false)
   const [exportBusy, setExportBusy] = useState(false)
   const [exportError, setExportError] = useState('')
+  const [exportNotice, setExportNotice] = useState('')
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [showEntranceScreen, setShowEntranceScreen] = useState(true)
   const [entranceBusy, setEntranceBusy] = useState(false)
@@ -228,6 +229,11 @@ export default function SettingsPage() {
             {exportError}
           </p>
         ) : null}
+        {exportNotice ? (
+          <p role="status" className="mt-2 text-sm text-ink" data-testid="settings-export-truncated-notice">
+            {exportNotice}
+          </p>
+        ) : null}
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
           <button
             type="button"
@@ -235,11 +241,20 @@ export default function SettingsPage() {
             onClick={() => {
               setExportBusy(true)
               setExportError('')
+              setExportNotice('')
               void exportMyData().then((result) => {
                 setExportBusy(false)
                 if (!result.ok) {
                   setExportError(result.message)
                   return
+                }
+                const payload = result.payload as Record<string, unknown>
+                if (payload.truncated === true) {
+                  const notice =
+                    typeof payload.notice === 'string'
+                      ? payload.notice
+                      : 'Your export is too large to return in one file.'
+                  setExportNotice(notice)
                 }
                 downloadJsonExport(`voxly-export-${profile?.username ?? 'account'}.json`, result.payload)
               })

@@ -14,6 +14,7 @@ const row: ConversationSummary = {
   otherAvatarUrl: null,
   otherShowLocalTime: false,
   otherTimezone: 'UTC',
+  otherAccountDeleted: false,
   unreadCount: 3,
   preview: 'Hey',
 }

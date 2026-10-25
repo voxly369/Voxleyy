@@ -4,7 +4,8 @@ import {
   seedSignedInSession,
   READER,
 } from './fixtures.ts'
-import { setE2eConsentsOutdated } from './preBetaMocks.ts'
+import { setE2eConsentsOutdated, setE2eExportTruncated } from './preBetaMocks.ts'
+import { DRAFT_ID } from './fixtures.ts'
 import { setE2eOnboardingComplete } from './betaReadiness18bMocks.ts'
 
 test.describe('beta readiness 18B stage A finish', () => {
@@ -52,6 +53,66 @@ test.describe('beta readiness 18B stage A finish', () => {
       buffer: Buffer.alloc(6 * 1024 * 1024, 1),
     })
     await expect(page.getByText('That image is larger than 5 MB.')).toBeVisible({ timeout: 15_000 })
+  })
+
+  test('export download shows truncation notice when payload is truncated', async ({ page }) => {
+    setE2eExportTruncated(true)
+    await seedSignedInSession(page)
+    await page.goto('/settings', { waitUntil: 'networkidle' })
+    await page.getByTestId('settings-download-data').click()
+    await expect(page.getByTestId('settings-export-truncated-notice')).toContainText(
+      'too large to return in one file',
+    )
+  })
+
+  test('upload daily count cap shows friendly message', async ({ page }) => {
+    await seedSignedInSession(page)
+    await page.route('**/rest/v1/rpc/check_upload_quota**', async (route) => {
+      await route.fulfill({
+        status: 400,
+        contentType: 'application/json',
+        body: JSON.stringify({ message: 'Daily upload limit reached. Try again tomorrow.', code: 'P0001' }),
+      })
+    })
+    await page.goto('/settings/profile', { waitUntil: 'networkidle' })
+    await page.locator('#avatars-upload').setInputFiles({
+      name: 'avatar.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    })
+    await expect(page.getByText('Daily upload limit reached')).toBeVisible({ timeout: 15_000 })
+  })
+
+  test('rejects oversized cover upload on draft editor', async ({ page }) => {
+    await seedSignedInSession(page)
+    await page.goto(`/create/${DRAFT_ID}`, { waitUntil: 'networkidle' })
+    const coverInput = page.locator('section[aria-labelledby="cover-heading"] input[type="file"]')
+    await coverInput.setInputFiles({
+      name: 'huge-cover.webp',
+      mimeType: 'image/webp',
+      buffer: Buffer.alloc(6 * 1024 * 1024, 1),
+    })
+    await expect(page.getByRole('region', { name: 'Cover' }).getByText('That image is larger than 5 MB.')).toBeVisible({
+      timeout: 15_000,
+    })
+  })
+
+  test('rejects oversized manuscript import file', async ({ page }) => {
+    await seedSignedInSession(page)
+    await page.goto(`/u/${READER.username}?tab=books`, { waitUntil: 'networkidle' })
+    const importLink = page.getByRole('link', { name: /Import manuscript/i })
+    if (await importLink.isVisible()) {
+      await importLink.click()
+      await page.getByTestId('manuscript-file-input').setInputFiles({
+        name: 'huge.txt',
+        mimeType: 'text/plain',
+        buffer: Buffer.alloc(11 * 1024 * 1024, 1),
+      })
+      await expect(page.getByText(/too large \(max 10 MB\)/i)).toBeVisible()
+    }
   })
 
   test('upload quota RPC rejection on profile edit', async ({ page }) => {

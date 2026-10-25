@@ -5214,7 +5214,34 @@ begin
   perform pg_temp.record('delete_my_account keeps other user like_count consistent', v_likes_after <= v_likes_before, 'before=' || v_likes_before || ' after=' || v_likes_after);
   perform pg_temp.record('delete_my_account leaves other user creations untouched', (select count(*) from public.creations where author_id = v_other) = v_other_creations, 'rows=' || v_other_creations);
   select count(*) into v_count from public.messages where id = v_msg;
-  perform pg_temp.record('delete_my_account removes sent message rows on cascade', v_count = 0, 'rows=' || v_count);
+  perform pg_temp.record('delete_my_account keeps sent message row for other participant', v_count = 1, 'rows=' || v_count);
+  perform pg_temp.record(
+    'delete_my_account peer still sees message body',
+    coalesce((select body from public.messages where id = v_msg) = 'Goodbye from deleted user', false),
+    'body ok'
+  );
+  perform pg_temp.record(
+    'delete_my_account anonymises message sender',
+    coalesce(
+      (select sender_id is null and sender_account_deleted from public.messages where id = v_msg),
+      false
+    ),
+    'sender cleared'
+  );
+  perform pg_temp.record(
+    'delete_my_account removes deleted user conversation membership',
+    (select count(*) from public.conversation_members where user_id = v_del) = 0,
+    'membership gone'
+  );
+  perform set_config('request.jwt.claim.sub', v_other::text, true);
+  perform set_config('request.jwt.claims', json_build_object(
+    'sub', v_other::text, 'role', 'authenticated', 'iat', extract(epoch from now())::bigint
+  )::text, true);
+  perform pg_temp.record(
+    'delete_my_account other participant reads tombstoned message',
+    (select count(*) from public.messages_visible where id = v_msg) = 1,
+    'visible=1'
+  );
   select count(*) into v_count
   from public.deletion_storage_queue q
   where q.done_at is null
@@ -5222,6 +5249,10 @@ begin
     and q.object_path like v_del::text || '/%';
   perform pg_temp.record('deletion_storage_queue queued avatar and cover paths', v_count >= 1, 'rows=' || v_count);
 
+  perform set_config('request.jwt.claim.sub', v_del::text, true);
+  perform set_config('request.jwt.claims', json_build_object(
+    'sub', v_del::text, 'role', 'authenticated', 'iat', extract(epoch from now())::bigint
+  )::text, true);
   begin
     perform public.delete_my_account('second_call');
     perform pg_temp.record('delete_my_account second call safe', true, 'no-op ok');
@@ -5245,6 +5276,9 @@ do $stage_a_export_limits$
 declare
   v_export uuid := gen_random_uuid();
   v_json jsonb;
+  v_huge uuid := gen_random_uuid();
+  v_big jsonb;
+  v_i integer;
 begin
   execute format('set local role %I', session_user);
   perform pg_temp.create_test_user(v_export, v_export::text || '@export-limit.test', now());
@@ -5255,6 +5289,20 @@ begin
   )::text, true);
   v_json := public.export_my_data();
   perform pg_temp.record('export_my_data truncated false for normal account', coalesce((v_json->>'truncated')::boolean, false) = false, 'truncated=' || coalesce(v_json->>'truncated', 'null'));
+
+  perform pg_temp.create_test_user(v_huge, v_huge::text || '@export-huge.test', now());
+  update public.profiles set beta_access_granted = true where id = v_huge;
+  perform set_config('request.jwt.claim.sub', v_huge::text, true);
+  perform set_config('request.jwt.claims', json_build_object(
+    'sub', v_huge::text, 'role', 'authenticated', 'iat', extract(epoch from now())::bigint
+  )::text, true);
+  for v_i in 1..700 loop
+    insert into public.creations (author_id, type, title, audience, status, body_text)
+    values (v_huge, 'poem', 'Bulk export ' || v_i, 'private', 'draft', repeat('export-chunk-', 1200));
+  end loop;
+  v_big := public.export_my_data();
+  perform pg_temp.record('export_my_data truncated true when over limit', coalesce((v_big->>'truncated')::boolean, false) = true, 'truncated=' || coalesce(v_big->>'truncated', 'null'));
+  perform pg_temp.record('export_my_data truncated notice key present', v_big ? 'notice', 'has notice');
   begin
     perform public.export_my_data();
     perform pg_temp.record('export_my_data daily limit second call refused', false, 'second export ok');

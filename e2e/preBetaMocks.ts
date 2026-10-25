@@ -44,6 +44,7 @@ let inviteCodes: Array<Record<string, unknown>> = [
 ]
 
 let exportMyDataCallCount = 0
+let exportTruncated = false
 
 let clientErrorGroups: Array<Record<string, unknown>> = [
   {
@@ -64,6 +65,17 @@ export function setE2eBetaAccessGranted(granted: boolean) {
 
 export function setE2eInviteOnlyPlatform(enabled: boolean) {
   inviteOnlyPlatform = enabled
+}
+
+export function setE2eConsentsCurrent() {
+  consentRecords = [
+    { document: 'terms', version: CURRENT_CONSENT_VERSION, accepted_at: '2026-01-01T00:00:00.000Z' },
+    { document: 'privacy', version: CURRENT_CONSENT_VERSION, accepted_at: '2026-01-01T00:00:00.000Z' },
+  ]
+}
+
+export function setE2eExportTruncated(truncated: boolean) {
+  exportTruncated = truncated
 }
 
 export function setE2eConsentsOutdated() {
@@ -94,6 +106,7 @@ export function resetPreBetaMocks() {
     { document: 'privacy', version: CURRENT_CONSENT_VERSION, accepted_at: '2026-01-01T00:00:00.000Z' },
   ]
   exportMyDataCallCount = 0
+  exportTruncated = false
   inviteCodes = [
     {
       code: 'ABCDEFGHJK',
@@ -147,6 +160,14 @@ export function preBetaMockHandleRest(url: string, _method: string, postData: un
     if (exportMyDataCallCount > 1) {
       return {
         __httpError: { status: 400, message: 'You can download your data once per day.' },
+      }
+    }
+    if (exportTruncated) {
+      return {
+        exported_at: '2026-01-01T00:00:00.000Z',
+        truncated: true,
+        max_bytes: 4000000,
+        notice: 'Your export is too large to return in one file. Contact support for a full archive.',
       }
     }
     return {

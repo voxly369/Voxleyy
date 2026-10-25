@@ -24,6 +24,7 @@ export type ConversationSummary = {
   otherAvatarUrl: string | null
   otherShowLocalTime: boolean
   otherTimezone: string
+  otherAccountDeleted: boolean
   unreadCount: number
   preview: string | null
 }
@@ -37,7 +38,7 @@ export type QuietStatus = {
 export type VisibleMessage = {
   id: string
   conversationId: string
-  senderId: string
+  senderId: string | null
   body: string | null
   sharedCreationId: string | null
   deliverAt: string
@@ -45,6 +46,7 @@ export type VisibleMessage = {
   deletedAt: string | null
   isDeleted: boolean
   isScheduled: boolean
+  senderAccountDeleted: boolean
 }
 
 export type LocalMessageStatus = 'sending' | 'failed'

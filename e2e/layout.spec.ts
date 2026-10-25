@@ -5,7 +5,7 @@ import {
   SAMPLE_CREATION_ID,
 } from './fixtures.ts'
 import { setE2eEntranceVisible, setE2eOnboardingComplete } from './betaReadiness18bMocks.ts'
-import { setE2eBetaSignupConfig } from './preBetaMocks.ts'
+import { setE2eBetaSignupConfig, setE2eConsentsCurrent } from './preBetaMocks.ts'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -136,10 +136,41 @@ const screens: ScreenDef[] = [
     signedIn: false,
     skipNav: true,
     skipRightRail: true,
+  },
+  {
+    name: 'settings-export-delete',
+    path: '/settings',
+    signedIn: true,
+    skipReadingLine: true,
+    beforeGoto: () => {
+      setE2eOnboardingComplete()
+      setE2eConsentsCurrent()
+      setE2eEntranceVisible(false)
+    },
     setup: async (page) => {
-      await page.addInitScript(() => {
-        window.history.replaceState({}, '', '/auth/confirm')
-      })
+      const deleteBtn = page.getByTestId('settings-delete-account')
+      await deleteBtn.scrollIntoViewIfNeeded()
+      await expect(deleteBtn).toBeVisible()
+      await deleteBtn.click()
+      await expect(page.getByTestId('delete-account-modal')).toBeVisible()
+    },
+  },
+  {
+    name: 'feedback-modal',
+    path: '/settings',
+    signedIn: true,
+    skipReadingLine: true,
+    beforeGoto: () => {
+      setE2eOnboardingComplete()
+      setE2eConsentsCurrent()
+      setE2eEntranceVisible(false)
+    },
+    setup: async (page) => {
+      const feedbackBtn = page.getByTestId('settings-send-feedback')
+      await feedbackBtn.scrollIntoViewIfNeeded()
+      await expect(feedbackBtn).toBeVisible()
+      await feedbackBtn.click()
+      await expect(page.getByTestId('feedback-modal')).toBeVisible()
     },
   },
 ]
@@ -293,10 +324,19 @@ async function assertDialogFocus(page: Page, screen: ScreenDef) {
   await expect(opener).toBeFocused()
 }
 
+async function waitForSettingsShell(page: Page) {
+  await expect(page).toHaveURL(/\/settings\/?$/)
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByTestId('settings-data-section')).toBeVisible({ timeout: 30_000 })
+}
+
 async function visitScreen(page: Page, screen: ScreenDef) {
   if (screen.signedIn) await seedSignedInSession(page)
   screen.beforeGoto?.()
   await page.goto(screen.path, { waitUntil: 'networkidle' })
+  if (screen.name === 'settings-export-delete' || screen.name === 'feedback-modal') {
+    await waitForSettingsShell(page)
+  }
   if (screen.setup) await screen.setup(page)
   if (screen.signedIn) {
     await expect(page.locator('#main')).toBeVisible()

@@ -12,6 +12,7 @@ const sample: ConversationSummary = {
   otherAvatarUrl: null,
   otherShowLocalTime: false,
   otherTimezone: 'UTC',
+  otherAccountDeleted: false,
   unreadCount: 0,
   preview: 'Hello there',
 }

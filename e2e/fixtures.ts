@@ -696,6 +696,7 @@ export {
   setMessageUnreadOverride,
   setMessageListError,
   clearMessageConversations,
+  setE2eDeletedAccountPeerMessage,
 } from './messageMocks.ts'
 
 export {
