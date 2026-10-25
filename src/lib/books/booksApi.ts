@@ -51,6 +51,7 @@ function parseBookRow(row: Record<string, unknown>, creation?: Record<string, un
     currency: text(row.currency) ?? 'GBP',
     rentalDays: row.rental_days == null ? null : Number(row.rental_days),
     isbnInternal: text(row.isbn_internal),
+    language: text(creation?.language) ?? 'en',
     updatedAt: text(row.updated_at) ?? new Date().toISOString(),
     author: parseAuthor(creation ?? row),
   }
@@ -60,7 +61,7 @@ const BOOK_COLUMNS =
   'id, author_id, subtitle, description, sale_model, price_cents, currency, rental_days, isbn_internal, updated_at' as const
 
 const CREATION_EMBED =
-  'creation:creations!books_id_fkey(id, title, cover_url, status, audience, author_id, author:profiles_public!creations_author_id_fkey(id, username, display_name, avatar_url, verified))' as const
+  'creation:creations!books_id_fkey(id, title, cover_url, status, audience, language, author_id, author:profiles_public!creations_author_id_fkey(id, username, display_name, avatar_url, verified))' as const
 
 export async function createBookDraft(input: {
   title?: string
@@ -115,7 +116,7 @@ export async function saveBookMetadata(bookId: string, raw: BookMetadataInput): 
   const meta = validated.data
   const { error: creationError } = await supabase
     .from('creations')
-    .update({ title: meta.title })
+    .update({ title: meta.title, language: meta.language })
     .eq('id', bookId)
 
   if (creationError) return fail('unavailable', 'We could not save the title. Try again.', creationError)

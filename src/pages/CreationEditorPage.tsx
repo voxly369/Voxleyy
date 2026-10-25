@@ -65,6 +65,7 @@ export default function CreationEditorPage() {
   async function onPublishConfirm(input: {
     audience: import('../lib/creations/types.ts').Audience
     mood: string | null
+    language: string
   }) {
     const id = editor.creationId
     if (!id) return
@@ -87,6 +88,7 @@ export default function CreationEditorPage() {
       audience: input.audience,
       tags: editor.form.tags,
       mood: input.mood,
+      language: input.language,
     })
     if (!moodSave.ok) {
       setPublishBusy(false)
@@ -158,6 +160,7 @@ export default function CreationEditorPage() {
         quoteStyle={parsedType === 'quote_card' ? editor.quoteStyle : undefined}
         initialAudience={editor.creationAudience}
         initialMood={editor.creationMood}
+        initialLanguage={editor.creationLanguage}
         mode={editor.creationStatus === 'published' ? 'audience' : 'publish'}
         busy={publishBusy}
         error={publishError}

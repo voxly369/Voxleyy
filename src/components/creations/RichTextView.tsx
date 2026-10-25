@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { CreationType } from '../../lib/creations/creationTypes.ts'
 import { usesLiterarySurface } from '../../lib/creations/creationTypes.ts'
+import { contentLangProps } from '../../lib/languages/dir.ts'
 import { LiteraryBodyView } from './LiteraryBodyView.tsx'
 import type { Json } from '../../lib/database.types.ts'
 import { bodyContentFromJson, type RichBodyDocument } from '../../lib/creations/bodyDocument.ts'
@@ -13,6 +14,7 @@ type RichTextViewProps = {
   bodyJson: Json | null | undefined
   bodyText: string | null
   creationType?: CreationType
+  contentLanguage?: string | null
   className?: string
   /** Annotate headings and paragraphs for reader resume, TOC focus, and paging. */
   readerAnchors?: boolean
@@ -113,6 +115,7 @@ export function RichTextView({
   bodyJson,
   bodyText,
   creationType,
+  contentLanguage,
   className = '',
   readerAnchors = false,
   highlights = [],
@@ -120,9 +123,16 @@ export function RichTextView({
   onHighlightPress,
 }: RichTextViewProps) {
   const literary = creationType ? usesLiterarySurface(creationType) : true
+  const langProps = contentLangProps(contentLanguage)
   if (usesPoemLineLayout(creationType)) {
     return (
-      <LiteraryBodyView bodyJson={bodyJson} bodyText={bodyText} className={className} readerAnchors={readerAnchors} />
+      <LiteraryBodyView
+        bodyJson={bodyJson}
+        bodyText={bodyText}
+        className={className}
+        readerAnchors={readerAnchors}
+        contentLanguage={contentLanguage}
+      />
     )
   }
   const doc = bodyContentFromJson(bodyJson, bodyText)
@@ -142,7 +152,7 @@ export function RichTextView({
     : null
 
   return (
-    <div className={`flex max-w-[65ch] flex-col gap-4 ${className}`}>
+    <div className={`content-lang flex max-w-[65ch] flex-col gap-4 ${className}`} {...langProps}>
       {content.map((block, index) => {
         const paraIndex = readerIndexByBlock?.get(index) ?? null
         const node = renderBlock(

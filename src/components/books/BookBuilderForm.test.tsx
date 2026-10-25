@@ -18,6 +18,7 @@ const book: BookRecord = {
   currency: 'GBP',
   rentalDays: null,
   isbnInternal: null,
+  language: 'en',
   updatedAt: '2026-01-01T00:00:00Z',
 }
 

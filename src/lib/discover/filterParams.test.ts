@@ -10,4 +10,9 @@ describe('filterParams', () => {
   it('ignores invalid values', () => {
     expect(parseDiscoverFilters(new URLSearchParams('mood=invalid&sort=hot'))).toEqual({})
   })
+
+  it('round-trips multi-language filters', () => {
+    const params = discoverFiltersToSearchParams({ languages: ['en', 'af'], sort: 'new' })
+    expect(parseDiscoverFilters(params)).toEqual({ languages: ['af', 'en'], sort: 'new' })
+  })
 })

@@ -1,4 +1,5 @@
 import { supabase } from '../supabaseClient.ts'
+import { parseLanguagesFilter } from '../languages/parseLanguagesFilter.ts'
 import { sanitizeSearchInput } from './searchInput.ts'
 
 export type SearchTab = 'top' | 'writers' | 'posts' | 'tags'
@@ -10,6 +11,7 @@ export type SearchWriterHit = {
   avatarUrl: string | null
   verified: boolean
   followerCount: number
+  country: string | null
 }
 
 export type SearchPostHit = {
@@ -32,11 +34,19 @@ export type SearchResults = {
   tags: SearchTagHit[]
 }
 
-export async function runSearch(query: string, tab: SearchTab): Promise<
-  { ok: true; data: SearchResults } | { ok: false; message: string }
-> {
+export async function runSearch(
+  query: string,
+  tab: SearchTab,
+  languages: string[] = [],
+): Promise<{ ok: true; data: SearchResults } | { ok: false; message: string }> {
   const safe = sanitizeSearchInput(query)
-  const { data, error } = await supabase.rpc('search_discovery', { p_query: safe, p_tab: tab, p_limit: 20 })
+  const langFilter = parseLanguagesFilter(languages.join(','))
+  const { data, error } = await supabase.rpc('search_discovery', {
+    p_query: safe,
+    p_tab: tab,
+    p_limit: 20,
+    p_languages: langFilter.length ? langFilter : null,
+  })
   if (error) {
     const msg =
       error.message.includes('too fast') ? 'You are searching too fast. Wait a moment and try again.' : 'Search did not work. Try again.'
@@ -60,6 +70,7 @@ export async function runSearch(query: string, tab: SearchTab): Promise<
           avatarUrl: typeof w.avatar_url === 'string' ? w.avatar_url : null,
           verified: w.verified === true,
           followerCount: typeof w.follower_count === 'number' ? w.follower_count : 0,
+          country: typeof w.country === 'string' ? w.country.trim().toUpperCase() : null,
         }
       }),
       posts: posts.map((row) => {

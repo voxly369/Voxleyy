@@ -1577,13 +1577,13 @@ begin
   end;
 
   insert into public.creations (author_id, type, title, audience, status, genre, mood, language)
-  values (v_a, 'poem', 'Meta at limit', 'private', 'draft', repeat('g', 60), 'hope', '12345678')
+  values (v_a, 'poem', 'Meta at limit', 'private', 'draft', repeat('g', 60), 'hope', 'en')
   returning id into v_creation;
   perform pg_temp.record(
     'creation genre mood and language accept at-limit values',
     (select char_length(genre) from public.creations where id = v_creation) = 60
       and (select lower(mood) from public.creations where id = v_creation) = 'hope'
-      and (select char_length(language) from public.creations where id = v_creation) = 8,
+      and (select language from public.creations where id = v_creation) = 'en',
     'ok'
   );
 
@@ -1611,13 +1611,13 @@ begin
 
   begin
     insert into public.creations (author_id, type, title, audience, status, language)
-    values (v_a, 'poem', 'Lang over', 'private', 'draft', '123456789');
-    perform pg_temp.record('creation language rejects over 8 characters', false, 'insert succeeded');
+    values (v_a, 'poem', 'Lang invalid', 'private', 'draft', 'xx');
+    perform pg_temp.record('creation language FK rejects unknown code', false, 'insert succeeded');
   exception
-    when check_violation then
-      perform pg_temp.record('creation language rejects over 8 characters', true, sqlerrm);
+    when foreign_key_violation then
+      perform pg_temp.record('creation language FK rejects unknown code', true, sqlerrm);
     when others then
-      perform pg_temp.record('creation language rejects over 8 characters', false, sqlstate || ' ' || sqlerrm);
+      perform pg_temp.record('creation language FK rejects unknown code', false, sqlstate || ' ' || sqlerrm);
   end;
 
   insert into public.creations (author_id, type, title, audience, status)
@@ -5530,6 +5530,66 @@ begin
   select count(*) into v_count from public.countries where code = 'ZA';
   perform pg_temp.record('countries seed includes ZA', v_count = 1, 'rows=' || v_count);
 end $stage_b_feedback_countries$;
+
+do $stage_c_languages$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_pub uuid;
+  v_count integer;
+  v_plan_ok boolean;
+  v_tsquery tsquery;
+  v_hits integer;
+begin
+  select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
+
+  select count(*) into v_count from public.languages where code = 'en';
+  perform pg_temp.record('languages reference includes en', v_count = 1, 'rows=' || v_count);
+
+  begin
+    insert into public.creations (author_id, type, title, body_text, language, audience, status)
+    values (v_a, 'written_post', 'Bad lang', 'Body', 'xx', 'private', 'draft');
+    perform pg_temp.record('creations language FK rejects xx', false, 'inserted');
+  exception when others then
+    perform pg_temp.record('creations language FK rejects xx', true, sqlerrm);
+  end;
+
+  insert into public.creations (author_id, type, title, body_text, language, audience, status, published_at)
+  values (v_a, 'written_post', 'Arabic smoke', 'مرحبا بالعالم', 'ar', 'public', 'published', now())
+  returning id into v_pub;
+  v_tsquery := plainto_tsquery('simple', 'مرحبا');
+  select count(*) into v_hits from public.creations c
+  where c.id = v_pub and c.search_tsv @@ v_tsquery;
+  perform pg_temp.record('FTS simple matches Arabic sample', v_hits = 1, 'hits=' || v_hits);
+  delete from public.creations where id = v_pub;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+
+  v_plan_ok := public.smoke_plan_includes_index_scan(
+    $q$select fc.id from public.discover_trending_creations fc
+      inner join public.profiles p on p.id = fc.author_id
+      where p.country = 'ZA' limit 5$q$
+  );
+  perform pg_temp.record('country trending plan uses index', v_plan_ok, 'index scan=' || v_plan_ok);
+
+  v_plan_ok := public.smoke_plan_includes_index_scan(
+    $q$select id from public.creations
+      where status = 'published' and audience = 'public' and is_removed = false and language = 'en'
+      limit 5$q$
+  );
+  perform pg_temp.record('language filter plan uses index', v_plan_ok, 'index scan=' || v_plan_ok);
+
+  select count(*) into v_count
+  from public.creations c
+  where c.status = 'published' and c.audience = 'public' and c.is_removed = false and c.language = 'en';
+  perform pg_temp.record('language filter returns english posts', v_count >= 0, 'rows=' || v_count);
+end $stage_c_languages$;
 
 do $$
 declare

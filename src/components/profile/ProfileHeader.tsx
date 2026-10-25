@@ -11,6 +11,7 @@ import { ProfileMessageButton } from './ProfileMessageButton.tsx'
 import { VerifiedBadge } from './VerifiedBadge.tsx'
 import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
 import { LocalTime } from '../time/LocalTime.tsx'
+import { LanguageLabel } from '../languages/LanguageLabel.tsx'
 
 type ProfileHeaderProps = {
   profile: PublicProfile
@@ -19,9 +20,18 @@ type ProfileHeaderProps = {
   followerCount: number
   onFollowingChange: (following: boolean) => void
   badgeShelf?: ReactNode
+  postLanguages?: string[]
 }
 
-export function ProfileHeader({ profile, isOwn, following, followerCount, onFollowingChange, badgeShelf }: ProfileHeaderProps) {
+export function ProfileHeader({
+  profile,
+  isOwn,
+  following,
+  followerCount,
+  onFollowingChange,
+  badgeShelf,
+  postLanguages = [],
+}: ProfileHeaderProps) {
   const name = profile.displayName || profile.username
   return (
     <header className="flex flex-col">
@@ -81,6 +91,14 @@ export function ProfileHeader({ profile, isOwn, following, followerCount, onFoll
         {badgeShelf ? <div className="-mx-5 mt-1">{badgeShelf}</div> : null}
         {profile.country ? (
           <CountryLink code={profile.country} testId="profile-country-link" />
+        ) : null}
+        {postLanguages.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-2" data-testid="profile-post-languages">
+            <span className="text-sm text-muted">Posts in</span>
+            {postLanguages.map((code) => (
+              <LanguageLabel key={code} code={code} />
+            ))}
+          </div>
         ) : null}
         {profile.cityVisible && profile.city ? <p className="text-sm text-muted">{profile.city}</p> : null}
         {profile.showLocalTime ? <LocalTime timezone={profile.timezone} /> : null}

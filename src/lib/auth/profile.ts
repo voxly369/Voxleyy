@@ -32,6 +32,7 @@ export type OwnProfile = {
   creation_count: number
   created_at: string
   updated_at: string
+  show_local_time: boolean
 }
 
 export function isBannedStatus(status: AccountStatus): boolean {
@@ -74,6 +75,7 @@ export async function fetchOwnProfile(userId: string): Promise<OwnProfile | null
     creation_count: data.creation_count ?? 0,
     created_at: data.created_at,
     updated_at: data.updated_at,
+    show_local_time: data.show_local_time !== false,
   }
 }
 

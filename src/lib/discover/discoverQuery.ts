@@ -23,15 +23,16 @@ export function discoverOrderColumn(table: string): { column: string; ascending:
 export function applyDiscoverFiltersToQuery(
   filters: DiscoverFilterParams,
   kind: DiscoverListKind,
-): { mood?: string; genre?: string; language?: string; country?: string; type?: string } {
-  const out: { mood?: string; genre?: string; language?: string; country?: string; type?: string } = {}
+): { mood?: string; genre?: string; languages?: string[]; country?: string; type?: string } {
+  const out: { mood?: string; genre?: string; languages?: string[]; country?: string; type?: string } = {}
   if (filters.mood) out.mood = filters.mood
   if (filters.genre) {
     out.genre = filters.genre
     const type = genreSlugToCreationType(filters.genre)
     if (type) out.type = type
   }
-  if (filters.language) out.language = filters.language
+  const languages = filters.languages?.length ? filters.languages : filters.language ? [filters.language] : []
+  if (languages.length > 0) out.languages = languages
   if (filters.country) out.country = filters.country
   if (kind === 'top_week_poem') out.type = 'poem'
   if (kind === 'top_week_story') out.type = 'story'

@@ -8,6 +8,8 @@ import type { Audience } from '../../lib/creations/types.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { creationTypeLabel } from '../../lib/creations/creationTypeLabel.ts'
 import { MOOD_OPTIONS, isCreationMood } from '../../lib/creations/moodOptions.ts'
+import { LanguagePicker } from '../languages/LanguagePicker.tsx'
+import { DEFAULT_CONTENT_LANGUAGE } from '../../lib/languages/defaultLanguage.ts'
 
 type PublishSheetProps = {
   open: boolean
@@ -21,10 +23,11 @@ type PublishSheetProps = {
   quoteStyle?: QuoteCardStyle
   initialAudience: Audience
   initialMood?: string | null
+  initialLanguage?: string
   mode: 'publish' | 'audience'
   busy: boolean
   error: string | null
-  onConfirm: (input: { audience: Audience; mood: string | null }) => void
+  onConfirm: (input: { audience: Audience; mood: string | null; language: string }) => void
 }
 
 export function PublishSheet({
@@ -39,6 +42,7 @@ export function PublishSheet({
   quoteStyle,
   initialAudience,
   initialMood = null,
+  initialLanguage = DEFAULT_CONTENT_LANGUAGE,
   mode,
   busy,
   error,
@@ -47,6 +51,7 @@ export function PublishSheet({
   const titleId = useId()
   const [audience, setAudience] = useState<Audience>(initialAudience)
   const [mood, setMood] = useState<string>(() => (isCreationMood(initialMood) ? initialMood : ''))
+  const [language, setLanguage] = useState(() => initialLanguage.trim().toLowerCase() || DEFAULT_CONTENT_LANGUAGE)
 
   const check = validatePublishContent({ title, body, caption, creationType, quoteStyle })
   const stats = publishContentStats(body)
@@ -90,6 +95,17 @@ export function PublishSheet({
             </label>
           ))}
         </fieldset>
+
+        {mode === 'publish' ? (
+          <div className="mt-4">
+            <LanguagePicker
+              value={language}
+              onChange={setLanguage}
+              disabled={busy}
+              testId="publish-language-picker"
+            />
+          </div>
+        ) : null}
 
         {mode === 'publish' ? (
           <div className="mt-4 flex flex-col gap-2">
@@ -152,7 +168,13 @@ export function PublishSheet({
         <button
           type="button"
           disabled={!canSubmit}
-          onClick={() => onConfirm({ audience, mood: isCreationMood(mood) ? mood : null })}
+          onClick={() =>
+            onConfirm({
+              audience,
+              mood: isCreationMood(mood) ? mood : null,
+              language: language.trim().toLowerCase() || DEFAULT_CONTENT_LANGUAGE,
+            })
+          }
           className={`min-h-11 rounded-2xl bg-coral px-4 text-base font-semibold text-white disabled:opacity-50 ${focusRing}`}
         >
           {busy ? 'Working…' : actionLabel}

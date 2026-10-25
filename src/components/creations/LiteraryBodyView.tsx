@@ -1,4 +1,5 @@
 import type { Json } from '../../lib/database.types.ts'
+import { contentLangProps } from '../../lib/languages/dir.ts'
 import { literaryLinesFromBody, literaryStanzasFromLines } from '../../lib/creations/literaryDisplay.ts'
 
 type LiteraryBodyViewProps = {
@@ -9,6 +10,7 @@ type LiteraryBodyViewProps = {
   className?: string
   stanzaGapClassName?: string
   readerAnchors?: boolean
+  contentLanguage?: string | null
 }
 
 export function LiteraryBodyView({
@@ -18,13 +20,16 @@ export function LiteraryBodyView({
   className = '',
   stanzaGapClassName = 'gap-4',
   readerAnchors = false,
+  contentLanguage,
 }: LiteraryBodyViewProps) {
   const lines = linesProp ?? literaryLinesFromBody(bodyJson ?? null, bodyText ?? null)
   const stanzas = literaryStanzasFromLines(lines)
+  const langProps = contentLangProps(contentLanguage)
 
   return (
     <div
-      className={`flex max-w-[65ch] flex-col font-serif text-lg leading-normal ${readerAnchors ? 'text-inherit' : 'text-ink'} ${stanzaGapClassName} ${className}`}
+      className={`content-lang flex max-w-[65ch] flex-col font-serif text-lg leading-normal ${readerAnchors ? 'text-inherit' : 'text-ink'} ${stanzaGapClassName} ${className}`}
+      {...langProps}
     >
       {stanzas.map((stanza, stanzaIndex) => (
         <div

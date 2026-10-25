@@ -202,6 +202,7 @@ export default function CoverStudioPage() {
                 currency: book.currency,
                 rentalDays: book.rentalDays,
                 isbnInternal: book.isbnInternal,
+                language: book.language,
               })
             }
             className={`min-h-11 self-start rounded-xl border border-line px-4 text-sm ${focusRing}`}

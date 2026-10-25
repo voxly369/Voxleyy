@@ -37,6 +37,10 @@
   color-scheme: dark;
 }
 
+.content-lang {
+  font-family: ui-serif, Georgia, 'Lora', system-ui, sans-serif;
+}
+
 html {
   background: rgb(var(--c-bg));
 }

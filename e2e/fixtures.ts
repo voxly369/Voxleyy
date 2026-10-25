@@ -348,6 +348,7 @@ function editableDraft() {
     updated_at: '2026-02-01T00:00:00Z',
     is_removed: false,
     author_id: READER.id,
+    language: 'en',
   }
 }
 
@@ -426,11 +427,27 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
     return posts.slice(0, 4)
   }
   if (url.includes('/rest/v1/discover_top_week_creations')) return posts.slice(0, 2)
-  if (url.includes('/rest/v1/discover_rising_writers')) return []
+  if (url.includes('/rest/v1/discover_rising_writers')) {
+    return [
+      {
+        id: OTHER.id,
+        username: OTHER.username,
+        display_name: OTHER.display_name,
+        avatar_url: null,
+        verified: false,
+        follower_count: 12,
+        momentum_score: 4,
+        country: 'ZA',
+      },
+    ]
+  }
   if (url.includes('/rest/v1/founder_featured_writers_public')) return []
 
   if (url.includes('/rest/v1/rpc/writing_prompt_for_date')) return 'Write about the horizon.'
   if (url.includes('/rest/v1/rpc/tag_public_post_count')) return 2
+  if (url.includes('/rest/v1/rpc/list_author_post_languages')) {
+    return ['en', 'af']
+  }
   if (url.includes('/rest/v1/rpc/search_discovery')) {
     return {
       writers: [
@@ -441,6 +458,7 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
           avatar_url: null,
           verified: false,
           follower_count: 12,
+          country: 'ZA',
         },
       ],
       posts: posts.slice(0, 2).map((p) => ({
@@ -502,6 +520,25 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
       return posts.slice(0, 3).map((p) => ({ creation_id: p.id, tag: 'poetry' }))
     }
     return []
+  }
+
+  if (url.includes('/rest/v1/follows') && url.includes('follower_id') && url.includes('select=')) {
+    return [
+      {
+        id: 'f0000000-0000-0000-0000-000000000001',
+        created_at: '2026-01-01T00:00:00.000Z',
+        followee_id: OTHER.id,
+        follower_id: READER.id,
+        profile: {
+          id: OTHER.id,
+          username: OTHER.username,
+          display_name: OTHER.display_name,
+          avatar_url: null,
+          verified: false,
+          country: 'ZA',
+        },
+      },
+    ]
   }
 
   if (url.includes('/rest/v1/likes') || url.includes('/rest/v1/saves') || url.includes('/rest/v1/follows')) {

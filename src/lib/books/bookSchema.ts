@@ -40,6 +40,7 @@ export const bookMetadataSchema = z
     currency: bookCurrencySchema,
     rentalDays: z.number().int().min(1).max(365).nullable(),
     isbnInternal: z.string().trim().max(32).nullable().optional(),
+    language: z.string().regex(/^[a-z]{2,8}$/, 'Choose a language.'),
   })
   .strict()
 
@@ -59,6 +60,7 @@ export type BookRecord = {
   currency: string
   rentalDays: number | null
   isbnInternal: string | null
+  language: string
   updatedAt: string
   author?: {
     id: string

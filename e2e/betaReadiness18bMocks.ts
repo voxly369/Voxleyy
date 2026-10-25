@@ -170,6 +170,18 @@ export function betaReadiness18bMockHandleRest(url: string, method: string, post
     return null
   }
   if (url.includes('/rest/v1/rpc/get_country_page')) {
+    const body = postData as { p_code?: string } | null
+    const code = (body?.p_code ?? 'ZA').toUpperCase()
+    if (code === 'AQ') {
+      return {
+        code: 'AQ',
+        name: 'Antarctica',
+        primary_timezone: null,
+        main_languages: [],
+        writer_count: 0,
+        post_count: 0,
+      }
+    }
     return {
       code: 'ZA',
       name: 'South Africa',
@@ -204,7 +216,7 @@ export function betaReadiness18bMockHandleRest(url: string, method: string, post
   if (url.includes('/rest/v1/creations') && url.includes('status=eq.published') && url.includes('select=id')) {
     return [{ id: '00000000-0000-0000-0000-000000000001' }]
   }
-  if (url.includes('/rest/v1/follows') && url.includes('select=followee_id')) {
+  if (url.includes('/rest/v1/follows') && url.includes('select=followee_id') && !url.includes('profile')) {
     return [{ followee_id: '22222222-2222-2222-2222-222222222222' }, { followee_id: '33333333-3333-3333-3333-333333333333' }]
   }
   if (url.includes('/rest/v1/library_saved_items')) {

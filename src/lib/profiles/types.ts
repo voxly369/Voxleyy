@@ -55,6 +55,7 @@ export type FollowListProfile = {
   displayName: string
   avatarUrl: string | null
   verified: boolean
+  country: string | null
 }
 
 export type FollowListEntry = {

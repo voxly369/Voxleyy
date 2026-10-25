@@ -1803,6 +1803,7 @@ export type Database = {
           display_name: string | null
           avatar_url: string | null
           verified: boolean | null
+          country: string | null
           follower_count: number | null
           momentum_score: number | null
         }
@@ -1864,6 +1865,7 @@ export type Database = {
           avatar_url: string | null
           verified: boolean | null
           bio: string | null
+          country: string | null
           follower_count: number | null
         }
         Insert: Record<string, never>
@@ -2154,9 +2156,10 @@ export type Database = {
       mark_all_notifications_read: { Args: Record<string, never>; Returns: undefined }
       clear_read_notifications: { Args: Record<string, never>; Returns: number }
       search_discovery: {
-        Args: { p_query: string; p_tab?: string; p_limit?: number }
+        Args: { p_query: string; p_tab?: string; p_limit?: number; p_languages?: string[] | null }
         Returns: Json
       }
+      list_author_post_languages: { Args: { p_author_id: string }; Returns: string[] }
       quote_of_the_day: { Args: { p_day?: string; p_tz?: string }; Returns: Json }
       founder_list_daily_quotes: {
         Args: { p_cursor?: string | null; p_limit?: number }

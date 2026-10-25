@@ -13,6 +13,7 @@ import { ErrorState } from '../components/states/ErrorState.tsx'
 import { Skeleton } from '../components/states/Skeleton.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
+import { DiscoverLanguageFilterChips } from '../components/discover/DiscoverLanguageFilterChips.tsx'
 
 export default function DiscoverBrowsePage() {
   const [params] = useSearchParams()
@@ -52,6 +53,7 @@ export default function DiscoverBrowsePage() {
     <FeedWithRailLayout>
       <PageContainer variant="wide" className="flex flex-col gap-6 py-8">
         <PageHeader title="Browse" />
+        <DiscoverLanguageFilterChips />
         {loading ? <Skeleton variant="text-lines" lines={6} /> : null}
         {error ? <ErrorState title="Results did not load" message={error} onRetry={() => window.location.reload()} /> : null}
         {!loading && !error && posts.length === 0 ? (

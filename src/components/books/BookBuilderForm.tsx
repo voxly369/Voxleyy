@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { focusRing } from '../shell/navItems.ts'
 import { bookSaleModels, type BookMetadataInput, type BookRecord } from '../../lib/books/bookSchema.ts'
 import { validateBookMetadata } from '../../lib/books/bookValidation.ts'
+import { LanguagePicker } from '../languages/LanguagePicker.tsx'
+import { DEFAULT_CONTENT_LANGUAGE } from '../../lib/languages/defaultLanguage.ts'
 
 type BookBuilderFormProps = {
   book: BookRecord
@@ -18,6 +20,7 @@ export function BookBuilderForm({ book, disabled = false, onSave }: BookBuilderF
   const [currency, setCurrency] = useState(book.currency)
   const [rentalDays, setRentalDays] = useState(book.rentalDays ? String(book.rentalDays) : '')
   const [isbnInternal, setIsbnInternal] = useState(book.isbnInternal ?? '')
+  const [language, setLanguage] = useState(book.language || DEFAULT_CONTENT_LANGUAGE)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
@@ -30,6 +33,7 @@ export function BookBuilderForm({ book, disabled = false, onSave }: BookBuilderF
     setCurrency(book.currency)
     setRentalDays(book.rentalDays ? String(book.rentalDays) : '')
     setIsbnInternal(book.isbnInternal ?? '')
+    setLanguage(book.language || DEFAULT_CONTENT_LANGUAGE)
   }, [book])
 
   async function submit(event: FormEvent) {
@@ -43,6 +47,7 @@ export function BookBuilderForm({ book, disabled = false, onSave }: BookBuilderF
       currency: currency.trim().toUpperCase(),
       rentalDays: saleModel === 'rental' ? Number(rentalDays) || null : null,
       isbnInternal: isbnInternal.trim() ? isbnInternal : null,
+      language: language.trim().toLowerCase() || DEFAULT_CONTENT_LANGUAGE,
     }
     const validated = validateBookMetadata(payload)
     if (!validated.ok) {
@@ -83,6 +88,7 @@ export function BookBuilderForm({ book, disabled = false, onSave }: BookBuilderF
           className={`min-h-11 rounded-xl border border-line bg-surface px-3 ${focusRing}`}
         />
       </label>
+      <LanguagePicker value={language} onChange={setLanguage} disabled={disabled || saving} testId="book-language-picker" />
       <label className="flex flex-col gap-1 text-sm">
         Description
         <textarea
