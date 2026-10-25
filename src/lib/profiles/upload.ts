@@ -107,7 +107,13 @@ export async function saveProfileImage(input: {
   }
 
   const previousPath = input.previousUrl ? storageObjectPath(input.previousUrl, input.bucket, input.userId) : null
-  if (previousPath && previousPath !== path) await removeObject(input.bucket, previousPath)
+  if (previousPath && previousPath !== path) {
+    const { error: queueError } = await supabase.rpc('queue_storage_object_for_deletion', {
+      p_bucket: input.bucket,
+      p_path: previousPath,
+    })
+    if (queueError) await removeObject(input.bucket, previousPath)
+  }
   return { ok: true, data: publicUrl }
 }
 

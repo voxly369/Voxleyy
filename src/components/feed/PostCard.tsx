@@ -9,7 +9,7 @@ import { QuoteCardView } from '../creations/QuoteCardView.tsx'
 import { creationTypeLabel } from '../../lib/creations/creationTypeLabel.ts'
 import type { FeedPost } from '../../lib/feed/types.ts'
 import { BadgeRowOnName } from '../badges/BadgeRowOnName.tsx'
-import { VerifiedBadge } from '../profile/VerifiedBadge.tsx'
+import { VerifiedSeal } from '../profile/VerifiedSeal.tsx'
 import { EngagementBar } from '../engagement/EngagementBar.tsx'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { focusRing } from '../shell/navItems.ts'
@@ -97,17 +97,17 @@ export function PostCard({ post, onCommentClick, onPostUpdate }: PostCardProps) 
           />
         </Link>
         <div className="min-w-0 flex-1">
-          <div className="flex min-h-11 flex-wrap items-center gap-1">
+          <div className="flex min-h-11 max-w-full items-center gap-x-1">
             <Link
               to={`/u/${post.author.username}`}
-              className={`flex min-h-11 min-w-11 w-full items-center font-medium text-ink ${focusRing}`}
+              className={`min-h-11 min-w-0 shrink font-medium text-ink ${focusRing}`}
             >
-              <span className="truncate">{post.author.displayName || post.author.username}</span>
+              <span className="block truncate">{post.author.displayName || post.author.username}</span>
             </Link>
             {post.author.feedBadges?.length ? (
               <BadgeRowOnName badges={post.author.feedBadges} verified={post.author.verified} />
             ) : null}
-            {post.author.verified ? <VerifiedBadge /> : null}
+            {post.author.verified ? <VerifiedSeal size="sm" /> : null}
           </div>
           <Link
             to={`/u/${post.author.username}`}

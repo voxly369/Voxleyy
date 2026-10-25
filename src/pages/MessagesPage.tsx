@@ -3,17 +3,24 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ConversationList } from '../components/messages/ConversationList.tsx'
 import { DmWriterSearch } from '../components/messages/DmWriterSearch.tsx'
 import { ConversationThread } from '../components/messages/ConversationThread.tsx'
+import { MessagesSectionTabs, type MessagesSection } from '../components/messages/MessagesSectionTabs.tsx'
 import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { EmptyState } from '../components/states/EmptyState.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { useMessages } from '../lib/messages/useMessages.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 
+function parseSection(value: string | null): MessagesSection {
+  if (value === 'communities' || value === 'channels') return value
+  return 'direct'
+}
+
 export default function MessagesPage() {
   useDocumentTitle('Messages')
   const { conversationId } = useParams()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const shareCreationId = searchParams.get('share')
+  const section = parseSection(searchParams.get('section'))
   const {
     conversations,
     conversationsLoading,
@@ -32,16 +39,26 @@ export default function MessagesPage() {
   const showThreadMobile = Boolean(conversationId)
   const showListMobile = !conversationId
 
+  function setSection(next: MessagesSection) {
+    setSearchParams((prev) => {
+      const copy = new URLSearchParams(prev)
+      if (next === 'direct') copy.delete('section')
+      else copy.set('section', next)
+      return copy
+    })
+  }
+
   return (
     <div
       className="mx-auto flex min-h-[calc(100dvh-var(--nav-h)-2rem)] w-full max-w-none flex-col py-4 md:min-h-[calc(100dvh-2rem)] md:py-6"
       data-testid="messages-page"
       style={{ maxWidth: 'calc(100vw - var(--rail-width))' }}
     >
-      <div className="px-4 md:px-6">
+      <div className="flex flex-col gap-3 px-4 md:px-6">
         <PageHeader title="Messages" />
-        {!conversationId ? (
-          <p className="mt-2 text-sm text-muted">
+        <MessagesSectionTabs active={section} onChange={setSection} />
+        {!conversationId && section === 'direct' ? (
+          <p className="text-sm text-muted">
             <Link to="/discover/search" className={`text-coral underline ${focusRing}`}>
               Find writers
             </Link>{' '}
@@ -49,60 +66,74 @@ export default function MessagesPage() {
           </p>
         ) : null}
       </div>
-      <div className="mt-4 flex min-h-0 flex-1 border-t border-line md:mx-4 md:rounded-2xl md:border md:bg-surface">
-        <aside
-          className={`${showListMobile ? 'flex' : 'hidden'} min-h-0 w-full flex-col md:flex md:w-80 md:shrink-0 md:border-r md:border-line`}
-          data-testid="messages-list-pane"
-        >
-          <DmWriterSearch />
-          <ConversationList
-            rows={conversations}
-            activeId={conversationId ?? null}
-            search={search}
-            onSearchChange={setSearch}
-            loading={conversationsLoading}
-            error={conversationsError}
-            hasMore={hasMoreConversations}
-            onLoadMore={() => void loadMoreConversations()}
+      {section !== 'direct' ? (
+        <div className="flex flex-1 items-center justify-center px-4 py-12">
+          <EmptyState
+            title={section === 'communities' ? 'Communities are coming' : 'Channels are coming'}
+            message={
+              section === 'communities'
+                ? 'Communities are coming to Voxly. Writers will gather here around poetry, fantasy, faith and more.'
+                : 'Channels are coming to Voxly. Longer conversations and shared rooms for writers will live here soon.'
+            }
+            dataTestId={section === 'communities' ? 'messages-communities-empty' : 'messages-channels-empty'}
           />
-        </aside>
-        <section
-          className={`${showThreadMobile ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col md:flex`}
-          data-testid="messages-thread-pane"
-        >
-          {conversationId ? (
-            !conversationsLoading && !activeConversation ? (
-              <div
-                className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center"
-                data-testid="messages-conversation-not-found"
-              >
-                <p className="text-lg font-medium text-ink">Conversation not found</p>
-                <p className="text-sm text-muted">That thread may have been removed or you no longer have access.</p>
-              </div>
+        </div>
+      ) : (
+        <div className="mt-4 flex min-h-0 flex-1 border-t border-line md:mx-4 md:rounded-2xl md:border md:bg-surface">
+          <aside
+            className={`${showListMobile ? 'flex' : 'hidden'} min-h-0 w-full flex-col md:flex md:w-80 md:shrink-0 md:border-r md:border-line`}
+            data-testid="messages-list-pane"
+          >
+            <DmWriterSearch />
+            <ConversationList
+              rows={conversations}
+              activeId={conversationId ?? null}
+              search={search}
+              onSearchChange={setSearch}
+              loading={conversationsLoading}
+              error={conversationsError}
+              hasMore={hasMoreConversations}
+              onLoadMore={() => void loadMoreConversations()}
+            />
+          </aside>
+          <section
+            className={`${showThreadMobile ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col md:flex`}
+            data-testid="messages-thread-pane"
+          >
+            {conversationId ? (
+              !conversationsLoading && !activeConversation ? (
+                <div
+                  className="flex flex-1 flex-col items-center justify-center gap-2 p-6 text-center"
+                  data-testid="messages-conversation-not-found"
+                >
+                  <p className="text-lg font-medium text-ink">Conversation not found</p>
+                  <p className="text-sm text-muted">That thread may have been removed or you no longer have access.</p>
+                </div>
+              ) : (
+                <ConversationThread
+                  conversation={activeConversation}
+                  conversationId={conversationId}
+                  showBackLink
+                  sharedCreationId={shareCreationId}
+                  onSent={() => void refresh()}
+                />
+              )
             ) : (
-              <ConversationThread
-                conversation={activeConversation}
-                conversationId={conversationId}
-                showBackLink
-                sharedCreationId={shareCreationId}
-                onSent={() => void refresh()}
-              />
-            )
-          ) : (
-            <div className="hidden flex-1 items-center justify-center p-6 md:flex">
-              <EmptyState
-                title="Start a conversation"
-                message="Pick a thread from the list, or visit a writer’s profile to send your first note."
-                action={
-                  <Link to="/discover" className="min-h-11 inline-flex items-center rounded-2xl bg-coral px-4 text-sm font-semibold text-white">
-                    Discover writers
-                  </Link>
-                }
-              />
-            </div>
-          )}
-        </section>
-      </div>
+              <div className="hidden flex-1 items-center justify-center p-6 md:flex">
+                <EmptyState
+                  title="Start a conversation"
+                  message="Pick a thread from the list, or visit a writer’s profile to send your first note."
+                  action={
+                    <Link to="/discover" className="min-h-11 inline-flex items-center rounded-2xl bg-coral px-4 text-sm font-semibold text-white">
+                      Discover writers
+                    </Link>
+                  }
+                />
+              </div>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   )
 }

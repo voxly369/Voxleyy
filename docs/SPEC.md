@@ -235,7 +235,7 @@ Awarded automatically by stored rules, except Featured and Verified. A user can 
 | Rising Creator | 100 followers                                                              |
 | Viral Creator  | 10,000 total likes                                                         |
 | Featured       | Awarded by the Founder only                                                |
-| Verified       | Purchased by the user. The only paid badge. One colour everywhere (purple) |
+| Verified       | Purchased by the user. The only paid badge. One colour everywhere (Voxly coral accent) |
 
 **Where badges show.** The profile has a Badges shelf directly under the bio: the three badges the user pins, and a 'See all' page listing every badge with its icon, description, date earned and progress toward the next one. Up to two badges also appear beside the name on posts and comments.
 
@@ -689,7 +689,7 @@ The following belong to the full Voxly platform and are specified here so the ar
 
 - **Navigation:** a fixed bottom bar with Home, Discover, a raised coral Create (+) button, Messages and Profile; on phones Settings opens from the three-line button at the top right of your own profile; desktop uses the rail with a More menu. The bar is opaque, every screen has bottom padding equal to the bar height plus the device safe area, and every role sees the same bar.
 
-- **Verified badge:** one colour everywhere (purple).
+- **Verified badge:** one colour everywhere (Voxly coral accent).
 
 - **Quality bar:** custom type scale, deliberate palette, real micro-interactions (like and save animations, page transitions, tactile feedback), cover-forward browsing, and a shelf feel for Library and Storefront.
 

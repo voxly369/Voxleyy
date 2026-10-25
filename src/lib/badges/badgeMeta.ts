@@ -21,7 +21,11 @@ const META: Record<string, { name: string; description: string; iconKey: string 
   most_read: { name: 'Most Read', description: 'Most-read book or chapter in the month', iconKey: 'trophy' },
   top_seller: { name: 'Top Seller', description: 'Highest sales in the month', iconKey: 'trophy' },
   monthly_top_10: { name: 'Monthly Top 10', description: 'Placed in the platform top ten writers', iconKey: 'trophy' },
-  founder: { name: 'Founder', description: 'The person who built Voxly', iconKey: 'founder' },
+  founder: {
+    name: 'Founder',
+    description: 'The heart behind Voxly — building a home for writers and readers who love the word.',
+    iconKey: 'founder',
+  },
 }
 
 export function badgeMeta(key: BadgeKey): { name: string; description: string; iconKey: string } {

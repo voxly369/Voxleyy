@@ -1552,6 +1552,7 @@ export type Database = {
           updated_at: string | null
           username: string | null
           verified: boolean | null
+          verified_at: string | null
           website: string | null
           who_can_message: string | null
         }
@@ -1576,6 +1577,7 @@ export type Database = {
           updated_at?: string | null
           username?: string | null
           verified?: boolean | null
+          verified_at?: never
           website?: string | null
           who_can_message?: string | null
         }
@@ -1600,6 +1602,7 @@ export type Database = {
           updated_at?: string | null
           username?: string | null
           verified?: boolean | null
+          verified_at?: never
           website?: string | null
           who_can_message?: string | null
         }
@@ -2117,6 +2120,7 @@ export type Database = {
       founder_pending_storage_cleanup_count: { Args: Record<string, never>; Returns: number }
       founder_list_deletion_storage_queue: { Args: { p_limit?: number }; Returns: Json }
       check_upload_quota: { Args: { p_bytes: number; p_kind?: string }; Returns: undefined }
+      queue_storage_object_for_deletion: { Args: { p_bucket: string; p_path: string }; Returns: undefined }
       founder_create_invite_code: { Args: Record<string, never>; Returns: string }
       founder_client_errors_grouped: { Args: { p_limit?: number }; Returns: Json }
       founder_dismiss_client_error: { Args: { p_message: string }; Returns: undefined }

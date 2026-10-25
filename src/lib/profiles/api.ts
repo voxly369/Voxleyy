@@ -64,6 +64,7 @@ function parsePublicProfile(value: unknown): PublicProfile | null {
     language: text(row.language) ?? 'en',
     role: role as UserRole,
     verified: bool(row.verified),
+    verifiedAt: bool(row.verified) ? text(row.verified_at) : null,
     followerCount: count(row.follower_count),
     followingCount: count(row.following_count),
     creationCount: count(row.creation_count),

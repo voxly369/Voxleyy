@@ -30,7 +30,7 @@ export function AppShell() {
         <FeedbackProvider>
           <div id={VOXLY_APP_ROOT_ID}>
             <SkipLink />
-            <div className="pointer-events-none fixed left-4 top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 md:hidden">
+            <div className="pointer-events-none fixed end-4 top-[calc(env(safe-area-inset-top)+0.75rem)] z-50 md:hidden">
               <div className="pointer-events-auto">
                 <NotificationBell variant="mobile" className="rounded-full border border-line bg-surface/95 shadow-md backdrop-blur" />
               </div>
