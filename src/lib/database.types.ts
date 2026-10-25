@@ -2121,7 +2121,10 @@ export type Database = {
       founder_list_deletion_storage_queue: { Args: { p_limit?: number }; Returns: Json }
       check_upload_quota: { Args: { p_bytes: number; p_kind?: string }; Returns: undefined }
       queue_storage_object_for_deletion: { Args: { p_bucket: string; p_path: string }; Returns: undefined }
-      founder_create_invite_code: { Args: Record<string, never>; Returns: string }
+      founder_create_invite_code: {
+        Args: { p_max_uses: number; p_expires_at?: string | null; p_note?: string | null }
+        Returns: string
+      }
       founder_client_errors_grouped: { Args: { p_limit?: number }; Returns: Json }
       founder_dismiss_client_error: { Args: { p_message: string }; Returns: undefined }
       founder_list_invite_codes: { Args: Record<string, never>; Returns: Json }

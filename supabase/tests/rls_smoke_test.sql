@@ -4418,6 +4418,19 @@ begin
 
   perform set_config('request.jwt.claim.sub', v_founder::text, true);
   v_inv := public.founder_create_invite_code(1, now() + interval '1 day', 'smoke16b');
+  perform pg_temp.record(
+    'founder_create_invite_code returns code for founder',
+    v_inv is not null and length(v_inv) = 10,
+    'code=' || coalesce(v_inv, '')
+  );
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  begin
+    perform public.founder_create_invite_code(1, now() + interval '1 day', 'blocked');
+    perform pg_temp.record('non-founder cannot founder_create_invite_code', false, 'unexpected ok');
+  exception when others then
+    perform pg_temp.record('non-founder cannot founder_create_invite_code', true, sqlerrm);
+  end;
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
   perform set_config('request.jwt.claim.sub', v_pending::text, true);
   begin perform public.redeem_invite_code('ABCDEFGHJK'); perform pg_temp.record('invite wrong code generic refusal', false, 'accepted');
   exception when others then perform pg_temp.record('invite wrong code generic refusal', true, sqlerrm); end;
