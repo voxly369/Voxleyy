@@ -16,10 +16,16 @@ describe('CoverStudioToolbar', () => {
         showSafeArea
         saveLabel="Saved"
         exportBusy={false}
+        canGroup={false}
+        canUngroup={false}
+        canAlign
         onUndo={onUndo}
         onRedo={() => {}}
         onToggleGrid={() => {}}
         onToggleSafeArea={() => {}}
+        onGroup={() => {}}
+        onUngroup={() => {}}
+        onAlignCenter={() => {}}
         onExport={onExport}
         onImportFinished={() => {}}
       />,

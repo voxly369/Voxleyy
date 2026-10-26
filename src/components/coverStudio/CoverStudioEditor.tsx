@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import type { SnapGuide } from '../../lib/coverStudio/snap.ts'
 import { COVER_TEMPLATES } from '../../lib/coverStudio/templates.generated.ts'
 import type { CoverDesignDocument } from '../../lib/coverStudio/designSchema.ts'
 import { emptyCoverDesign } from '../../lib/coverStudio/designSchema.ts'
@@ -9,11 +10,14 @@ import {
   type CoverDesignRecord,
 } from '../../lib/coverStudio/coverDesignsApi.ts'
 import {
+  alignSelectedLayers,
   cloneDesign,
+  groupSelectedLayers,
   moveLayer,
   newLayerId,
   removeLayers,
   toggleSelection,
+  ungroupSelectedLayers,
   updateLayer,
 } from '../../lib/coverStudio/editorState.ts'
 import {
@@ -33,6 +37,7 @@ import { CoverStudioCanvasStage } from './CoverStudioCanvasStage.tsx'
 import { CoverStudioLayersPanel } from './CoverStudioLayersPanel.tsx'
 import { CoverStudioTemplateGallery } from './CoverStudioTemplateGallery.tsx'
 import { CoverStudioTextInspector } from './CoverStudioTextInspector.tsx'
+import { CoverStudioImageInspector } from './CoverStudioImageInspector.tsx'
 import { CoverStudioToolbar } from './CoverStudioToolbar.tsx'
 import { Modal } from '../shell/Modal.tsx'
 import { focusRing } from '../shell/navItems.ts'
@@ -102,6 +107,7 @@ export function CoverStudioEditor({
   const [saveStatus, setSaveStatus] = useState('Ready')
   const [exportBusy, setExportBusy] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
+  const [alignGuides, setAlignGuides] = useState<SnapGuide[]>([])
   const importInputRef = useRef<HTMLInputElement | null>(null)
   const autosaveRef = useRef<ReturnType<typeof createCoverDesignAutosave> | null>(null)
 
@@ -151,6 +157,19 @@ export function CoverStudioEditor({
     const layer = design.layers.find((l) => l.id === id)
     return layer?.type === 'text' ? layer : null
   }, [design.layers, state.selectedIds])
+
+  const selectedImageLayer = useMemo(() => {
+    const id = state.selectedIds[0]
+    const layer = design.layers.find((l) => l.id === id)
+    return layer?.type === 'image' ? layer : null
+  }, [design.layers, state.selectedIds])
+
+  const canGroup = state.selectedIds.length >= 2
+  const canUngroup = state.selectedIds.some((id) => {
+    const layer = design.layers.find((l) => l.id === id)
+    return Boolean(layer?.groupId)
+  })
+  const canAlign = state.selectedIds.length >= 1
 
   function applyTemplate(templateId: string) {
     const template = COVER_TEMPLATES.find((t) => t.id === templateId)
@@ -273,10 +292,20 @@ export function CoverStudioEditor({
         showSafeArea={showSafeArea}
         saveLabel={saveStatus}
         exportBusy={exportBusy}
+        canGroup={canGroup}
+        canUngroup={canUngroup}
+        canAlign={canAlign}
         onUndo={() => dispatch({ type: 'undo' })}
         onRedo={() => dispatch({ type: 'redo' })}
         onToggleGrid={() => setShowGrid((v) => !v)}
         onToggleSafeArea={() => setShowSafeArea((v) => !v)}
+        onGroup={() => commit(groupSelectedLayers(design, state.selectedIds))}
+        onUngroup={() => commit(ungroupSelectedLayers(design, state.selectedIds))}
+        onAlignCenter={() => {
+          commit(alignSelectedLayers(design, state.selectedIds, 'center'))
+          setAlignGuides([{ orientation: 'v', position: design.width / 2 }])
+          window.setTimeout(() => setAlignGuides([]), 900)
+        }}
         onExport={() => void onExport()}
         onImportFinished={() => setImportOpen(true)}
       />
@@ -296,9 +325,25 @@ export function CoverStudioEditor({
             selectedIds={state.selectedIds}
             showGrid={showGrid}
             showSafeArea={showSafeArea}
+            extraGuides={alignGuides}
             resolveImage={resolveImage}
             onSelect={(id, additive) => dispatch({ type: 'select', layerId: id, additive })}
-            onMoveLayer={(layerId, x, y) => commit(updateLayer(design, layerId, { x, y }))}
+            onMoveLayer={(layerId, x, y) => {
+              const layer = design.layers.find((l) => l.id === layerId)
+              if (!layer) return
+              if (layer.groupId) {
+                const dx = x - layer.x
+                const dy = y - layer.y
+                commit({
+                  ...design,
+                  layers: design.layers.map((l) =>
+                    l.groupId === layer.groupId ? { ...l, x: l.x + dx, y: l.y + dy } : l,
+                  ),
+                })
+              } else {
+                commit(updateLayer(design, layerId, { x, y }))
+              }
+            }}
           />
           <button
             type="button"
@@ -314,6 +359,13 @@ export function CoverStudioEditor({
             onChange={(patch) => {
               if (!selectedTextLayer) return
               commit(updateLayer(design, selectedTextLayer.id, patch))
+            }}
+          />
+          <CoverStudioImageInspector
+            layer={selectedImageLayer}
+            onChange={(patch) => {
+              if (!selectedImageLayer) return
+              commit(updateLayer(design, selectedImageLayer.id, patch))
             }}
           />
           <CoverStudioLayersPanel

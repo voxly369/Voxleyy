@@ -7,10 +7,16 @@ type CoverStudioToolbarProps = {
   showSafeArea: boolean
   saveLabel: string
   exportBusy: boolean
+  canGroup: boolean
+  canUngroup: boolean
+  canAlign: boolean
   onUndo: () => void
   onRedo: () => void
   onToggleGrid: () => void
   onToggleSafeArea: () => void
+  onGroup: () => void
+  onUngroup: () => void
+  onAlignCenter: () => void
   onExport: () => void
   onImportFinished: () => void
 }
@@ -22,10 +28,16 @@ export function CoverStudioToolbar({
   showSafeArea,
   saveLabel,
   exportBusy,
+  canGroup,
+  canUngroup,
+  canAlign,
   onUndo,
   onRedo,
   onToggleGrid,
   onToggleSafeArea,
+  onGroup,
+  onUngroup,
+  onAlignCenter,
   onExport,
   onImportFinished,
 }: CoverStudioToolbarProps) {
@@ -69,6 +81,33 @@ export function CoverStudioToolbar({
         className={`min-h-11 rounded-xl border border-line px-3 text-sm ${showSafeArea ? 'bg-coral/15' : ''} ${focusRing}`}
       >
         Safe area
+      </button>
+      <button
+        type="button"
+        data-testid="cover-group"
+        disabled={!canGroup}
+        onClick={onGroup}
+        className={`min-h-11 rounded-xl border border-line px-3 text-sm disabled:opacity-40 ${focusRing}`}
+      >
+        Group
+      </button>
+      <button
+        type="button"
+        data-testid="cover-ungroup"
+        disabled={!canUngroup}
+        onClick={onUngroup}
+        className={`min-h-11 rounded-xl border border-line px-3 text-sm disabled:opacity-40 ${focusRing}`}
+      >
+        Ungroup
+      </button>
+      <button
+        type="button"
+        data-testid="cover-align-center"
+        disabled={!canAlign}
+        onClick={onAlignCenter}
+        className={`min-h-11 rounded-xl border border-line px-3 text-sm disabled:opacity-40 ${focusRing}`}
+      >
+        Align centre
       </button>
       <span className="ml-auto text-sm text-muted" data-testid="cover-design-save-status" aria-live="polite">
         {saveLabel}

@@ -67,6 +67,25 @@ describe('exportRender', () => {
     expect(blob.type).toBe('image/png')
   })
 
+  it('exports jpeg at 1600x2400 canvas dimensions', async () => {
+    let exportWidth = 0
+    let exportHeight = 0
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (
+      this: HTMLCanvasElement,
+      cb,
+      type,
+    ) {
+      exportWidth = this.width
+      exportHeight = this.height
+      cb?.(new Blob(['jpeg-bytes'], { type: String(type) }))
+    })
+    const doc = emptyCoverDesign()
+    const blob = await renderCoverDesignBlob(doc, { format: 'jpeg' })
+    expect(blob.type).toBe('image/jpeg')
+    expect(exportWidth).toBe(1600)
+    expect(exportHeight).toBe(2400)
+  })
+
   it('uses resolveImage for image background when provided', async () => {
     const doc = emptyCoverDesign()
     doc.background = { type: 'image', storageKey: 'bg.webp', fit: 'cover' }
