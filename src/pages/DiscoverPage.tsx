@@ -9,13 +9,12 @@ import { focusRing } from '../components/shell/navItems.ts'
 import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 import { DiscoverLanguageFilterChips } from '../components/discover/DiscoverLanguageFilterChips.tsx'
 
-type DiscoverTab = 'explore' | 'communities' | 'slam' | 'live'
+type DiscoverTab = 'explore' | 'communities' | 'slam'
 
 const TABS: { id: DiscoverTab; label: string }[] = [
   { id: 'explore', label: 'Explore' },
   { id: 'communities', label: 'Communities' },
   { id: 'slam', label: 'Slam' },
-  { id: 'live', label: 'Live' },
 ]
 
 export default function DiscoverPage() {
@@ -60,13 +59,6 @@ export default function DiscoverPage() {
             title="Slam"
             message="Learn how Slam works"
             action={<span className="text-sm text-muted">Slam events arrive in a later step.</span>}
-          />
-        ) : null}
-        {tab === 'live' ? (
-          <EmptyState
-            title="Live"
-            message="Notify me when someone goes live"
-            action={<span className="text-sm text-muted">Live rooms arrive in a later step.</span>}
           />
         ) : null}
       </PageContainer>

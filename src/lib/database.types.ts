@@ -225,7 +225,6 @@ export type Database = {
           currency: string
           description: string
           id: string
-          isbn_internal: string | null
           price_cents: number
           rental_days: number | null
           sale_model: Database["public"]["Enums"]["book_sale_model"]
@@ -238,7 +237,6 @@ export type Database = {
           currency?: string
           description?: string
           id: string
-          isbn_internal?: string | null
           price_cents?: number
           rental_days?: number | null
           sale_model?: Database["public"]["Enums"]["book_sale_model"]
@@ -251,11 +249,46 @@ export type Database = {
           currency?: string
           description?: string
           id?: string
-          isbn_internal?: string | null
           price_cents?: number
           rental_days?: number | null
           sale_model?: Database["public"]["Enums"]["book_sale_model"]
           subtitle?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      voxly_book_ids: {
+        Row: {
+          book_id: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          identifier: string
+          owner_id: string
+          published_at: string | null
+          reserved_at: string
+          updated_at: string
+        }
+        Insert: {
+          book_id: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          identifier: string
+          owner_id: string
+          published_at?: string | null
+          reserved_at?: string
+          updated_at?: string
+        }
+        Update: {
+          book_id?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          identifier?: string
+          owner_id?: string
+          published_at?: string | null
+          reserved_at?: string
           updated_at?: string
         }
         Relationships: []

@@ -5906,6 +5906,48 @@ begin
   reset role;
 end $stage_19b_cover_designs$;
 
+-- Phase 3: voxly_book_ids (renamed from isbn_numbers)
+do $stage_phase3_voxly_book_ids$
+declare
+  v_owner uuid := gen_random_uuid();
+  v_other uuid := gen_random_uuid();
+  v_book uuid;
+  n integer;
+begin
+  perform pg_temp.record('voxly_book_ids table exists', to_regclass('public.voxly_book_ids') is not null, '');
+  perform pg_temp.record('isbn_numbers table removed', to_regclass('public.isbn_numbers') is null, '');
+
+  perform pg_temp.create_test_user(v_owner, 'voxly.id.owner@voxly.test', now());
+  perform pg_temp.create_test_user(v_other, 'voxly.id.other@voxly.test', now());
+
+  insert into public.creations (author_id, type, title, audience, status, body_text)
+  values (v_owner, 'book', 'Voxly ID smoke', 'private', 'draft', '')
+  returning id into v_book;
+  insert into public.books (id, author_id, description) values (v_book, v_owner, 'desc');
+
+  perform set_config('request.jwt.claim.sub', v_owner::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_owner::text, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  insert into public.voxly_book_ids (book_id, owner_id, identifier)
+  values (v_book, v_owner, 'VBID-SMOKE01');
+
+  perform set_config('request.jwt.claim.sub', v_other::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_other::text, 'role', 'authenticated')::text, true);
+  select count(*) into n from public.voxly_book_ids where book_id = v_book;
+  perform pg_temp.record('voxly_book_ids owner-only select', n = 0, 'rows=' || n);
+
+  begin
+    insert into public.voxly_book_ids (book_id, owner_id, identifier)
+    values (v_book, v_other, 'VBID-INTRUSION');
+    perform pg_temp.record('voxly_book_ids owner-only insert', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record('voxly_book_ids owner-only insert', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  reset role;
+end $stage_phase3_voxly_book_ids$;
+
 do $$
 declare
   n integer;

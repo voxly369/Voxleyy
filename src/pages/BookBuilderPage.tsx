@@ -156,7 +156,7 @@ export default function BookBuilderPage() {
         priceCents: book.priceCents,
         currency: book.currency,
         rentalDays: book.rentalDays,
-        isbnInternal: book.isbnInternal,
+        voxlyBookId: book.voxlyBookId,
         language: book.language,
       },
       hasCover: Boolean(book.coverUrl),

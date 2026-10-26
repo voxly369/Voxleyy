@@ -17,7 +17,7 @@ const book: BookRecord = {
   priceCents: 0,
   currency: 'GBP',
   rentalDays: null,
-  isbnInternal: null,
+  voxlyBookId: null,
   language: 'en',
   updatedAt: '2026-01-01T00:00:00Z',
 }
