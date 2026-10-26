@@ -5808,6 +5808,7 @@ declare
   v_b uuid := gen_random_uuid();
   v_book uuid;
   n integer;
+  i integer;
   v_design jsonb := '{"version":1,"width":1600,"height":2400,"background":{"type":"solid","color":"#3d2c24"},"layers":[]}'::jsonb;
 begin
   execute format('set local role %I', session_user);
@@ -5838,6 +5839,59 @@ begin
   exception when others then
     perform pg_temp.record('cover_designs insert as other user blocked', true, sqlerrm);
   end;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', v_a::text, 'role', 'authenticated')::text, true);
+  execute 'set local role authenticated';
+  for i in 1..49 loop
+    insert into public.cover_designs (user_id, book_id, name, design_json)
+    values (v_a, v_book, 'Cap fill ' || i, v_design);
+  end loop;
+  select count(*) into n from public.cover_designs where user_id = v_a;
+  perform pg_temp.record('cover_designs cap allows 50 rows', n = 50, 'rows=' || n);
+  begin
+    insert into public.cover_designs (user_id, book_id, name, design_json)
+    values (v_a, v_book, 'Cap overflow', v_design);
+    perform pg_temp.record('cover_designs cap rejects 51st design', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record('cover_designs cap rejects 51st design', true, sqlerrm);
+  end;
+
+  begin
+    insert into public.cover_designs (user_id, book_id, name, design_json)
+    values (
+      v_a,
+      v_book,
+      'Oversize json',
+      jsonb_build_object(
+        'version', 1,
+        'width', 1600,
+        'height', 2400,
+        'background', jsonb_build_object('type', 'solid', 'color', '#000000'),
+        'layers', jsonb_build_array(),
+        'pad', repeat('x', 520000)
+      )
+    );
+    perform pg_temp.record('cover_designs rejects design json over 500 KB', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record('cover_designs rejects design json over 500 KB', true, sqlerrm);
+  end;
+
+  execute 'set local role anon';
+  perform set_config('request.jwt.claims', json_build_object('role', 'anon')::text, true);
+  begin
+    insert into public.cover_designs (user_id, book_id, name, design_json)
+    values (v_a, v_book, 'Anon insert', v_design);
+    perform pg_temp.record('cover_designs anon insert blocked', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record('cover_designs anon insert blocked', true, sqlerrm);
+  end;
+  select count(*) into n from public.cover_designs where user_id = v_a;
+  perform pg_temp.record('cover_designs anon select blocked', n = 0, 'rows=' || n);
+
+  delete from auth.users where id = v_a;
+  select count(*) into n from public.cover_designs where user_id = v_a;
+  perform pg_temp.record('cover_designs cascade delete with account', n = 0, 'rows=' || n);
 
   execute format('set local role %I', session_user);
   reset role;

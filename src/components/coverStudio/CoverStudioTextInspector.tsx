@@ -75,6 +75,144 @@ export function CoverStudioTextInspector({ layer, onChange }: CoverStudioTextIns
           />
         </label>
       </div>
+      <label className="flex flex-col gap-1 text-sm">
+        Weight
+        <select
+          data-testid="cover-text-weight"
+          value={layer.fontWeight}
+          onChange={(e) => onChange({ fontWeight: Number(e.target.value) })}
+          className={`min-h-11 rounded-xl border border-line bg-surface px-3 ${focusRing}`}
+        >
+          {[400, 500, 600, 700].map((w) => (
+            <option key={w} value={w}>
+              {w}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          data-testid="cover-text-italic"
+          checked={layer.fontStyle === 'italic'}
+          onChange={(e) => onChange({ fontStyle: e.target.checked ? 'italic' : 'normal' })}
+        />
+        Italic
+      </label>
+      <fieldset className="flex flex-col gap-1 text-sm">
+        <legend>Alignment</legend>
+        <div className="flex flex-wrap gap-2">
+          {(['left', 'center', 'right'] as const).map((align) => (
+            <button
+              key={align}
+              type="button"
+              data-testid={`cover-text-align-${align}`}
+              aria-pressed={layer.align === align}
+              onClick={() => onChange({ align })}
+              className={`min-h-10 rounded-xl border border-line px-3 capitalize ${layer.align === align ? 'bg-coral/15' : ''} ${focusRing}`}
+            >
+              {align}
+            </button>
+          ))}
+        </div>
+      </fieldset>
+      <label className="flex flex-col gap-1 text-sm">
+        Line height
+        <input
+          type="range"
+          min={0.8}
+          max={3}
+          step={0.05}
+          data-testid="cover-text-line-height"
+          value={layer.lineHeight}
+          onChange={(e) => onChange({ lineHeight: Number(e.target.value) })}
+          className={focusRing}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Letter spacing
+        <input
+          type="range"
+          min={-20}
+          max={80}
+          data-testid="cover-text-letter-spacing"
+          value={layer.letterSpacing}
+          onChange={(e) => onChange({ letterSpacing: Number(e.target.value) })}
+          className={focusRing}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Opacity
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          data-testid="cover-text-opacity"
+          value={layer.opacity}
+          onChange={(e) => onChange({ opacity: Number(e.target.value) })}
+          className={focusRing}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Shadow blur
+        <input
+          type="range"
+          min={0}
+          max={40}
+          data-testid="cover-text-shadow"
+          value={layer.shadow?.blur ?? 0}
+          onChange={(e) =>
+            onChange({
+              shadow: {
+                color: layer.shadow?.color ?? '#00000088',
+                blur: Number(e.target.value),
+                offsetX: layer.shadow?.offsetX ?? 2,
+                offsetY: layer.shadow?.offsetY ?? 2,
+              },
+            })
+          }
+          className={focusRing}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Outline width
+        <input
+          type="range"
+          min={0}
+          max={12}
+          data-testid="cover-text-outline"
+          value={layer.outline?.width ?? 0}
+          onChange={(e) =>
+            onChange({
+              outline: {
+                color: layer.outline?.color ?? '#000000',
+                width: Number(e.target.value),
+              },
+            })
+          }
+          className={focusRing}
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm">
+        Highlight padding
+        <input
+          type="range"
+          min={0}
+          max={24}
+          data-testid="cover-text-highlight"
+          value={layer.highlight?.padding ?? 0}
+          onChange={(e) =>
+            onChange({
+              highlight: {
+                color: layer.highlight?.color ?? '#ff5a3c55',
+                padding: Number(e.target.value),
+              },
+            })
+          }
+          className={focusRing}
+        />
+      </label>
       <div className="flex flex-wrap gap-1" role="list" aria-label="Brand palette">
         {COVER_BRAND_PALETTE.map((swatch) => (
           <button

@@ -35,6 +35,7 @@ const textLayerSchema = z.object({
   shadow: shadowSchema.nullable(),
   outline: z.object({ color: z.string(), width: z.number().min(0).max(20) }).nullable(),
   highlight: z.object({ color: z.string(), padding: z.number().min(0).max(40) }).nullable(),
+  groupId: z.string().max(64).nullable().optional(),
 })
 
 const shapeLayerSchema = z.object({
@@ -52,6 +53,7 @@ const shapeLayerSchema = z.object({
   stroke: z.string().nullable(),
   strokeWidth: z.number().min(0).max(40),
   cornerRadius: z.number().min(0).max(200).optional(),
+  groupId: z.string().max(64).nullable().optional(),
 })
 
 const imageLayerSchema = z.object({
@@ -74,6 +76,7 @@ const imageLayerSchema = z.object({
   saturation: z.number().min(0).max(200),
   blur: z.number().min(0).max(20),
   overlayColor: z.string().nullable(),
+  groupId: z.string().max(64).nullable().optional(),
 })
 
 const stickerLayerSchema = z.object({
@@ -88,6 +91,7 @@ const stickerLayerSchema = z.object({
   locked: z.boolean(),
   hidden: z.boolean(),
   stickerId: z.string().max(64),
+  groupId: z.string().max(64).nullable().optional(),
 })
 
 const backgroundSchema = z.discriminatedUnion('type', [

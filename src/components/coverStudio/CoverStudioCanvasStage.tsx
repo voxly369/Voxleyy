@@ -3,7 +3,7 @@ import type { CoverDesignDocument, CoverLayer } from '../../lib/coverStudio/desi
 import { COVER_DESIGN_HEIGHT, COVER_DESIGN_WIDTH } from '../../lib/coverStudio/designSchema.ts'
 import { renderCoverDesignToCanvas } from '../../lib/coverStudio/exportRender.ts'
 import { COVER_GRID_STEP, COVER_SAFE_INSET } from '../../lib/coverStudio/editorState.ts'
-import { nudgePosition, snapRectCenter } from '../../lib/coverStudio/snap.ts'
+import { nudgePosition, snapRectCenter, type SnapGuide } from '../../lib/coverStudio/snap.ts'
 import { focusRing } from '../shell/navItems.ts'
 
 type CoverStudioCanvasStageProps = {
@@ -11,6 +11,7 @@ type CoverStudioCanvasStageProps = {
   selectedIds: string[]
   showGrid: boolean
   showSafeArea: boolean
+  extraGuides?: SnapGuide[]
   resolveImage?: (storageKey: string) => Promise<HTMLImageElement | null>
   onSelect: (layerId: string | null, additive: boolean) => void
   onMoveLayer: (layerId: string, x: number, y: number) => void
@@ -30,6 +31,7 @@ export function CoverStudioCanvasStage({
   selectedIds,
   showGrid,
   showSafeArea,
+  extraGuides = [],
   resolveImage,
   onSelect,
   onMoveLayer,
@@ -42,6 +44,9 @@ export function CoverStudioCanvasStage({
     null,
   )
   const panDragRef = useRef<{ startX: number; startY: number; originX: number; originY: number } | null>(null)
+  const [activeGuides, setActiveGuides] = useState<SnapGuide[]>([])
+  const pinchRef = useRef<{ dist: number; zoom: number } | null>(null)
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
 
   useEffect(() => {
     let cancelled = false
@@ -73,6 +78,13 @@ export function CoverStudioCanvasStage({
   )
 
   function onPointerDown(e: React.PointerEvent) {
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (pointersRef.current.size === 2) {
+      const pts = [...pointersRef.current.values()]
+      const dx = pts[0]!.x - pts[1]!.x
+      const dy = pts[0]!.y - pts[1]!.y
+      pinchRef.current = { dist: Math.hypot(dx, dy), zoom }
+    }
     if (e.button === 1 || e.altKey) {
       panDragRef.current = { startX: e.clientX, startY: e.clientY, originX: pan.x, originY: pan.y }
       return
@@ -88,6 +100,18 @@ export function CoverStudioCanvasStage({
   }
 
   function onPointerMove(e: React.PointerEvent) {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    }
+    if (pointersRef.current.size === 2 && pinchRef.current) {
+      const pts = [...pointersRef.current.values()]
+      const dx = pts[0]!.x - pts[1]!.x
+      const dy = pts[0]!.y - pts[1]!.y
+      const dist = Math.hypot(dx, dy)
+      const ratio = dist / pinchRef.current.dist
+      setZoom(Math.min(1.2, Math.max(0.15, pinchRef.current.zoom * ratio)))
+      return
+    }
     if (panDragRef.current) {
       const d = panDragRef.current
       setPan({ x: d.originX + (e.clientX - d.startX), y: d.originY + (e.clientY - d.startY) })
@@ -113,12 +137,16 @@ export function CoverStudioCanvasStage({
     )
     nextX = snapped.x - layer.width / 2
     nextY = snapped.y - layer.height / 2
+    setActiveGuides(snapped.guides)
     onMoveLayer(layer.id, nextX, nextY)
   }
 
-  function onPointerUp() {
+  function onPointerUp(e: React.PointerEvent) {
+    pointersRef.current.delete(e.pointerId)
+    if (pointersRef.current.size < 2) pinchRef.current = null
     dragRef.current = null
     panDragRef.current = null
+    setActiveGuides([])
   }
 
   useEffect(() => {
@@ -165,7 +193,8 @@ export function CoverStudioCanvasStage({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
+        onPointerLeave={(e) => onPointerUp(e)}
+        onPointerCancel={onPointerUp}
         onWheel={(e) => {
           e.preventDefault()
           setZoom((z) => Math.min(1.2, Math.max(0.15, z - e.deltaY * 0.001)))
@@ -219,6 +248,25 @@ export function CoverStudioCanvasStage({
               />
             )
           })}
+          {[...activeGuides, ...extraGuides].map((guide, index) =>
+            guide.orientation === 'v' ? (
+              <div
+                key={`v-${guide.position}-${index}`}
+                data-testid="cover-snap-guide-v"
+                className="pointer-events-none absolute bottom-0 top-0 w-0.5 bg-coral"
+                style={{ left: guide.position }}
+                aria-hidden
+              />
+            ) : (
+              <div
+                key={`h-${guide.position}-${index}`}
+                data-testid="cover-snap-guide-h"
+                className="pointer-events-none absolute left-0 right-0 h-0.5 bg-coral"
+                style={{ top: guide.position }}
+                aria-hidden
+              />
+            ),
+          )}
         </div>
       </div>
     </div>
