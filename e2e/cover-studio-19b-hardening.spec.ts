@@ -88,7 +88,7 @@ test.describe('Cover Studio 19B hardening import', () => {
     })
     await openEditor(page)
     await page.getByRole('button', { name: 'Import finished cover' }).click()
-    const pngPath = join(process.cwd(), 'public/icons/icon-512.png')
+    const pngPath = join(process.cwd(), 'public/icon-512.png')
     await page.getByTestId('cover-import-finished-input').setInputFiles(pngPath)
     await expect.poll(() => uploads.length).toBeGreaterThan(0)
     expect(uploads.some((u) => u.url.includes('/covers/11111111-1111-1111-1111-111111111111/'))).toBe(true)
