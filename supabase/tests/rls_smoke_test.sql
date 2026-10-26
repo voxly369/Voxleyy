@@ -3187,6 +3187,202 @@ begin
   delete from public.hidden_words where user_id = v_a and word = 'badword';
 end $moderation_12a$;
 
+-- Auto-hide report threshold
+do $ah_smoke$
+declare
+  v_founder uuid;
+  v_a uuid;
+  v_b uuid;
+  v_c uuid;
+  v_d uuid;
+  v_post uuid;
+  v_post2 uuid;
+  v_post3 uuid;
+  v_loop_post uuid;
+  n integer;
+  v_action text;
+  v_status text;
+  v_msg text;
+  v_ok boolean;
+  v_hidden timestamptz;
+begin
+  v_msg :=
+    'Final warning: three of your posts were automatically hidden after multiple reports. Further moderation is at the Founder''s discretion.';
+  execute format('set local role %I', session_user);
+  select founder, reader_a, reader_b into v_founder, v_a, v_b from rls_ids;
+  v_c := 'cccccccc-cccc-cccc-cccc-cccccccccc01'::uuid;
+  v_d := 'dddddddd-dddd-dddd-dddd-dddddddddd01'::uuid;
+  perform pg_temp.create_test_user(v_c, 'reader.c@voxly.test', now());
+  perform pg_temp.create_test_user(v_d, 'reader.d@voxly.test', now());
+
+  execute format('set local role %I', session_user);
+  alter table public.creations disable trigger creations_rate_limit;
+  insert into public.creations (author_id, type, title, language, audience, status, body_text, published_at)
+  values (v_b, 'poem', 'Auto hide threshold', 'en', 'public', 'published', 'Threshold body', now())
+  returning id into v_post;
+  alter table public.creations enable trigger creations_rate_limit;
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  insert into public.reports (target_type, target_id, reported_user_id, reason)
+  values ('creation', v_post, v_b, 'spam');
+
+  perform set_config('request.jwt.claim.sub', v_c::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_c::text, 'role', 'authenticated', 'email', 'reader.c@voxly.test')::text,
+    true
+  );
+  insert into public.reports (target_type, target_id, reported_user_id, reason)
+  values ('creation', v_post, v_b, 'inappropriate');
+
+  v_action := $q$auto_hide$q$;
+  execute format('set local role %I', session_user);
+  select c.auto_hidden_at into v_hidden from public.creations c where c.id = v_post;
+  v_ok := v_hidden is null;
+  perform pg_temp.record('auto hide not applied with two distinct reporters', v_ok, coalesce(v_hidden::text, 'null'));
+  execute 'set local role authenticated';
+
+  perform set_config('request.jwt.claim.sub', v_d::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_d::text, 'role', 'authenticated', 'email', 'reader.d@voxly.test')::text,
+    true
+  );
+  insert into public.reports (target_type, target_id, reported_user_id, reason)
+  values ('creation', v_post, v_b, 'harassment');
+
+  execute format('set local role %I', session_user);
+  select c.auto_hidden_at into v_hidden from public.creations c where c.id = v_post;
+  v_ok := v_hidden is not null;
+  perform pg_temp.record('auto hide with three distinct reporters', v_ok, coalesce(v_hidden::text, 'null'));
+  execute 'set local role authenticated';
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+  select count(*) into n
+  from public.moderation_actions ma
+  where ma.target_id = v_post and ma.action::text = v_action;
+  v_ok := n >= 1;
+  perform pg_temp.record('auto hide writes moderation_actions row', v_ok, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  select count(*) into n from public.feed_creations where id = v_post;
+  v_ok := n = 0;
+  perform pg_temp.record('hidden post excluded from feed for other user', v_ok, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+  select count(*) into n from public.creations where id = v_post;
+  v_ok := n = 1;
+  perform pg_temp.record('author can read own hidden post', v_ok, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  begin
+    insert into public.reports (target_type, target_id, reported_user_id, reason)
+    values ('creation', v_post, v_b, 'spam');
+    perform pg_temp.record('author own report does not count', false, 'insert succeeded');
+  exception when others then
+    perform pg_temp.record('author own report does not count', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  alter table public.creations disable trigger creations_rate_limit;
+  insert into public.creations (author_id, type, title, language, audience, status, body_text, published_at)
+  values (v_b, 'poem', 'Auto hide post 2', 'en', 'public', 'published', 'Two', now())
+  returning id into v_post2;
+  insert into public.creations (author_id, type, title, language, audience, status, body_text, published_at)
+  values (v_b, 'poem', 'Auto hide post 3', 'en', 'public', 'published', 'Three', now())
+  returning id into v_post3;
+  alter table public.creations enable trigger creations_rate_limit;
+
+  execute 'set local role authenticated';
+  v_loop_post := v_post2;
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  insert into public.reports (target_type, target_id, reported_user_id, reason)
+  values ('creation', v_loop_post, v_b, 'spam');
+  perform set_config('request.jwt.claim.sub', v_c::text, true);
+  insert into public.reports (target_type, target_id, reported_user_id, reason)
+  values ('creation', v_loop_post, v_b, 'spam');
+  perform set_config('request.jwt.claim.sub', v_d::text, true);
+  insert into public.reports (target_type, target_id, reported_user_id, reason)
+  values ('creation', v_loop_post, v_b, 'spam');
+
+  v_loop_post := v_post3;
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  insert into public.reports (target_type, target_id, reported_user_id, reason)
+  values ('creation', v_loop_post, v_b, 'spam');
+  perform set_config('request.jwt.claim.sub', v_c::text, true);
+  insert into public.reports (target_type, target_id, reported_user_id, reason)
+  values ('creation', v_loop_post, v_b, 'spam');
+  perform set_config('request.jwt.claim.sub', v_d::text, true);
+  insert into public.reports (target_type, target_id, reported_user_id, reason)
+  values ('creation', v_loop_post, v_b, 'spam');
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+  select count(*) into n from public.warnings where user_id = v_b and message = v_msg;
+  v_ok := n = 1;
+  perform pg_temp.record('third flagged post creates one final warning', v_ok, 'rows=' || n);
+
+  select status::text into v_status from public.profiles where id = v_b;
+  v_ok := v_status = 'active';
+  perform pg_temp.record('auto hide final warning does not suspend user', v_ok, coalesce(v_status, 'null'));
+
+  begin
+    execute 'set local role anon';
+    insert into public.reports (target_type, target_id, reported_user_id, reason)
+    values ('creation', v_post2, v_b, 'spam');
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon cannot insert reports', false, 'insert succeeded');
+  exception when others then
+    execute format('set local role %I', session_user);
+    perform pg_temp.record('anon cannot insert reports', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+  select count(*) into n
+  from public.creations c
+  where c.id = v_post and c.is_removed = false
+    and exists (
+      select 1 from public.moderation_actions ma
+      where ma.target_id = c.id and ma.action::text = v_action
+    );
+  v_ok := n >= 1;
+  perform pg_temp.record('founder auto hidden queue lists hidden post', v_ok, 'rows=' || n);
+
+  perform public.restore_content('creation', v_post2, 'Restore after auto hide smoke', null);
+  select count(*) into n
+  from public.moderation_actions ma
+  where ma.target_id = v_post2 and ma.action::text = 'restore';
+  v_ok := n >= 1;
+  perform pg_temp.record('founder restore after auto hide writes audit row', v_ok, 'rows=' || n);
+end $ah_smoke$;
+
 -- Book builder (11B): reorder_book_chapters RPC
 do $book_builder_11b$
 declare
@@ -4134,8 +4330,9 @@ begin
   execute 'set local role authenticated';
 
   perform set_config('request.jwt.claim.sub', v_founder::text, true);
-  execute 'set local role authenticated';
-  select count(*) into v_count from public.conversation_members;
+  select count(*) into v_count
+  from public.conversation_members
+  where conversation_id = v_conv and user_id = v_founder;
   perform pg_temp.record('founder cannot select conversation_members', v_count = 0, 'rows=' || v_count);
 
   execute 'set local role authenticated';

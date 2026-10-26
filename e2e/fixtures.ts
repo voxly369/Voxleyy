@@ -8,6 +8,7 @@ import {
 } from './libraryReadingMocks.ts'
 import { bookBuilderMockHandleRest, resetBookBuilderMocks, softDeleteBookInMock } from './bookBuilderMocks.ts'
 import { coverStudioMockHandleRest, resetCoverStudioMocks } from './coverStudioMocks.ts'
+import { autoHideMockHandleRest, resetAutoHideMocks } from './autoHideMocks.ts'
 import {
   moderationBlockedUserIds,
   moderationMockHandleRest,
@@ -405,6 +406,8 @@ function handleRest(url: string, method: string, postData: unknown): unknown {
   if (messageResult !== undefined) return messageResult
   const moderationResult = moderationMockHandleRest(url, method, postData)
   if (moderationResult !== undefined) return moderationResult
+  const autoHideResult = autoHideMockHandleRest(url, method)
+  if (autoHideResult !== undefined) return autoHideResult
   const audienceResult = audienceMockHandleRest(url, method, postData)
   if (audienceResult !== undefined) return audienceResult
   const libraryResult = libraryReadingMockHandleRest(url, method, postData)
@@ -615,6 +618,7 @@ export async function installSupabaseMocks(page: Page) {
   resetNotificationMocks()
   resetMessageMocks()
   resetModerationMocks()
+  resetAutoHideMocks()
   resetPreBetaMocks()
   resetBetaReadiness18bMocks()
   setE2eOnboardingComplete()

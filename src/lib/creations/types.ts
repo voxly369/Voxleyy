@@ -36,12 +36,14 @@ export type CreationDetail = WorkSummary & {
   isOwn: boolean
   isRemoved: boolean
   removedReason: string | null
+  autoHiddenAt: string | null
+  autoHideModerationActionId: string | null
 }
 
 export type CreationFailure = {
   ok: false
   error: {
-    code: 'invalid' | 'forbidden' | 'not_found' | 'unavailable'
+    code: 'invalid' | 'forbidden' | 'not_found' | 'under_review' | 'unavailable'
     message: string
     providerCode?: string
     providerStatus?: number

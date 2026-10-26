@@ -506,7 +506,7 @@ The Founder is the only moderator and the only administrator. Moderation is manu
 
 ### Automatic hide and warnings
 
-- When a **post, comment or profile** receives **3 to 5 distinct reports** (exact threshold stored in platform settings), it is **hidden automatically** and flagged for the Founder in the report queue.
+- When a **post** receives **3 distinct reports from different people** (threshold **3 to 5**; default **3** in `src/config/moderation.ts`, enforced in the database), it is **hidden automatically** and flagged for the Founder in the report queue. The author’s own report and duplicate reports from the same person do not count.
 
 - When a **user's posts** have been **flagged through this auto-hide rule 3 times**, the user receives a **final warning** (Founder message plus in-app dialog). **Suspension or ban** is always a **Founder decision** after that warning, never automatic.
 
@@ -799,7 +799,7 @@ High-level order (details and evidence in the roadmap):
 | Live streaming                                                                              | **Not in product** (record and post only)                                      |
 | Country Vibe visual                                                                         | **Themed banner with mood palette** (not a map)                                |
 | Signed-out public posts                                                                     | **Title and first lines** visible; full content requires sign-in               |
-| Auto-hide threshold                                                                         | **3 to 5 distinct reports** per target; **3 flagged posts** → final warning    |
+| Auto-hide threshold                                                                         | **3 distinct reporters** per post (configurable **3–5**); **3 flagged posts** → final warning, no auto-suspension |
 
 **Legal checklist:** Terms of Service, Privacy Policy, cookie and consent notice, POPIA compliance, copyright and takedown procedure, payment and tax handling for writer payouts, age requirements, and data export and deletion—completed **after payments**, immediately before public launch. **Monitoring, backups and the production data plan** are required **before** launch (section 14).
 
@@ -979,7 +979,7 @@ No system can make copying impossible, and screenshots can never be fully blocke
 
 - A private test period with real users precedes go-live, with load testing for launch traffic.
 
-- **Moderation at scale.** Reports are prioritised by severity and report count. **Auto-hide** follows section 11: **3 to 5 distinct reports** hides content and flags the Founder; **3 flagged posts** for a user triggers a **final warning** before any Founder suspension decision.
+- **Moderation at scale.** Reports are prioritised by severity and report count. **Auto-hide** follows section 11: **3 distinct reporters** hides a post and flags the Founder; **3 flagged posts** for a user triggers a **final warning** before any Founder suspension decision.
 
 ## 24. Features borrowed from other platforms
 

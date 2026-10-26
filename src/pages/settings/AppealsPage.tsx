@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { PageContainer } from '../../components/shell/PageContainer.tsx'
 import { PageHeader } from '../../components/shell/PageHeader.tsx'
 import { focusRing } from '../../components/shell/navItems.ts'
@@ -10,9 +10,10 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.ts'
 
 export default function AppealsPage() {
   useDocumentTitle('Appeals')
+  const [searchParams] = useSearchParams()
   const [rows, setRows] = useState<AppealRow[]>([])
   const [message, setMessage] = useState('')
-  const [actionId, setActionId] = useState('')
+  const [actionId, setActionId] = useState(searchParams.get('action') ?? '')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
 
@@ -24,6 +25,11 @@ export default function AppealsPage() {
   useEffect(() => {
     void reload()
   }, [])
+
+  useEffect(() => {
+    const fromQuery = searchParams.get('action')
+    if (fromQuery) setActionId(fromQuery)
+  }, [searchParams])
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()

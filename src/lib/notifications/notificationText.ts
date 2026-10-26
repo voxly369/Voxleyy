@@ -26,6 +26,8 @@ function moderationKindText(kind: unknown): string {
       return 'Your content was removed'
     case 'restored':
       return 'Your content was restored'
+    case 'auto_hidden':
+      return 'Your post was hidden after reports'
     default:
       return 'Moderation update'
   }

@@ -88,6 +88,19 @@ export type FounderReportQueueRow = {
   target_snapshot: Record<string, unknown> | null
 }
 
+export type FounderAutoHiddenRow = {
+  creation_id: string
+  auto_hidden_at: string
+  title: string | null
+  caption: string | null
+  body_excerpt: string | null
+  author_id: string
+  author_username: string | null
+  author_display_name: string | null
+  distinct_reporter_count: number
+  moderation_action_id: string | null
+}
+
 export type FounderContentRow = {
   content_kind: 'creation' | 'comment'
   content_id: string

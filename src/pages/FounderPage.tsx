@@ -3,12 +3,14 @@ import { PageHeader } from '../components/shell/PageHeader.tsx'
 import { PageContainer } from '../components/shell/PageContainer.tsx'
 import { accessibleCoralFill, focusRing } from '../components/shell/navItems.ts'
 import { EmptyState } from '../components/states/EmptyState.tsx'
+import { FounderAutoHiddenCard } from '../components/safety/FounderAutoHiddenCard.tsx'
 import { FounderReportCard } from '../components/safety/FounderReportCard.tsx'
 import {
   decideAppeal,
   founderUserSearch,
   listFounderAppeals,
   listFounderAuditLog,
+  listFounderAutoHiddenQueue,
   listFounderContent,
   listFounderReportQueue,
   removeContent,
@@ -16,7 +18,13 @@ import {
   unbanUser,
 } from '../lib/safety/founderApi.ts'
 import { statusDisplay } from '../lib/safety/moderationDisplay.ts'
-import type { FounderAuditRow, FounderContentRow, FounderReportQueueRow, FounderUserSearchHit } from '../lib/safety/types.ts'
+import type {
+  FounderAuditRow,
+  FounderAutoHiddenRow,
+  FounderContentRow,
+  FounderReportQueueRow,
+  FounderUserSearchHit,
+} from '../lib/safety/types.ts'
 import { FounderReasonModal } from '../components/safety/FounderReasonModal.tsx'
 import { FounderFeaturedBadgeControl } from '../components/founder/FounderFeaturedBadgeControl.tsx'
 import { FounderBetaTab } from '../components/founder/FounderBetaTab.tsx'
@@ -77,6 +85,7 @@ const ANALYTICS_TABS = new Set<FounderTab>([
 export default function FounderPage() {
   useDocumentTitle('Founder')
   const [tab, setTab] = useState<FounderTab>('overview')
+  const [autoHiddenRows, setAutoHiddenRows] = useState<FounderAutoHiddenRow[]>([])
   const [reportRows, setReportRows] = useState<FounderReportQueueRow[]>([])
   const [reportCursor, setReportCursor] = useState<string | null>(null)
   const [reportNext, setReportNext] = useState<string | null>(null)
@@ -101,6 +110,15 @@ export default function FounderPage() {
   useEffect(() => {
     void founderFeedbackUnreadCount().then(setFeedbackUnread)
   }, [tab])
+  const loadAutoHidden = useCallback(async () => {
+    const result = await listFounderAutoHiddenQueue()
+    if (!result.ok) {
+      setError(result.error.message)
+      return
+    }
+    setAutoHiddenRows(result.data)
+  }, [])
+
   const loadReports = useCallback(async (cursor: string | null, append: boolean) => {
     const result = await listFounderReportQueue(cursor)
     if (!result.ok) {
@@ -136,7 +154,10 @@ export default function FounderPage() {
 
   useEffect(() => {
     setError(null)
-    if (tab === 'reports') void loadReports(null, false)
+    if (tab === 'reports') {
+      void loadAutoHidden()
+      void loadReports(null, false)
+    }
     if (tab === 'content') void loadContent(null, false)
     if (tab === 'audit') void loadAudit(null, false)
     if (tab === 'appeals') {
@@ -145,7 +166,7 @@ export default function FounderPage() {
         if (result.ok) setAppeals(result.data)
       })()
     }
-  }, [tab, loadReports, loadContent, loadAudit, auditActionFilter])
+  }, [tab, loadReports, loadContent, loadAudit, loadAutoHidden, auditActionFilter])
 
   async function searchUsers() {
     const result = await founderUserSearch(userQuery)
@@ -197,6 +218,23 @@ export default function FounderPage() {
 
       {tab === 'reports' ? (
         <div className="flex flex-col gap-4" data-testid="founder-report-queue">
+          <section className="flex flex-col gap-3" data-testid="founder-auto-hide-queue">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Auto-hidden posts</h2>
+            {autoHiddenRows.length === 0 ? (
+              <p className="text-sm text-muted">No auto-hidden posts.</p>
+            ) : (
+              autoHiddenRows.map((row) => (
+                <FounderAutoHiddenCard
+                  key={row.creation_id}
+                  row={row}
+                  onActionComplete={() => {
+                    void loadAutoHidden()
+                    void loadReports(reportCursor, false)
+                  }}
+                />
+              ))
+            )}
+          </section>
           {reportRows.length === 0 ? (
             <EmptyState title="Report queue" message="No open reports." />
           ) : (
@@ -346,6 +384,7 @@ export default function FounderPage() {
               <option value="suspend">suspend</option>
               <option value="ban">ban</option>
               <option value="restore">restore</option>
+              <option value="auto_hide">auto_hide</option>
               <option value="unban">unban</option>
               <option value="appeal_decision">appeal_decision</option>
               <option value="private_content_view">private_content_view</option>

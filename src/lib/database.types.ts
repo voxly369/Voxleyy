@@ -642,6 +642,7 @@ export type Database = {
           genre: string | null
           id: string
           is_removed: boolean
+          auto_hidden_at: string | null
           language: string
           like_count: number
           media_meta: Json
@@ -670,6 +671,7 @@ export type Database = {
           genre?: string | null
           id?: string
           is_removed?: boolean
+          auto_hidden_at?: string | null
           language?: string
           like_count?: number
           media_meta?: Json
@@ -698,6 +700,7 @@ export type Database = {
           genre?: string | null
           id?: string
           is_removed?: boolean
+          auto_hidden_at?: string | null
           language?: string
           like_count?: number
           media_meta?: Json
@@ -1915,6 +1918,23 @@ export type Database = {
         Update: Record<string, never>
         Relationships: []
       }
+      founder_auto_hidden_queue: {
+        Row: {
+          author_display_name: string | null
+          author_id: string
+          author_username: string | null
+          auto_hidden_at: string
+          body_excerpt: string | null
+          caption: string | null
+          creation_id: string
+          distinct_reporter_count: number
+          moderation_action_id: string | null
+          title: string | null
+        }
+        Insert: Record<string, never>
+        Update: Record<string, never>
+        Relationships: []
+      }
       founder_report_queue: {
         Row: {
           details: string | null
@@ -2070,6 +2090,8 @@ export type Database = {
         Returns: undefined
       }
       can_view_creation: { Args: { c: string }; Returns: boolean }
+      creation_viewer_gate: { Args: { p_id: string }; Returns: string }
+      my_auto_hide_moderation_action_id: { Args: { p_creation_id: string }; Returns: string }
       chosen_username_ok: { Args: { candidate: string }; Returns: boolean }
       counts_as_published: {
         Args: {
@@ -2370,6 +2392,7 @@ export type Database = {
         | "unban"
         | "appeal_decision"
         | "private_view"
+        | "auto_hide"
       publish_status: "draft" | "published" | "unlisted" | "removed"
       report_reason:
         | "spam"
@@ -2541,6 +2564,8 @@ export const Constants = {
         "ban",
         "unban",
         "appeal_decision",
+        "private_view",
+        "auto_hide",
       ],
       book_entitlement_kind: ["free", "purchase", "rental", "subscription", "author"],
       book_sale_model: ["free", "purchase", "rental", "subscription"],

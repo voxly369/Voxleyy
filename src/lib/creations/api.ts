@@ -44,7 +44,7 @@ const WORK_LIST_COLUMNS =
   `id, type, title, caption, status, audience, cover_url, created_at, author_id, ${AUTHOR_EMBED}` as const
 
 const DETAIL_COLUMNS =
-  `id, type, title, caption, body_text, body_json, status, audience, cover_url, genre, mood, language, created_at, updated_at, is_removed, removed_reason, author_id, ${AUTHOR_EMBED}` as const
+  `id, type, title, caption, body_text, body_json, status, audience, cover_url, genre, mood, language, created_at, updated_at, is_removed, removed_reason, auto_hidden_at, author_id, ${AUTHOR_EMBED}` as const
 
 const EDIT_COLUMNS =
   'id, type, title, caption, body_text, body_json, cover_url, mood, language, status, audience, updated_at, is_removed, author_id' as const
@@ -101,6 +101,8 @@ function detailFromRecord(record: Record<string, unknown>, isOwn: boolean): Crea
     isOwn,
     isRemoved: record.is_removed === true,
     removedReason: text(record.removed_reason),
+    autoHiddenAt: text(record.auto_hidden_at),
+    autoHideModerationActionId: null,
   }
 }
 
@@ -222,7 +224,14 @@ export async function getCreationById(id: string): Promise<CreationResult<Creati
   const userId = await currentUserId()
   const { data, error } = await supabase.from('creations').select(DETAIL_COLUMNS).eq('id', id).maybeSingle()
   if (error) return failFromProvider('unavailable', 'We could not load this work. Try again.', error)
-  if (!data) return fail('not_found', 'This work is not available.')
+  if (!data) {
+    const { data: gate, error: gateError } = await supabase.rpc('creation_viewer_gate', { p_id: id })
+    if (gateError) return failFromProvider('unavailable', 'We could not load this work. Try again.', gateError)
+    if (gate === 'under_review') {
+      return fail('under_review', 'This piece is under review.')
+    }
+    return fail('not_found', 'This work is not available.')
+  }
 
   const work = parseWork(data as Record<string, unknown>)
   if (!work) return fail('not_found', 'This work is not available.')
@@ -235,6 +244,10 @@ export async function getCreationById(id: string): Promise<CreationResult<Creati
   }
   const detail = detailFromRecord(record, isOwn)
   if (!detail) return fail('not_found', 'This work is not available.')
+  if (detail.autoHiddenAt && isOwn) {
+    const { data: actionId } = await supabase.rpc('my_auto_hide_moderation_action_id', { p_creation_id: id })
+    detail.autoHideModerationActionId = typeof actionId === 'string' ? actionId : null
+  }
   return { ok: true, data: detail }
 }
 

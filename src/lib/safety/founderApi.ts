@@ -3,6 +3,7 @@ import { validateFounderReason } from './founderReason.ts'
 import { safetyFail } from './safetyFailure.ts'
 import type {
   FounderAuditRow,
+  FounderAutoHiddenRow,
   FounderContentRow,
   FounderReportQueueRow,
   FounderUserSearchHit,
@@ -178,6 +179,16 @@ function decodeCursor(raw: string | null): Cursor | null {
     return null
   }
   return null
+}
+
+export async function listFounderAutoHiddenQueue(): Promise<SafetyResult<FounderAutoHiddenRow[]>> {
+  const { data, error } = await supabase
+    .from('founder_auto_hidden_queue')
+    .select('*')
+    .order('auto_hidden_at', { ascending: false })
+
+  if (error) return safetyFail('unavailable', error.message ?? 'Could not load auto-hidden queue.', error)
+  return { ok: true, data: (data ?? []) as FounderAutoHiddenRow[] }
 }
 
 export async function listFounderReportQueue(

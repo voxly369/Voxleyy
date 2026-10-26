@@ -28,6 +28,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 import { EngagementBar } from '../components/engagement/EngagementBar.tsx'
 import { CommentsSheet } from '../components/engagement/CommentsSheet.tsx'
 import { RemovedContentNotice } from '../components/safety/RemovedContentNotice.tsx'
+import { AuthorAutoHiddenNotice, UnderReviewNotice } from '../components/safety/UnderReviewNotice.tsx'
 import { RichTextView } from '../components/creations/RichTextView.tsx'
 import { quoteStyleFromJson } from '../lib/creations/bodyDocument.ts'
 import { QuoteCardView } from '../components/creations/QuoteCardView.tsx'
@@ -140,6 +141,13 @@ export default function CreationPage() {
   }
 
   if (!work) {
+    if (problem === 'This piece is under review.') {
+      return (
+        <PageContainer variant="reading" className="py-8">
+          <UnderReviewNotice />
+        </PageContainer>
+      )
+    }
     return (
       <ErrorState
         title="Work did not load"
@@ -356,6 +364,9 @@ export default function CreationPage() {
         ) : null}
         {readProgress ? <ResumeReaderPrompt creationId={work.id} percent={readProgress.percent} /> : null}
       </header>
+      {work.autoHiddenAt && work.isOwn ? (
+        <AuthorAutoHiddenNotice moderationActionId={work.autoHideModerationActionId} />
+      ) : null}
       {work.isRemoved && work.isOwn ? (
         <RemovedContentNotice reason={work.removedReason} kind="creation" />
       ) : work.type === 'quote_card' ? (
