@@ -36,7 +36,11 @@ function parseAuthor(row: Record<string, unknown>) {
   }
 }
 
-function parseBookRow(row: Record<string, unknown>, creation?: Record<string, unknown>): BookRecord {
+function parseBookRow(
+  row: Record<string, unknown>,
+  creation?: Record<string, unknown>,
+  voxlyBookId: string | null = null,
+): BookRecord {
   return {
     id: String(row.id),
     authorId: String(row.author_id),
@@ -50,7 +54,7 @@ function parseBookRow(row: Record<string, unknown>, creation?: Record<string, un
     priceCents: Number(row.price_cents ?? 0),
     currency: text(row.currency) ?? 'GBP',
     rentalDays: row.rental_days == null ? null : Number(row.rental_days),
-    isbnInternal: text(row.isbn_internal),
+    voxlyBookId,
     language: text(creation?.language) ?? 'en',
     updatedAt: text(row.updated_at) ?? new Date().toISOString(),
     author: parseAuthor(creation ?? row),
@@ -58,7 +62,13 @@ function parseBookRow(row: Record<string, unknown>, creation?: Record<string, un
 }
 
 const BOOK_COLUMNS =
-  'id, author_id, subtitle, description, sale_model, price_cents, currency, rental_days, isbn_internal, updated_at' as const
+  'id, author_id, subtitle, description, sale_model, price_cents, currency, rental_days, updated_at' as const
+
+async function fetchVoxlyBookIdForBook(bookId: string): Promise<string | null> {
+  const { data, error } = await supabase.from('voxly_book_ids').select('identifier').eq('book_id', bookId).maybeSingle()
+  if (error || !data) return null
+  return text((data as Record<string, unknown>).identifier)
+}
 
 const CREATION_EMBED =
   'creation:creations!books_id_fkey(id, title, cover_url, status, audience, language, author_id, author:profiles_public!creations_author_id_fkey(id, username, display_name, avatar_url, verified))' as const
@@ -94,7 +104,8 @@ export async function createBookDraft(input: {
 
   if (error || !data) return fail('unavailable', 'We could not start this book. Try again.', error ?? undefined)
   const creation = (data as Record<string, unknown>).creation as Record<string, unknown> | undefined
-  return { ok: true, data: parseBookRow(data as Record<string, unknown>, creation) }
+  const voxlyBookId = await fetchVoxlyBookIdForBook(created.data.id)
+  return { ok: true, data: parseBookRow(data as Record<string, unknown>, creation, voxlyBookId) }
 }
 
 export async function fetchBookById(bookId: string): Promise<BookApiResult<BookRecord>> {
@@ -106,7 +117,8 @@ export async function fetchBookById(bookId: string): Promise<BookApiResult<BookR
   if (error) return fail('unavailable', 'We could not load this book. Try again.', error)
   if (!data) return fail('not_found', 'This book was not found.')
   const creation = (data as Record<string, unknown>).creation as Record<string, unknown> | undefined
-  return { ok: true, data: parseBookRow(data as Record<string, unknown>, creation) }
+  const voxlyBookId = await fetchVoxlyBookIdForBook(bookId)
+  return { ok: true, data: parseBookRow(data as Record<string, unknown>, creation, voxlyBookId) }
 }
 
 export async function saveBookMetadata(bookId: string, raw: BookMetadataInput): Promise<BookApiResult<BookRecord>> {
@@ -130,15 +142,32 @@ export async function saveBookMetadata(bookId: string, raw: BookMetadataInput): 
       price_cents: meta.priceCents,
       currency: meta.currency,
       rental_days: meta.rentalDays,
-      isbn_internal: meta.isbnInternal?.trim() || null,
     })
     .eq('id', bookId)
     .select(`${BOOK_COLUMNS}, ${CREATION_EMBED}`)
     .single()
 
   if (error || !data) return fail('unavailable', 'We could not save this book. Try again.', error ?? undefined)
-  const creation = (data as Record<string, unknown>).creation as Record<string, unknown> | undefined
-  return { ok: true, data: parseBookRow(data as Record<string, unknown>, creation) }
+
+  const trimmedId = meta.voxlyBookId?.trim() ?? ''
+  if (trimmedId) {
+    const { data: session } = await supabase.auth.getSession()
+    const userId = session.session?.user.id
+    if (!userId) return fail('forbidden', 'Sign in again to save a draft.')
+    const { error: idError } = await supabase.from('voxly_book_ids').upsert(
+      {
+        book_id: bookId,
+        owner_id: userId,
+        identifier: trimmedId,
+        published_at: new Date().toISOString(),
+      },
+      { onConflict: 'book_id' },
+    )
+    if (idError) return fail('unavailable', 'We could not save the Voxly Book ID. Try again.', idError)
+  } else {
+    await supabase.from('voxly_book_ids').delete().eq('book_id', bookId)
+  }
+  return fetchBookById(bookId)
 }
 
 export async function listAuthorBooks(authorId: string): Promise<BookApiResult<BookRecord[]>> {

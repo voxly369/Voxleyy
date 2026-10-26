@@ -52,6 +52,7 @@ function eqFilterValue(url: string, column: string): string | null {
 }
 
 const books = new Map<string, BookRow>()
+const voxlyBookIds = new Map<string, { book_id: string; owner_id: string; identifier: string }>()
 const chapters = new Map<string, ChapterRow>()
 const entitlements: EntitlementRow[] = []
 const bookReadingProgress: BookReadingProgressRow[] = []
@@ -79,6 +80,7 @@ function readerCanLoadChapterBody(chapterId: string): boolean {
 
 function seedDefaultBooks() {
   books.clear()
+  voxlyBookIds.clear()
   chapters.clear()
   entitlements.length = 0
   bookReadingProgress.length = 0
@@ -94,7 +96,6 @@ function seedDefaultBooks() {
     price_cents: 499,
     currency: 'GBP',
     rental_days: null,
-    isbn_internal: null,
     updated_at: '2026-01-01T00:00:00Z',
     creation: {
       id: E2E_PAID_BOOK_ID,
@@ -122,7 +123,6 @@ function seedDefaultBooks() {
     price_cents: 0,
     currency: 'GBP',
     rental_days: null,
-    isbn_internal: null,
     updated_at: '2026-01-02T00:00:00Z',
     creation: {
       id: E2E_FREE_BOOK_ID,
@@ -151,7 +151,6 @@ function seedDefaultBooks() {
     price_cents: 0,
     currency: 'GBP',
     rental_days: null,
-    isbn_internal: null,
     updated_at: '2026-03-01T00:00:00Z',
     creation: {
       id: E2E_MIXED_PUBLISH_BOOK_ID,
@@ -217,7 +216,6 @@ function seedDefaultBooks() {
     price_cents: 0,
     currency: 'GBP',
     rental_days: null,
-    isbn_internal: null,
     updated_at: '2026-02-01T00:00:00Z',
     creation: {
       id: AUTHOR_DRAFT_BOOK_ID,
@@ -459,6 +457,33 @@ export function bookBuilderMockHandleRest(url: string, method: string, postData:
     const bookId = body?.p_book
     const userId = body?.p_user ?? READER_ID
     return entitlements.some((e) => e.user_id === userId && e.book_id === bookId && entitlementActive(e))
+  }
+
+  if (url.includes('/rest/v1/voxly_book_ids')) {
+    if (method === 'GET') {
+      const bookEq = eqFilterValue(url, 'book_id')
+      if (bookEq) {
+        const row = voxlyBookIds.get(bookEq)
+        return row ? [{ ...row, id: crypto.randomUUID() }] : []
+      }
+      return [...voxlyBookIds.values()].map((row) => ({ ...row, id: crypto.randomUUID() }))
+    }
+    if (method === 'POST' || method === 'PATCH' || method === 'PUT') {
+      const rows = Array.isArray(postData) ? postData : [postData]
+      for (const row of rows) {
+        if (!row || typeof row !== 'object') continue
+        const bookId = String((row as { book_id?: string }).book_id ?? '')
+        const identifier = String((row as { identifier?: string }).identifier ?? '')
+        const ownerId = String((row as { owner_id?: string }).owner_id ?? READER_ID)
+        if (bookId && identifier) voxlyBookIds.set(bookId, { book_id: bookId, owner_id: ownerId, identifier })
+      }
+      return rows
+    }
+    if (method === 'DELETE') {
+      const bookEq = eqFilterValue(url, 'book_id')
+      if (bookEq) voxlyBookIds.delete(bookEq)
+      return []
+    }
   }
 
   if (url.includes('/rest/v1/books')) {

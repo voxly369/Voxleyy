@@ -39,7 +39,7 @@ export const bookMetadataSchema = z
     priceCents: z.number().int().min(0),
     currency: bookCurrencySchema,
     rentalDays: z.number().int().min(1).max(365).nullable(),
-    isbnInternal: z.string().trim().max(32).nullable().optional(),
+    voxlyBookId: z.string().trim().max(32).nullable().optional(),
     language: z.string().regex(/^[a-z]{2,8}$/, 'Choose a language.'),
   })
   .strict()
@@ -59,7 +59,7 @@ export type BookRecord = {
   priceCents: number
   currency: string
   rentalDays: number | null
-  isbnInternal: string | null
+  voxlyBookId: string | null
   language: string
   updatedAt: string
   author?: {

@@ -11,7 +11,7 @@ describe('validateBookMetadata', () => {
       priceCents: 0,
       currency: 'GBP',
       rentalDays: null,
-      isbnInternal: null,
+      voxlyBookId: null,
       language: 'en',
     })
     expect(result.ok).toBe(false)
@@ -26,7 +26,7 @@ describe('validateBookMetadata', () => {
       priceCents: 0,
       currency: 'GBP',
       rentalDays: null,
-      isbnInternal: null,
+      voxlyBookId: null,
       language: 'en',
     })
     expect(result.ok).toBe(true)
@@ -44,7 +44,7 @@ describe('validateBookForPublish', () => {
         priceCents: 0,
         currency: 'GBP',
         rentalDays: null,
-        isbnInternal: null,
+        voxlyBookId: null,
         language: 'en',
       },
       hasCover: false,
@@ -64,7 +64,7 @@ describe('validateBookForPublish', () => {
           priceCents: 500,
           currency: 'GBP',
           rentalDays: null,
-          isbnInternal: null,
+          voxlyBookId: null,
           language: 'en',
         },
         hasCover: true,

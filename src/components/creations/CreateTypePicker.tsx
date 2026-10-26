@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { focusRing } from '../shell/navItems.ts'
 import { CreationTypeIcon } from './CreationTypeIcon.tsx'
+import { isVisibleInCreatePicker } from '../../config/productFlags.ts'
 import {
   CREATION_TYPE_GROUPS,
   creationTypesInGroup,
@@ -32,14 +33,16 @@ export function CreateTypePicker({ onPick, showIntro = true }: CreateTypePickerP
       {showIntro ? (
         <p className="text-base text-muted">Choose a format. You can save a draft and finish it later.</p>
       ) : null}
-      {CREATION_TYPE_GROUPS.map((group) => (
-        <section key={group.id} aria-labelledby={`create-group-${group.id}`}>
-          <h2 id={`create-group-${group.id}`} className="text-xs font-semibold uppercase tracking-wide text-muted">
-            {group.label}
-          </h2>
-          <ul className="mt-3 flex flex-col gap-3">
-            {creationTypesInGroup(group.id).map((card) =>
-              card.phase1 ? (
+      {CREATION_TYPE_GROUPS.map((group) => {
+        const cards = creationTypesInGroup(group.id).filter((card) => isVisibleInCreatePicker(card.type))
+        if (cards.length === 0) return null
+        return (
+          <section key={group.id} aria-labelledby={`create-group-${group.id}`}>
+            <h2 id={`create-group-${group.id}`} className="text-xs font-semibold uppercase tracking-wide text-muted">
+              {group.label}
+            </h2>
+            <ul className="mt-3 flex flex-col gap-3">
+              {cards.map((card) => (
                 <li key={card.type}>
                   <button
                     type="button"
@@ -53,25 +56,11 @@ export function CreateTypePicker({ onPick, showIntro = true }: CreateTypePickerP
                     </span>
                   </button>
                 </li>
-              ) : (
-                <li key={card.type}>
-                  <div
-                    aria-disabled="true"
-                    className="flex min-h-11 cursor-not-allowed items-start gap-4 rounded-2xl border border-line bg-bg p-4 opacity-70"
-                  >
-                    <CreationTypeIcon type={card.type} className="size-8 shrink-0 text-muted" />
-                    <span className="flex flex-col gap-1">
-                      <span className="font-serif text-lg text-muted">{card.name}</span>
-                      <span className="text-sm text-muted">{card.description}</span>
-                      <span className="text-xs font-medium text-muted">Coming soon</span>
-                    </span>
-                  </div>
-                </li>
-              ),
-            )}
-          </ul>
-        </section>
-      ))}
+              ))}
+            </ul>
+          </section>
+        )
+      })}
     </div>
   )
 }

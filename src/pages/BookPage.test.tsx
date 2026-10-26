@@ -49,7 +49,7 @@ describe('BookPage states', () => {
         priceCents: 499,
         currency: 'GBP',
         rentalDays: null,
-        isbnInternal: null,
+        voxlyBookId: null,
         updatedAt: '2026-01-01T00:00:00Z',
         author: { id: 'author-2', username: 'writertwo', displayName: 'Writer', avatarUrl: null, verified: false },
       },
@@ -86,7 +86,7 @@ describe('BookPage states', () => {
         priceCents: 0,
         currency: 'GBP',
         rentalDays: null,
-        isbnInternal: null,
+        voxlyBookId: null,
         updatedAt: '2026-01-01T00:00:00Z',
       },
     })

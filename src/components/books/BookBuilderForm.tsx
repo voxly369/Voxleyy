@@ -19,7 +19,7 @@ export function BookBuilderForm({ book, disabled = false, onSave }: BookBuilderF
   const [priceCents, setPriceCents] = useState(String(book.priceCents))
   const [currency, setCurrency] = useState(book.currency)
   const [rentalDays, setRentalDays] = useState(book.rentalDays ? String(book.rentalDays) : '')
-  const [isbnInternal, setIsbnInternal] = useState(book.isbnInternal ?? '')
+  const [voxlyBookId, setVoxlyBookId] = useState(book.voxlyBookId ?? '')
   const [language, setLanguage] = useState(book.language || DEFAULT_CONTENT_LANGUAGE)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -32,7 +32,7 @@ export function BookBuilderForm({ book, disabled = false, onSave }: BookBuilderF
     setPriceCents(String(book.priceCents))
     setCurrency(book.currency)
     setRentalDays(book.rentalDays ? String(book.rentalDays) : '')
-    setIsbnInternal(book.isbnInternal ?? '')
+    setVoxlyBookId(book.voxlyBookId ?? '')
     setLanguage(book.language || DEFAULT_CONTENT_LANGUAGE)
   }, [book])
 
@@ -46,7 +46,7 @@ export function BookBuilderForm({ book, disabled = false, onSave }: BookBuilderF
       priceCents: saleModel === 'free' ? 0 : Math.round(Number(priceCents) || 0),
       currency: currency.trim().toUpperCase(),
       rentalDays: saleModel === 'rental' ? Number(rentalDays) || null : null,
-      isbnInternal: isbnInternal.trim() ? isbnInternal : null,
+      voxlyBookId: voxlyBookId.trim() ? voxlyBookId : null,
       language: language.trim().toLowerCase() || DEFAULT_CONTENT_LANGUAGE,
     }
     const validated = validateBookMetadata(payload)
@@ -151,10 +151,11 @@ export function BookBuilderForm({ book, disabled = false, onSave }: BookBuilderF
         </label>
       ) : null}
       <label className="flex flex-col gap-1 text-sm">
-        Internal ISBN / SKU
+        Voxly Book ID
         <input
-          value={isbnInternal}
-          onChange={(e) => setIsbnInternal(e.target.value)}
+          value={voxlyBookId}
+          onChange={(e) => setVoxlyBookId(e.target.value)}
+          aria-label="Voxly Book ID"
           disabled={disabled || saving}
           className={`min-h-11 rounded-xl border border-line bg-surface px-3 ${focusRing}`}
         />

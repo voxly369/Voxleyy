@@ -1,3 +1,4 @@
+import { SHOW_FOR_YOU_FEED_TAB } from '../../config/productFlags.ts'
 import { focusRing } from '../shell/navItems.ts'
 
 export type FeedTab = 'home' | 'for_you' | 'following'
@@ -9,7 +10,9 @@ type FeedSwitcherProps = {
 
 const tabs: { id: FeedTab; label: string; disabled?: boolean; hint?: string }[] = [
   { id: 'home', label: 'Home' },
-  { id: 'for_you', label: 'For You', disabled: true, hint: 'Coming soon' },
+  ...(SHOW_FOR_YOU_FEED_TAB
+    ? [{ id: 'for_you' as const, label: 'For You', disabled: true, hint: 'Coming soon' }]
+    : []),
   { id: 'following', label: 'Following' },
 ]
 
