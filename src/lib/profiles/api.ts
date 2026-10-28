@@ -14,6 +14,7 @@ import type {
 } from './types.ts'
 import { PROFILES_PUBLIC_SUMMARY_COLUMNS } from './profileColumns.ts'
 import { parseWebsite } from './website.ts'
+import { logDevDbError } from './devDbErrorLog.ts'
 
 const PUBLIC_PROFILE_COLUMNS = PROFILES_PUBLIC_SUMMARY_COLUMNS
 
@@ -175,7 +176,10 @@ export async function updateOwnProfile(fields: ProfileUpdate): Promise<ProfileRe
   if (Object.keys(payload.data).length === 0) return fail('invalid', 'There is nothing to save.')
 
   const { error: updateError } = await supabase.from('profiles').update(payload.data).eq('id', userId)
-  if (updateError) return fail('unavailable', 'We could not save your profile. Try again.')
+  if (updateError) {
+    logDevDbError('updateOwnProfile.update', updateError)
+    return fail('unavailable', 'We could not save your profile. Try again.', updateError)
+  }
 
   const { data, error } = await supabase
     .from('profiles_public')
@@ -183,7 +187,10 @@ export async function updateOwnProfile(fields: ProfileUpdate): Promise<ProfileRe
     .eq('id', userId)
     .maybeSingle()
 
-  if (error || !data) return fail('unavailable', 'We could not save your profile. Try again.', error ?? undefined)
+  if (error || !data) {
+    logDevDbError('updateOwnProfile.select', error)
+    return fail('unavailable', 'We could not save your profile. Try again.', error ?? undefined)
+  }
   const profile = parsePublicProfile(data)
   if (!profile) return fail('unavailable', 'We could not save your profile. Try again.')
   return { ok: true, data: profile }
@@ -198,7 +205,20 @@ export async function followUser(id: string): Promise<ProfileResult<true>> {
   if (!error) return { ok: true, data: true }
   if (error.code === '23505') return { ok: true, data: true }
   if (error.code === '23514') return fail('self_follow', 'You cannot follow yourself.')
-  return fail('forbidden', 'You cannot follow this person.', error)
+
+  logDevDbError('followUser', error)
+
+  let message: string
+  if (error.code === '42501') message = 'Follow is not allowed for this account.'
+  else if (error.code === '25006') message = 'Voxly is read-only right now. Try again shortly.'
+  else message = 'Could not follow. Try again.'
+
+  if (import.meta.env.DEV && error.code) {
+    message = `${message} (${error.code})`
+  }
+
+  const code = error.code === '42501' || error.code === '25006' ? 'forbidden' : 'unavailable'
+  return fail(code, message, error)
 }
 
 export async function unfollowUser(id: string): Promise<ProfileResult<true>> {
