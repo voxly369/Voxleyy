@@ -24,15 +24,21 @@ export function FollowButton({ userId, username, following, onChange }: FollowBu
     setPending(true)
     setError('')
     onChange(next)
-    const result = next ? await followUser(userId) : await unfollowUser(userId)
-    setPending(false)
-    lock.current = false
-    if (!result.ok) {
+    try {
+      const result = next ? await followUser(userId) : await unfollowUser(userId)
+      if (!result.ok) {
+        onChange(!next)
+        setError(result.error.message)
+        return
+      }
+      setArmed(false)
+    } catch {
       onChange(!next)
-      setError(result.error.message)
-      return
+      setError(next ? 'Could not follow. Try again.' : 'We could not unfollow this person. Try again.')
+    } finally {
+      setPending(false)
+      lock.current = false
     }
-    setArmed(false)
   }
 
   return (

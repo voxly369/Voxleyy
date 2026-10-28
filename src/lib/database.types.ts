@@ -2234,7 +2234,7 @@ export type Database = {
       founder_revoke_invite_code: { Args: { p_code: string }; Returns: undefined }
       get_my_beta_status: { Args: Record<string, never>; Returns: Json }
       founder_set_platform_flag: {
-        Args: { p_flag: string; p_enabled: boolean }
+        Args: { p_key: string; p_value: Json; p_reason: string }
         Returns: undefined
       }
       get_beta_signup_config: { Args: Record<string, never>; Returns: Json }

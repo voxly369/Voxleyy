@@ -1,19 +1,53 @@
 import { supabase } from '../supabaseClient.ts'
 import {
+  founderPlatformFlagInputSchema,
+  founderPlatformFlagRpcCalls,
+  type FounderPlatformFlagKey,
+} from './platformFlagSchema.ts'
+import {
   founderInviteCodeFormSchema,
   founderInviteCodeRpcPayload,
   type FounderInviteCodeFormInput,
 } from './inviteCodeFormSchema.ts'
 
+async function loadPlatformSetting(key: string): Promise<Record<string, unknown>> {
+  const { data, error } = await supabase.from('platform_settings').select('value').eq('key', key).maybeSingle()
+  if (error || !data?.value || typeof data.value !== 'object' || Array.isArray(data.value)) {
+    return {}
+  }
+  return data.value as Record<string, unknown>
+}
+
 export async function founderSetPlatformFlag(
   flag: string,
   enabled: boolean,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const { error } = await supabase.rpc('founder_set_platform_flag', {
-    p_flag: flag,
-    p_enabled: enabled,
-  })
-  if (error) return { ok: false, message: error.message || 'Could not update that flag.' }
+  const parsed = founderPlatformFlagInputSchema.safeParse({ flag, enabled })
+  if (!parsed.success) {
+    return { ok: false, message: parsed.error.issues[0]?.message ?? 'Invalid platform flag.' }
+  }
+
+  const [currentBeta, currentSignups] = await Promise.all([
+    loadPlatformSetting('beta'),
+    loadPlatformSetting('signups'),
+  ])
+
+  const calls = founderPlatformFlagRpcCalls(
+    parsed.data.flag as FounderPlatformFlagKey,
+    parsed.data.enabled,
+    currentBeta,
+    currentSignups,
+  )
+
+  for (const call of calls) {
+    const { error } = await supabase.rpc('founder_set_platform_flag', {
+      p_key: call.p_key,
+      p_value: call.p_value,
+      p_reason: call.p_reason,
+    })
+    if (error) return { ok: false, message: error.message || 'Could not update that flag.' }
+  }
+
   return { ok: true }
 }
 

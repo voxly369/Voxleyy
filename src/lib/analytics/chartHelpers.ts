@@ -20,7 +20,9 @@ export function chartScaleMax(values: number[]): number {
 export function chartSummary(label: string, points: SeriesPoint[]): string {
   if (points.length === 0) return `${label}: no data in this range.`
   const total = points.reduce((sum, p) => sum + p.value, 0)
-  const peak = points.reduce((best, p) => (p.value > best.value ? p : best), points[0]!)
+  const maxVal = Math.max(...points.map((p) => p.value))
+  const peakCandidates = points.filter((p) => p.value === maxVal)
+  const peak = peakCandidates.reduce((best, p) => (p.day > best.day ? p : best), peakCandidates[0]!)
   return `${label}: ${total} total in range; peak ${peak.value} on ${peak.day}.`
 }
 

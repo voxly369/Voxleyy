@@ -17,5 +17,23 @@ describe('chartHelpers', () => {
     ])
     expect(summary).toContain('4 total')
     expect(summary).toContain('peak 3')
+    expect(summary).toContain('on 2026-01-02')
+  })
+
+  it('chartSummary peak day is the highest value day in range, not first row', () => {
+    const summary = chartSummary('Views', [
+      { day: '2026-03-01', value: 5 },
+      { day: '2026-03-03', value: 12 },
+      { day: '2026-03-02', value: 4 },
+    ])
+    expect(summary).toContain('peak 12 on 2026-03-03')
+  })
+
+  it('chartSummary uses latest day when peak value is tied', () => {
+    const summary = chartSummary('Views', [
+      { day: '2026-04-01', value: 2 },
+      { day: '2026-04-10', value: 2 },
+    ])
+    expect(summary).toContain('peak 2 on 2026-04-10')
   })
 })
