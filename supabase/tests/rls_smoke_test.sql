@@ -3205,6 +3205,8 @@ declare
   v_msg text;
   v_ok boolean;
   v_hidden timestamptz;
+  v_json jsonb;
+  v_gate text;
 begin
   v_msg :=
     'Final warning: three of your posts were automatically hidden after multiple reports. Further moderation is at the Founder''s discretion.';
@@ -3276,9 +3278,54 @@ begin
   perform pg_temp.record('auto hide writes moderation_actions row', v_ok, 'rows=' || n);
 
   perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
   select count(*) into n from public.feed_creations where id = v_post;
   v_ok := n = 0;
   perform pg_temp.record('hidden post excluded from feed for other user', v_ok, 'rows=' || n);
+
+  v_json := public.search_discovery('threshold', 'posts', 30);
+  select count(*) into n
+  from jsonb_array_elements(coalesce(v_json->'posts', '[]'::jsonb)) elem
+  where (elem->>'id')::uuid = v_post;
+  v_ok := n = 0;
+  perform pg_temp.record('auto hidden post excluded from search for other user', v_ok, 'rows=' || n);
+
+  select count(*) into n
+  from public.creations
+  where author_id = v_b and id = v_post and status = 'published' and is_removed = false;
+  v_ok := n = 0;
+  perform pg_temp.record('auto hidden post excluded from author profile list for other user', v_ok, 'rows=' || n);
+
+  select count(*) into n
+  from (
+    select id from public.discover_trending_creations where id = v_post
+    union all
+    select id from public.discover_new_creations where id = v_post
+  ) discover_rows;
+  v_ok := n = 0;
+  perform pg_temp.record('auto hidden post excluded from discover for other user', v_ok, 'rows=' || n);
+
+  select public.creation_viewer_gate(v_post) into v_gate;
+  v_ok := v_gate = 'under_review';
+  perform pg_temp.record('auto hidden post under_review in creation_viewer_gate for other user', v_ok, coalesce(v_gate, 'null'));
+
+  select count(*) into n from public.creations where id = v_post;
+  v_ok := n = 0;
+  perform pg_temp.record('auto hidden post not readable by other user via creations', v_ok, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+  select count(*) into n from public.creations where id = v_post;
+  v_ok := n = 1;
+  perform pg_temp.record('founder can read auto hidden post', v_ok, 'rows=' || n);
 
   perform set_config('request.jwt.claim.sub', v_b::text, true);
   perform set_config(
