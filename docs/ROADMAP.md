@@ -37,6 +37,10 @@ Each row needs a **named test or e2e** on `main` to stay DONE (see Part 3).
 | Country pages | `CountryPage.test.tsx`, discover country filters |
 | Book builder | `BookBuilderForm.test.ts`, book-builder e2e |
 | RLS & security rules | `supabase/tests/rls_smoke_test.sql` named `pg_temp.record` assertions, `clientStorageAudit.test.ts`, `hook-safety.spec.ts` |
+| Cover Studio 2 (Canva-style) | PR [#56](https://github.com/voxly369/Voxleyy/pull/56); `e2e/cover-studio-19b.spec.ts`, `CoverStudioToolbar.test.tsx`, `CoverStudioTextInspector.test.tsx`, related cover-studio-19b tests |
+| Cover Studio hardening | PR [#57](https://github.com/voxly369/Voxleyy/pull/57); `e2e/cover-studio-19b-hardening.spec.ts` |
+| Phase 3 cleanup (hide unbuilt Create/Discover surfaces) | PR [#58](https://github.com/voxly369/Voxleyy/pull/58); `src/pages/discoverLiveRemoved.test.ts`, `src/components/creations/CreateTypePicker.test.tsx` |
+| Auto-hide at 3 distinct reports | `supabase/migrations/20261117000001_auto_hide_report_threshold.sql`, `src/lib/safety/autoHide.test.ts`, `e2e/auto-hide-moderation.spec.ts`, RLS smoke auto-hide assertions in `supabase/tests/rls_smoke_test.sql` |
 
 ---
 
@@ -44,20 +48,18 @@ Each row needs a **named test or e2e** on `main` to stay DONE (see Part 3).
 
 | Area | What is missing vs spec |
 |------|-------------------------|
-| **For You feed** | Tab exists but disabled (“Coming soon”); no full-screen ranked FYP (`FeedSwitcher.tsx`). |
-| **Create picker types** | Video, voice, podcast, recitation, collab, course, event show “Coming soon” (`CreateTypePicker.tsx`, `creationTypes.ts` phase flags). |
+| **For You feed** | Tab hidden behind `SHOW_FOR_YOU_FEED_TAB` (`productFlags.ts`, `FeedSwitcher.tsx`); no full-screen ranked FYP. Evidence: `forYouScreen.test.ts`. |
 | **Communities & Channels** | Discover Communities tab partial; Channels (500+ followers) not built; messaging categories incomplete. |
 | **Slam & Discover performance tabs** | Slam/Live placeholders on Discover (`DiscoverPage.tsx`); spec removes Live—Slam, Battles and Duets not wired. |
 | **Challenges** | Spec leaderboard/time-left/“Ended”; no full challenge product surface. |
 | **Monthly report & Founder insights** | Partial analytics panels and CSV; automated monthly report, month-start/month-end emails not built. |
 | **Creator Dashboard** | UI shell; subscriptions/wallet/sales placeholders until payments. |
 | **Founder Dashboard** | Many tabs partial; revenue/payout views await payments; full §11/§22 scope not done. |
-| **Cover Studio & book writing tools** | Cover upload exists; Canva-style studio and EPUB/Markdown import not spec-complete. |
+| **Book writing tools** | EPUB/Markdown import and spec-complete formatting/preview not done. |
 | **Reader modes** | Reader exists; spec requires **page flip and scroll both** with remembered preference—verify/implement per roadmap phase 1. |
 | **Storefront/checkout** | Browse/product partial; no PayFast/Stripe/Stitch checkout. |
 | **Google sign-in** | Not implemented; scheduled before **second invite wave** (spec §14, §17). |
 | **Entrance music** | Logic/tests exist; owner track not wired in `public/audio`. |
-| **Auto-hide & warnings** | Manual moderation built; automatic 3–5 report hide and 3-strike warning not built. |
 | **Signed-out teaser** | Spec: title + first lines public; app largely sign-in-gated today. |
 | **Country Vibe banner** | Country pages exist; themed vibe banner + mood palette not spec-complete. |
 | **Duets (Two Hits)** | Spec §9 collaborative duets; no join/share UI on main. |
@@ -76,10 +78,10 @@ Use this order exactly. **Est. prompts** = rough numbered-prompt count. **Owner 
 
 | Phase | Work | Est. prompts | Owner input |
 |------:|------|-------------:|-------------|
-| 1 | Book writing tools (formatting, fonts, preview, EPUB & Markdown import) and Cover Studio (Canva-style) | 4–6 | Cover templates, font choices |
+| 1 | Book writing tools (formatting, fonts, preview, EPUB & Markdown import) | 3–5 | Font choices |
 | 2 | Entrance music (owner track in `public/audio`; wire per `ops/ENTRANCE-MUSIC.md`) | 1 | **Audio file** |
-| 3 | Hide every “Coming soon” option from Create and Discover until built | 1 | Which order to unhide |
-| 4 | Auto-hide (3–5 distinct reports) and warnings (3 flagged posts → final warning) | 2–3 | Exact threshold 3 vs 5 |
+| 3 | **Done on main** — hide unbuilt Create/Discover options (PR #58; see section A) | — | Which order to unhide when re-enabling types |
+| 4 | **Partial on main** — auto-hide at 3 distinct reports shipped (migration `20261117000001`); 3-strike final warning flow still to spec-complete | 1–2 | Warning copy and suspend policy |
 | 5 | Signed-out teaser (title + first lines) and Country Vibe themed banner | 2–3 | Teaser length; banner art direction |
 | 6 | §24 first-release batch: shelves, ratings/reviews, scheduled releases; daily goals, streak protection, Writing Month, Daily Line; monthly report, Founder insights & **full** Founder Dashboard; reading diary, public lists, popular highlights; **leagues & Wrapped** | 8–12 | Report sections; league rules |
 | 7 | Notifications: held until Quiet ends, daily digest, scheduled posts & messages | 3–4 | Default digest time |
