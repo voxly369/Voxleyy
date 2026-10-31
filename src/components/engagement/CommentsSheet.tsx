@@ -20,6 +20,7 @@ import { parseMentions } from '../../lib/engagement/mentions.ts'
 import { supabase } from '../../lib/supabaseClient.ts'
 import { BadgeRowOnName } from '../badges/BadgeRowOnName.tsx'
 import { showsStandaloneVerifiedSeal } from '../../lib/badges/displayBadgesForFeed.ts'
+import { showsAuthorVerifiedSeal } from '../../lib/profiles/showsVerifiedSeal.ts'
 import { DisplayNameWithMarks } from '../profile/DisplayNameWithMarks.tsx'
 import { MentionText } from './MentionText.tsx'
 import { SafetyOverflowMenu } from '../safety/SafetyOverflowMenu.tsx'
@@ -385,14 +386,14 @@ function CommentRow({
             ) : (
               <DisplayNameWithMarks
                 name={node.author.displayName || node.author.username}
-                verified={
-                  showsStandaloneVerifiedSeal(node.author.feedBadges ?? [], node.author.verified)
-                    ? node.author.verified
-                    : false
-                }
+                verified={showsStandaloneVerifiedSeal(node.author.feedBadges ?? [], node.author.verified)}
                 badges={
                   node.author.feedBadges?.length ? (
-                    <BadgeRowOnName badges={node.author.feedBadges} verified={node.author.verified} className="align-middle" />
+                    <BadgeRowOnName
+                      badges={node.author.feedBadges}
+                      verified={showsAuthorVerifiedSeal(node.author.verified, node.author.feedBadges)}
+                      className="align-middle"
+                    />
                   ) : null
                 }
               />

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { VerifiedSeal } from '../components/profile/VerifiedSeal.tsx'
 import { BadgeRowOnName } from '../components/badges/BadgeRowOnName.tsx'
 import { showsStandaloneVerifiedSeal } from '../lib/badges/displayBadgesForFeed.ts'
+import { showsAuthorVerifiedSeal } from '../lib/profiles/showsVerifiedSeal.ts'
 import { PublishSheet } from '../components/creations/PublishSheet.tsx'
 import { focusRing } from '../components/shell/navItems.ts'
 import { PageContainer } from '../components/shell/PageContainer.tsx'
@@ -336,7 +337,10 @@ export default function CreationPage() {
             <span className="truncate">{work.author.displayName || work.author.username}</span>
           </Link>
           {work.author.feedBadges?.length ? (
-            <BadgeRowOnName badges={work.author.feedBadges} verified={work.author.verified} />
+            <BadgeRowOnName
+              badges={work.author.feedBadges}
+              verified={showsAuthorVerifiedSeal(work.author.verified, work.author.feedBadges)}
+            />
           ) : null}
           {showsStandaloneVerifiedSeal(work.author.feedBadges ?? [], work.author.verified) ? (
             <VerifiedSeal size="sm" />

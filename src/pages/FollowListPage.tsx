@@ -11,6 +11,7 @@ import { ErrorState } from '../components/states/ErrorState.tsx'
 import { ImageWithFallback } from '../components/states/ImageWithFallback.tsx'
 import { PageSkeleton } from '../components/states/Skeleton.tsx'
 import { getProfileByUsername, listFollowers, listFollowing } from '../lib/profiles/api.ts'
+import { showsVerifiedSeal } from '../lib/profiles/showsVerifiedSeal.ts'
 import type { FollowCursor } from '../lib/profiles/cursor.ts'
 import type { FollowListEntry } from '../lib/profiles/types.ts'
 import { CountryLink } from '../components/country/CountryLink.tsx'
@@ -135,7 +136,9 @@ export default function FollowListPage() {
                     <Link to={`/u/${entry.profile.username}`} className={`inline-flex min-h-11 min-w-0 items-center ${focusRing}`}>
                       <span className="truncate font-serif text-xl text-ink">{name}</span>
                     </Link>
-                    {entry.profile.verified ? <VerifiedSeal size="sm" /> : null}
+                    {showsVerifiedSeal(entry.profile.verified, entry.profile.role) ? (
+                      <VerifiedSeal size="sm" />
+                    ) : null}
                   </div>
                   <p className="truncate text-sm text-muted">@{entry.profile.username}</p>
                   {entry.profile.country ? (

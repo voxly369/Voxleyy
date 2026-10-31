@@ -4,6 +4,7 @@ import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { aboutProfileCopy } from '../../config/aboutProfileCopy.ts'
 import { countryFlag, countryName } from '../../lib/profiles/countries.ts'
 import type { PublicProfile } from '../../lib/profiles/types.ts'
+import { showsVerifiedSeal } from '../../lib/profiles/showsVerifiedSeal.ts'
 import { VerifiedSeal } from './VerifiedSeal.tsx'
 import { DisplayNameWithMarks } from './DisplayNameWithMarks.tsx'
 
@@ -41,7 +42,12 @@ export function AboutProfileSheet({ open, onClose, profile }: AboutProfileSheetP
             label={name}
             className="!size-16 shrink-0"
           />
-          <DisplayNameWithMarks name={name} verified={profile.verified} sealSize="lg" nameClassName="text-lg font-semibold text-ink" />
+          <DisplayNameWithMarks
+            name={name}
+            verified={showsVerifiedSeal(profile.verified, profile.role)}
+            sealSize="lg"
+            nameClassName="text-lg font-semibold text-ink"
+          />
         </div>
         <dl className="flex flex-col gap-3 text-sm">
           <div>

@@ -4,6 +4,7 @@ import { focusRing } from '../shell/navItems.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { CountryLink } from '../country/CountryLink.tsx'
 import type { PublicProfile } from '../../lib/profiles/types.ts'
+import { showsVerifiedSeal } from '../../lib/profiles/showsVerifiedSeal.ts'
 import { MenuLinesIcon } from '../icons/MenuLinesIcon.tsx'
 import { CountLink, SafeWebsite } from './SafeWebsite.tsx'
 import { FollowButton } from './FollowButton.tsx'
@@ -72,10 +73,12 @@ export function ProfileHeader({
               <DisplayNameWithMarks
                 as="h1"
                 name={name}
-                verified={profile.verified}
+                verified={showsVerifiedSeal(profile.verified, profile.role)}
                 sealSize="md"
-                onVerifiedSealClick={profile.verified ? () => setAboutOpen(true) : undefined}
-                reserveVerifiedSealSpace={profile.verified}
+                onVerifiedSealClick={
+                  showsVerifiedSeal(profile.verified, profile.role) ? () => setAboutOpen(true) : undefined
+                }
+                reserveVerifiedSealSpace={showsVerifiedSeal(profile.verified, profile.role)}
                 nameClassName="text-xl text-ink min-[376px]:text-2xl min-[480px]:text-3xl sm:text-4xl"
                 className="min-w-0 w-full max-w-full"
               />
