@@ -8,7 +8,7 @@ export function displayBadgesForFeed(badges: readonly FeedBadge[]): FeedBadge[] 
 }
 
 /** Beside the name: Founder accounts use Founder + Verified badge slots; others use feed badges. */
-export function displayBadgesBesideName(badges: readonly FeedBadge[], verified: boolean): FeedBadge[] {
+export function displayBadgesBesideName(badges: readonly FeedBadge[], _verified: boolean): FeedBadge[] {
   const founder = badges.find((badge) => badge.badgeKey === 'founder')
   if (!founder) return displayBadgesForFeed(badges)
   const slots: FeedBadge[] = [

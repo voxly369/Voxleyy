@@ -1,3 +1,4 @@
+import type { Json } from '../database.types.ts'
 import { supabase } from '../supabaseClient.ts'
 import {
   founderPlatformFlagInputSchema,
@@ -42,7 +43,7 @@ export async function founderSetPlatformFlag(
   for (const call of calls) {
     const { error } = await supabase.rpc('founder_set_platform_flag', {
       p_key: call.p_key,
-      p_value: call.p_value,
+      p_value: call.p_value as Json,
       p_reason: call.p_reason,
     })
     if (error) return { ok: false, message: error.message || 'Could not update that flag.' }
