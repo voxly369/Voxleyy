@@ -52,7 +52,7 @@ async function authorsById(ids: string[]): Promise<Map<string, CreationAuthor>> 
   if (unique.length === 0) return new Map()
   const { data, error } = await supabase
     .from('profiles_public')
-    .select('id, username, display_name, avatar_url, verified')
+    .select('id, username, display_name, avatar_url, verified, role')
     .in('id', unique)
   if (error) return new Map()
   const map = new Map<string, CreationAuthor>()

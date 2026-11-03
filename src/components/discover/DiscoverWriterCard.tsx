@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom'
 import { focusRing } from '../shell/navItems.ts'
 import { ImageWithFallback } from '../states/ImageWithFallback.tsx'
 import { DisplayNameWithMarks } from '../profile/DisplayNameWithMarks.tsx'
+import { showsVerifiedSeal } from '../../lib/profiles/showsVerifiedSeal.ts'
+import type { UserRole } from '../../lib/auth/profile.ts'
 import { CountryLink } from '../country/CountryLink.tsx'
 import { DiscoverFollowButton } from './DiscoverFollowButton.tsx'
 
@@ -11,6 +13,7 @@ export type DiscoverWriterCardWriter = {
   displayName: string
   avatarUrl?: string | null
   verified?: boolean
+  role?: UserRole
   country?: string | null
 }
 
@@ -50,7 +53,11 @@ export function DiscoverWriterCard({ writer, variant, countryLinkTestId }: Disco
               className={`flex min-h-11 w-full min-w-11 items-center ${focusRing}`}
               data-testid="discover-writer-profile-link"
             >
-              <DisplayNameWithMarks name={name} verified={writer.verified} nameClassName="font-medium text-ink" />
+              <DisplayNameWithMarks
+                name={name}
+                verified={showsVerifiedSeal(writer.verified === true, writer.role)}
+                nameClassName="font-medium text-ink"
+              />
             </Link>
             <p className="truncate text-sm text-muted">@{writer.username}</p>
             {writer.country ? <CountryLink code={writer.country} className="mt-1" /> : null}
@@ -71,7 +78,11 @@ export function DiscoverWriterCard({ writer, variant, countryLinkTestId }: Disco
         className={`flex min-h-11 w-full min-w-11 flex-col justify-center ${focusRing}`}
         data-testid="discover-writer-profile-link"
       >
-        <DisplayNameWithMarks name={name} verified={writer.verified} nameClassName="font-medium text-ink" />
+        <DisplayNameWithMarks
+          name={name}
+          verified={showsVerifiedSeal(writer.verified === true, writer.role)}
+          nameClassName="font-medium text-ink"
+        />
         <span className="text-sm text-muted">@{writer.username}</span>
       </Link>
       {writer.country ? (

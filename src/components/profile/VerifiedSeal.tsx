@@ -8,7 +8,7 @@ type VerifiedSealProps = {
   className?: string
 }
 
-/** Original eight-lobe rosette with tapered check — coral accent, not interactive. */
+/** Original eight-lobe rosette with tapered check — Voxly coral #FF5A3C, not interactive. */
 export function VerifiedSeal({ size = 'sm', className = '' }: VerifiedSealProps) {
   const px = VERIFIED_SEAL_PX[size]
   const strokeWidth = px <= 18 ? 2.1 : 1.75

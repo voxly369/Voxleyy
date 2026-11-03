@@ -18,7 +18,7 @@ import { logDevDbError } from './devDbErrorLog.ts'
 
 const PUBLIC_PROFILE_COLUMNS = PROFILES_PUBLIC_SUMMARY_COLUMNS
 
-const LIST_PROFILE_COLUMNS = 'id, username, display_name, avatar_url, verified, country'
+const LIST_PROFILE_COLUMNS = 'id, username, display_name, avatar_url, verified, country, role'
 
 const USERNAME_PATTERN = /^[a-z0-9_]{3,30}$/
 
@@ -89,6 +89,10 @@ function parseListProfile(value: unknown): FollowListProfile | null {
     avatarUrl: text(record.avatar_url),
     verified: bool(record.verified),
     country: text(record.country)?.trim().toUpperCase() || null,
+    role:
+      record.role === 'reader' || record.role === 'writer' || record.role === 'founder'
+        ? record.role
+        : 'reader',
   }
 }
 
