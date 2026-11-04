@@ -10,6 +10,7 @@ import { fetchIsFounder, fetchOwnProfile, type OwnProfile } from './profile.ts'
 import { touchActivityOncePerSession } from '../activity/touchActivity.ts'
 import { LEGAL_DOCUMENT_VERSIONS } from '../../config/organization.ts'
 import { fetchMfaAssurance } from './mfa/assurance.ts'
+import { recordDailyLogin } from './recordDailyLogin.ts'
 
 function redirectTo(path: string): string {
   return new URL(path, window.location.origin).toString()
@@ -126,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const assurance = await fetchMfaAssurance()
     if (assurance.needsChallenge) return { ok: true, needsMfa: true }
+    void recordDailyLogin()
     return { ok: true }
   }, [])
 

@@ -25,6 +25,7 @@ import {
   founderPrepareMetrics,
 } from '../../lib/founder/analyticsApi.ts'
 import { FounderCloseMonthModal } from './FounderCloseMonthModal.tsx'
+import { formatLoginTime, formatSignupDateTime } from '../../lib/founder/platformHealthFormat.ts'
 
 export type FounderAnalyticsTabId =
   | 'overview'
@@ -361,6 +362,73 @@ export function FounderAnalyticsPanel({ tab }: FounderAnalyticsPanelProps) {
             <MetricCard label="Client errors in range" value={num(payload.client_errors_in_range)} />
           </div>
           <p className="text-sm text-muted">Reports by status: {JSON.stringify(payload.reports_by_status)}</p>
+          <section aria-labelledby="platform-health-signups-heading">
+            <h2 id="platform-health-signups-heading" className="font-display text-lg text-ink">
+              New signups
+            </h2>
+            {Array.isArray(payload.recent_signups) && (payload.recent_signups as Record<string, unknown>[]).length > 0 ? (
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full min-w-[36rem] text-left text-sm" data-testid="platform-health-signups-table">
+                  <thead>
+                    <tr className="border-b border-border text-muted">
+                      <th className="py-2 pr-3 font-medium">Username</th>
+                      <th className="py-2 pr-3 font-medium">Email</th>
+                      <th className="py-2 pr-3 font-medium">Role</th>
+                      <th className="py-2 pr-3 font-medium">Country</th>
+                      <th className="py-2 font-medium">Signed up</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(payload.recent_signups as Record<string, unknown>[]).map((row) => (
+                      <tr key={String(row.id)} className="border-b border-border/60" data-testid="platform-health-signup-row">
+                        <td className="py-2 pr-3">{String(row.username ?? '—')}</td>
+                        <td className="py-2 pr-3">{String(row.email ?? '—')}</td>
+                        <td className="py-2 pr-3">{String(row.role ?? '—')}</td>
+                        <td className="py-2 pr-3">{String(row.country ?? '—')}</td>
+                        <td className="py-2">{formatSignupDateTime(String(row.created_at ?? ''))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <EmptyState title="No recent signups" message="New accounts will appear here after they join." />
+            )}
+          </section>
+          <section aria-labelledby="platform-health-logins-heading">
+            <h2 id="platform-health-logins-heading" className="font-display text-lg text-ink">
+              Today&apos;s logins
+              {payload.today_logins_count != null ? (
+                <span className="ml-2 text-base font-normal text-muted">({num(payload.today_logins_count)} today)</span>
+              ) : null}
+            </h2>
+            {Array.isArray(payload.today_logins) && (payload.today_logins as Record<string, unknown>[]).length > 0 ? (
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full min-w-[20rem] text-left text-sm" data-testid="platform-health-logins-table">
+                  <thead>
+                    <tr className="border-b border-border text-muted">
+                      <th className="py-2 pr-3 font-medium">Username</th>
+                      <th className="py-2 font-medium">Signed in at</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(payload.today_logins as Record<string, unknown>[]).map((row) => (
+                      <tr
+                        key={`${String(row.user_id)}-${String(row.signed_in_at)}`}
+                        className="border-b border-border/60"
+                        data-testid="platform-health-login-row"
+                      >
+                        <td className="py-2 pr-3">{String(row.username ?? '—')}</td>
+                        <td className="py-2">{formatLoginTime(String(row.signed_in_at ?? ''))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <EmptyState title="No logins yet today" message="Sign-ins for today (Johannesburg time) will show here." />
+            )}
+          </section>
         </div>
       ) : null}
       {!loading && !error && payload && tab === 'audience' ? (

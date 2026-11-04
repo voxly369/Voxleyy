@@ -5,6 +5,7 @@ import { FounderAnalyticsPanel } from './FounderAnalyticsPanel.tsx'
 
 const founderAnalyticsOverview = vi.fn()
 const founderAnalyticsRetention = vi.fn()
+const founderAnalyticsPlatformHealth = vi.fn()
 const founderPrepareMetrics = vi.fn()
 const founderAnalyticsExport = vi.fn()
 
@@ -13,7 +14,7 @@ vi.mock('../../lib/founder/analyticsApi.ts', () => ({
   founderAnalyticsRetention: (...args: unknown[]) => founderAnalyticsRetention(...args),
   founderAnalyticsTopContent: vi.fn(async () => ({ ok: true, data: { posts: [], top_books: [] } })),
   founderAnalyticsTopCreators: vi.fn(async () => ({ ok: true, data: {} })),
-  founderAnalyticsPlatformHealth: vi.fn(async () => ({ ok: true, data: {} })),
+  founderAnalyticsPlatformHealth: (...args: unknown[]) => founderAnalyticsPlatformHealth(...args),
   founderAnalyticsAudience: vi.fn(async () => ({ ok: true, data: {} })),
   founderAnalyticsFollowing: vi.fn(async () => ({ ok: true, data: {} })),
   founderAnalyticsEngagement: vi.fn(async () => ({ ok: true, data: {} })),
@@ -99,5 +100,60 @@ describe('FounderAnalyticsPanel', () => {
     await waitFor(() => expect(screen.getByTestId('analytics-export')).toBeInTheDocument())
     await userEvent.click(screen.getByTestId('analytics-export'))
     await waitFor(() => expect(founderAnalyticsExport).toHaveBeenCalled())
+  })
+
+  it('platform health signups table renders one row per signup entry', async () => {
+    founderAnalyticsPlatformHealth.mockResolvedValue({
+      ok: true,
+      data: {
+        books: 0,
+        chapters: 0,
+        client_errors_in_range: 0,
+        recent_signups: [
+          {
+            id: 'a1',
+            username: 'alpha',
+            email: 'a@test.com',
+            role: 'reader',
+            country: 'ZA',
+            created_at: '2026-11-04T08:00:00.000Z',
+          },
+          {
+            id: 'b2',
+            username: 'beta',
+            email: 'b@test.com',
+            role: 'writer',
+            country: 'GB',
+            created_at: '2026-11-03T08:00:00.000Z',
+          },
+        ],
+        today_logins: [],
+        today_logins_count: 0,
+      },
+    })
+    render(<FounderAnalyticsPanel tab="platform-health" />)
+    await waitFor(() => expect(screen.getByTestId('platform-health-signups-table')).toBeInTheDocument())
+    expect(screen.getAllByTestId('platform-health-signup-row')).toHaveLength(2)
+  })
+
+  it('platform health logins table renders one row per login entry', async () => {
+    founderAnalyticsPlatformHealth.mockResolvedValue({
+      ok: true,
+      data: {
+        books: 0,
+        chapters: 0,
+        client_errors_in_range: 0,
+        recent_signups: [],
+        today_logins_count: 2,
+        today_logins: [
+          { user_id: 'u1', username: 'login_a', signed_in_at: '2026-11-04T06:00:00.000Z' },
+          { user_id: 'u2', username: 'login_b', signed_in_at: '2026-11-04T07:00:00.000Z' },
+        ],
+      },
+    })
+    render(<FounderAnalyticsPanel tab="platform-health" />)
+    await waitFor(() => expect(screen.getByTestId('platform-health-logins-table')).toBeInTheDocument())
+    expect(screen.getAllByTestId('platform-health-login-row')).toHaveLength(2)
+    expect(screen.getByText('(2 today)')).toBeInTheDocument()
   })
 })

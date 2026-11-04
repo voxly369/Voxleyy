@@ -2358,6 +2358,7 @@ export type Database = {
         Returns: Json
       }
       founder_analytics_platform_health: { Args: { p_from: string; p_to: string }; Returns: Json }
+      record_daily_login: { Args: Record<string, never>; Returns: undefined }
       founder_analytics_audience: { Args: { p_country?: string; p_role?: string }; Returns: Json }
       founder_analytics_following: { Args: { p_from: string; p_to: string; p_limit?: number }; Returns: Json }
       founder_analytics_engagement: { Args: { p_from: string; p_to: string }; Returns: Json }
