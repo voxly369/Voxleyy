@@ -8,7 +8,35 @@ type VerifiedSealProps = {
   className?: string
 }
 
-/** Original eight-lobe rosette with tapered check — Voxly coral #FF5A3C, not interactive. */
+const ROSETTE_VIEW = 24
+const ROSETTE_CENTER = ROSETTE_VIEW / 2
+const SCALLOP_COUNT = 12
+
+/** Polar rosette: r(θ) = mid + amp·cos(nθ) → n evenly spaced scallops. */
+function scallopedRosettePath(
+  cx: number,
+  cy: number,
+  midRadius: number,
+  amplitude: number,
+  scallops: number,
+  segmentsPerScallop = 8,
+): string {
+  const steps = scallops * segmentsPerScallop
+  let d = ''
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * Math.PI * 2 - Math.PI / 2
+    const r = midRadius + amplitude * Math.cos(scallops * t)
+    const x = cx + r * Math.cos(t)
+    const y = cy + r * Math.sin(t)
+    const pair = `${x.toFixed(3)} ${y.toFixed(3)}`
+    d += i === 0 ? `M ${pair}` : ` L ${pair}`
+  }
+  return `${d} Z`
+}
+
+const ROSETTE_PATH = scallopedRosettePath(ROSETTE_CENTER, ROSETTE_CENTER, 8.75, 3.25, SCALLOP_COUNT)
+
+/** Twelve-scallop coral rosette with centred check — Voxly #FF5A3C, not interactive. */
 export function VerifiedSeal({ size = 'sm', className = '' }: VerifiedSealProps) {
   const px = VERIFIED_SEAL_PX[size]
   const strokeWidth = px <= 18 ? 2.1 : 1.75
@@ -21,17 +49,9 @@ export function VerifiedSeal({ size = 'sm', className = '' }: VerifiedSealProps)
       data-testid="verified-seal"
       data-seal-size={size}
     >
-      <svg viewBox="0 0 24 24" width={px} height={px} aria-hidden="true" className="block">
-        <path
-          fill={VERIFIED_SEAL_FILL_LIGHT}
-          className="dark:hidden"
-          d="M12 2.4c.55.95 1.45 1.45 2.45 1.6-.15 1.05.35 2.05 1.2 2.65-.85.6-1.45 1.55-1.65 2.6-1.05-.15-2.05.35-2.65 1.2-.6-.85-1.6-1.35-2.65-1.2-.2-1.05-.8-2-1.65-2.6.85-.6 1.35-1.6 1.2-2.65 1-.15 1.9-.65 2.45-1.6.75.55 1.65.85 2.55.85.9 0 1.8-.3 2.55-.85Z"
-        />
-        <path
-          fill={VERIFIED_SEAL_FILL_DARK}
-          className="hidden dark:block"
-          d="M12 2.4c.55.95 1.45 1.45 2.45 1.6-.15 1.05.35 2.05 1.2 2.65-.85.6-1.45 1.55-1.65 2.6-1.05-.15-2.05.35-2.65 1.2-.6-.85-1.6-1.35-2.65-1.2-.2-1.05-.8-2-1.65-2.6.85-.6 1.35-1.6 1.2-2.65 1-.15 1.9-.65 2.45-1.6.75.55 1.65.85 2.55.85.9 0 1.8-.3 2.55-.85Z"
-        />
+      <svg viewBox={`0 0 ${ROSETTE_VIEW} ${ROSETTE_VIEW}`} width={px} height={px} aria-hidden="true" className="block">
+        <path fill={VERIFIED_SEAL_FILL_LIGHT} className="dark:hidden" d={ROSETTE_PATH} />
+        <path fill={VERIFIED_SEAL_FILL_DARK} className="hidden dark:block" d={ROSETTE_PATH} />
         <path
           fill="none"
           stroke="#fff"
