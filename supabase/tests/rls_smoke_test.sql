@@ -6192,6 +6192,50 @@ begin
   reset role;
 end $stage_phase3_voxly_book_ids$;
 
+-- Founder signups list + daily login log (platform health).
+do $founder_signups_daily_logins$
+declare
+  v_founder uuid;
+  v_reader uuid;
+  v_day date := (timezone('Africa/Johannesburg', now()))::date;
+  v_json jsonb;
+  v_count bigint;
+begin
+  select founder, reader_a into v_founder, v_reader from rls_ids limit 1;
+  if v_founder is null or v_reader is null then
+    perform pg_temp.record('founder signups daily logins skipped', true, 'missing rls_ids');
+    return;
+  end if;
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_reader::text, true);
+  perform public.record_daily_login();
+
+  select count(*) into v_count from public.user_daily_login_log;
+  perform pg_temp.record('non-founder login log select empty', v_count = 0, 'rows=' || v_count);
+
+  begin
+    perform public.founder_analytics_platform_health(v_day - 7, v_day);
+    perform pg_temp.record('non-founder platform health signups blocked', false, 'ok');
+  exception when others then
+    perform pg_temp.record('non-founder platform health signups blocked', true, sqlerrm);
+  end;
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  select count(*) into v_count
+  from public.user_daily_login_log
+  where login_date = v_day and user_id = v_reader;
+  perform pg_temp.record('founder reads login log rows', v_count >= 1, 'rows=' || v_count);
+
+  v_json := public.founder_analytics_platform_health(v_day - 7, v_day);
+  perform pg_temp.record(
+    'founder platform health signups and logins',
+    (v_json ? 'recent_signups') and (v_json ? 'today_logins') and (v_json ? 'today_logins_count'),
+    'signups=' || jsonb_array_length(coalesce(v_json->'recent_signups', '[]'::jsonb))::text
+      || ' logins=' || coalesce(v_json->>'today_logins_count', '0')
+  );
+end $founder_signups_daily_logins$;
+
 do $$
 declare
   n integer;

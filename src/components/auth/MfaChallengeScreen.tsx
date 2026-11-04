@@ -4,6 +4,7 @@ import { focusRing } from '../shell/navItems.ts'
 import { SubmitButton } from './SubmitButton.tsx'
 import { MfaCodeField } from './MfaCodeField.tsx'
 import { verifySignInTotp } from '../../lib/auth/mfa/totp.ts'
+import { recordDailyLogin } from '../../lib/auth/recordDailyLogin.ts'
 import { MFA_LOST_DEVICE } from '../../lib/auth/mfa/messages.ts'
 
 type MfaChallengeScreenProps = {
@@ -27,6 +28,7 @@ export function MfaChallengeScreen({ onSuccess, onCancelSignOut }: MfaChallengeS
       setError(result.message)
       return
     }
+    void recordDailyLogin()
     onSuccess()
   }
 
