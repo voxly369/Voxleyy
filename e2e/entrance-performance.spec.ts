@@ -63,7 +63,11 @@ test.describe('19A entrance performance', () => {
   test('no scene motion when prefers-reduced-motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/', { waitUntil: 'domcontentloaded' })
-    await expect(page.getByTestId('entrance-scene')).toBeVisible()
+    await expect(page.getByTestId('entrance-screen')).toBeVisible()
+    await expect(page.getByTestId('entrance-scene-still')).toBeVisible()
+    await expect(page.getByTestId('entrance-scene')).toHaveCount(0)
+    await expect(page.locator('.entrance-scene-motion')).toHaveCount(0)
+    await expect(page.locator('[data-testid="entrance-scene-still"] .entrance-float')).toHaveCount(0)
     const moving = await countMovingEntranceElements(page)
     expect(moving).toBe(0)
   })
