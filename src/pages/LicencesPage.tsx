@@ -4,6 +4,25 @@ import { useDocumentTitle } from '../lib/useDocumentTitle.ts'
 import { resolveEntranceMusic } from '../lib/entrance/entranceMusicConfig.ts'
 import { coverFontLicenceNotices } from '../lib/coverStudio/fonts/fontLicences.ts'
 
+/** Keep in sync with `entranceMusic.credit` in brand.ts (Title — Composer). */
+const WELCOME_TRACK_TITLE = 'The Sky Is Not the Limit'
+const WELCOME_TRACK_COMPOSER = 'Jaydin'
+
+function welcomeTrackLicenceText(track: ReturnType<typeof resolveEntranceMusic>): string {
+  let title = WELCOME_TRACK_TITLE
+  let composer = WELCOME_TRACK_COMPOSER
+  if (track?.credit) {
+    const dash = track.credit.indexOf('—')
+    if (dash >= 0) {
+      title = track.credit.slice(0, dash).trim() || title
+      composer = track.credit.slice(dash + 1).trim() || composer
+    } else {
+      title = track.credit.trim() || title
+    }
+  }
+  return `Welcome track: ${title}, written by ${composer} and used with permission. Licensed for use in this app.`
+}
+
 export default function LicencesPage() {
   useDocumentTitle('Font licences')
   const entranceTrack = resolveEntranceMusic()
@@ -56,13 +75,10 @@ export default function LicencesPage() {
         </ul>
       </section>
 
-      {entranceTrack ? (
-        <section className="rounded-xl border border-line bg-bg p-4" data-testid="licence-entrance-music">
-          <h2 className="font-serif text-lg text-ink">Entrance music</h2>
-          <p className="mt-2 text-sm text-ink">{entranceTrack.credit}</p>
-          <p className="mt-2 text-sm text-ink">{entranceTrack.licence}</p>
-        </section>
-      ) : null}
+      <section className="rounded-xl border border-line bg-bg p-4" data-testid="licence-welcome-track">
+        <h2 className="font-serif text-lg text-ink">Welcome track</h2>
+        <p className="mt-2 text-sm text-ink">{welcomeTrackLicenceText(entranceTrack)}</p>
+      </section>
 
       <section className="rounded-xl border border-line bg-bg p-4">
         <h2 className="font-serif text-lg text-ink">OpenDyslexic</h2>
