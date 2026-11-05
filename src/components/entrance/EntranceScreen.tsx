@@ -57,6 +57,7 @@ export function EntranceScreen({
   const [writingStreak, setWritingStreak] = useState<number | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
   const [sceneActive, setSceneActive] = useState(true)
+  const [cinematicIntro, setCinematicIntro] = useState(true)
   const panelRef = useRef<HTMLDivElement>(null)
   const widthRef = useRef(400)
   const [panelWidth, setPanelWidth] = useState(400)
@@ -72,6 +73,11 @@ export function EntranceScreen({
     reducedMotion,
     entranceScreenEnabled: showEntranceScreen,
   })
+
+  useEffect(() => {
+    if (!open) return
+    setCinematicIntro(!reducedMotion)
+  }, [open, reducedMotion])
 
   useEffect(() => {
     if (!profile) return
@@ -258,7 +264,15 @@ export function EntranceScreen({
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        <div className="absolute end-4 top-4 z-10 flex gap-2">
+        <div className="absolute end-4 top-4 z-[110] flex gap-2">
+          <button
+            type="button"
+            onClick={() => void dismiss()}
+            className={`inline-flex min-h-11 rounded-full border border-line bg-surface/90 px-4 text-sm font-semibold text-ink backdrop-blur-sm ${focusRing}`}
+            data-testid="entrance-skip"
+          >
+            Skip
+          </button>
           <EntranceMusicControls
             visible={Boolean(music.track?.src)}
             musicState={music.musicState}
@@ -268,13 +282,24 @@ export function EntranceScreen({
           />
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-4 py-8">
-          <EntranceAnimatedScene
-            reducedMotion={reducedMotion}
-            palette={entrancePaletteForHour(hour)}
-            parallax={parallax}
-            active={sceneActive && !exiting}
-          />
+        <EntranceAnimatedScene
+          reducedMotion={reducedMotion}
+          palette={entrancePaletteForHour(hour)}
+          parallax={parallax}
+          active={sceneActive && !exiting}
+          fullScreen={cinematicIntro && !reducedMotion}
+          quote={quote}
+          countryCodes={profile.country ? [profile.country] : []}
+          musicPulse={music.musicState === 'playing' || music.musicState === 'fading-in'}
+          onSequenceHandoff={() => setCinematicIntro(false)}
+        />
+
+        <div
+          className={`flex flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-4 py-8 ${
+            cinematicIntro && !reducedMotion ? 'pointer-events-none opacity-0' : ''
+          }`}
+          aria-hidden={cinematicIntro && !reducedMotion ? true : undefined}
+        >
 
           <div aria-live="polite" aria-atomic="true" className="w-full max-w-lg text-center">
             <h1 id={titleId} className="font-serif text-2xl text-ink">
@@ -303,7 +328,7 @@ export function EntranceScreen({
             </p>
           ) : null}
 
-          {quote ? (
+          {quote && !cinematicIntro ? (
             <figure className="max-w-lg border-l-2 border-coral ps-4 text-sm text-muted" data-testid="entrance-quote">
               <blockquote>&ldquo;{quote.text}&rdquo;</blockquote>
               <figcaption className="mt-1 text-xs">&mdash; {quote.author}</figcaption>
