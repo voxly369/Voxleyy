@@ -65,6 +65,31 @@ export function EntranceAnimatedScene({ reducedMotion, palette, parallax, active
 
   const motionClass = reducedMotion || !active ? '' : 'entrance-scene-motion'
 
+  if (reducedMotion) {
+    return (
+      <div
+        className="relative mx-auto aspect-[16/10] w-full max-w-xl overflow-hidden rounded-3xl"
+        data-testid="entrance-scene-still"
+      >
+        <svg viewBox="0 0 400 250" role="img" aria-hidden="true" className="size-full" data-testid="entrance-illustration">
+          <rect width="400" height="250" fill={colors.sky} />
+          <circle cx="200" cy="125" r="70" fill={colors.glow} opacity="0.35" />
+          <text
+            x="200"
+            y="230"
+            textAnchor="middle"
+            fill={colors.ink}
+            fontFamily="Georgia, serif"
+            fontSize="26"
+            fontWeight="600"
+          >
+            Voxly
+          </text>
+        </svg>
+      </div>
+    )
+  }
+
   return (
     <div className="relative mx-auto aspect-[16/10] w-full max-w-xl overflow-hidden rounded-3xl" data-testid="entrance-scene">
       <style>{`

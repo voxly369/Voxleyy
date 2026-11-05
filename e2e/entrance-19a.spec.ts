@@ -104,9 +104,18 @@ test.describe('19A entrance swipe and music', () => {
   })
 
   test('controls hidden when no track', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__VOXLY_E2E_ENTRANCE_MUSIC__ = null
+    })
     await page.goto('/', { waitUntil: 'domcontentloaded' })
     await expect(page.getByTestId('entrance-screen')).toBeVisible()
     await expect(page.getByTestId('entrance-music-mute')).toHaveCount(0)
+  })
+
+  test('mute control visible when track configured on welcome screen', async ({ page }) => {
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
+    await expect(page.getByTestId('entrance-screen')).toBeVisible()
+    await expect(page.getByTestId('entrance-music-mute')).toBeVisible()
   })
 
   test('audio does not play after leaving entrance', async ({ page }) => {
