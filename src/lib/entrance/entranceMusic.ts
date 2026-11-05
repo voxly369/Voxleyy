@@ -1,4 +1,4 @@
-/** Entrance-only background music state machine (no autoplay before gesture). */
+/** Entrance-only background music state machine. */
 
 export type EntranceMusicState =
   | 'idle'
@@ -8,7 +8,10 @@ export type EntranceMusicState =
   | 'fading-out'
 
 export const ENTRANCE_MUSIC_TARGET_VOLUME = 0.3
-export const ENTRANCE_FADE_MS = 900
+export const ENTRANCE_FADE_IN_MS = 900
+/** @deprecated use ENTRANCE_FADE_IN_MS */
+export const ENTRANCE_FADE_MS = ENTRANCE_FADE_IN_MS
+export const ENTRANCE_FADE_OUT_MS = 1500
 
 export type EntranceMusicMachine = {
   state: EntranceMusicState
@@ -46,11 +49,11 @@ export function nextMusicState(
       return { state: 'fading-out', volume: volumeForState(current) }
     case 'tick-fade': {
       if (current === 'fading-in') {
-        const t = Math.min(1, event.elapsedMs / ENTRANCE_FADE_MS)
+        const t = Math.min(1, event.elapsedMs / ENTRANCE_FADE_IN_MS)
         return { state: t >= 1 ? 'playing' : 'fading-in', volume: t * ENTRANCE_MUSIC_TARGET_VOLUME }
       }
       if (current === 'fading-out') {
-        const t = Math.min(1, event.elapsedMs / ENTRANCE_FADE_MS)
+        const t = Math.min(1, event.elapsedMs / ENTRANCE_FADE_IN_MS)
         return { state: t >= 1 ? 'idle' : 'fading-out', volume: (1 - t) * ENTRANCE_MUSIC_TARGET_VOLUME }
       }
       return { state: current, volume: volumeForState(current) }
@@ -75,6 +78,18 @@ export function shouldAttemptPlayback(input: {
 }): boolean {
   if (!input.trackConfigured || !input.entranceScreenEnabled) return false
   if (input.reducedMotion) return false
+  if (!input.prefsEnabled || input.prefsMuted) return false
+  return true
+}
+
+/** Device prefs and track config only (ignores reduced motion so welcome music can play on still screen). */
+export function entranceMusicPlaybackAllowed(input: {
+  trackConfigured: boolean
+  prefsEnabled: boolean
+  prefsMuted: boolean
+  entranceScreenEnabled: boolean
+}): boolean {
+  if (!input.trackConfigured || !input.entranceScreenEnabled) return false
   if (!input.prefsEnabled || input.prefsMuted) return false
   return true
 }

@@ -21,12 +21,8 @@ export function OnboardingGate() {
   }, [])
 
   useEffect(() => {
-    if (isFounder) {
-      setLoading(false)
-      return
-    }
     void refresh()
-  }, [isFounder, refresh])
+  }, [refresh])
 
   useEffect(() => {
     function onReopen() {
@@ -36,14 +32,14 @@ export function OnboardingGate() {
     return () => window.removeEventListener('voxly-reopen-onboarding', onReopen)
   }, [])
 
-  if (loading && !isFounder) return <PageSkeleton />
+  if (loading) return <PageSkeleton />
 
   const showOnboarding =
     !isFounder && prefs && (reopen || onboardingNeedsFlow(prefs.onboarding_completed_at, prefs.onboarding_step))
 
   return (
     <>
-      {!isFounder && prefs ? (
+      {prefs ? (
         <EntranceScreen
           serverLastEntranceDate={prefs.last_entrance_local_date}
           showEntranceScreen={prefs.show_entrance_screen}

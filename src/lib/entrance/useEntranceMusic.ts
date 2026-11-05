@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ENTRANCE_FADE_MS,
+  ENTRANCE_FADE_IN_MS,
+  ENTRANCE_FADE_OUT_MS,
   ENTRANCE_MUSIC_TARGET_VOLUME,
+  entranceMusicPlaybackAllowed,
   nextMusicState,
-  shouldAttemptPlayback,
   type EntranceMusicState,
 } from './entranceMusic.ts'
 import { readEntranceMusicPrefs } from './entranceMusicPrefs.ts'
@@ -17,8 +18,13 @@ export function useEntranceMusic(input: {
   const track = resolveEntranceMusic()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [musicState, setMusicState] = useState<EntranceMusicState>('idle')
+  const musicStateRef = useRef<EntranceMusicState>('idle')
   const [prefs, setPrefs] = useState(readEntranceMusicPrefs)
   const rafRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    musicStateRef.current = musicState
+  }, [musicState])
 
   useEffect(() => {
     if (!track?.src) return
@@ -36,13 +42,14 @@ export function useEntranceMusic(input: {
   const runFade = useCallback((from: 'fading-in' | 'fading-out', onDone?: () => void) => {
     const audio = audioRef.current
     if (!audio) return
+    const durationMs = from === 'fading-in' ? ENTRANCE_FADE_IN_MS : ENTRANCE_FADE_OUT_MS
     const start = performance.now()
     const startVol = audio.volume
     function frame(now: number) {
       const el = audioRef.current
       if (!el) return
       const elapsed = now - start
-      const t = Math.min(1, elapsed / ENTRANCE_FADE_MS)
+      const t = Math.min(1, elapsed / durationMs)
       if (from === 'fading-in') {
         el.volume = t * ENTRANCE_MUSIC_TARGET_VOLUME
         if (t >= 1) {
@@ -73,32 +80,46 @@ export function useEntranceMusic(input: {
     }
   }, [])
 
-  const onUserGesture = useCallback(async () => {
-    if (!track?.src) return
-    const latest = readEntranceMusicPrefs()
-    setPrefs(latest)
-    if (
-      !shouldAttemptPlayback({
-        trackConfigured: true,
-        prefsEnabled: latest.enabled,
-        prefsMuted: latest.muted,
-        reducedMotion: input.reducedMotion,
-        entranceScreenEnabled: input.entranceScreenEnabled,
-      })
-    ) {
-      return
-    }
-    setMusicState((prev) => nextMusicState(prev, { type: 'gesture' }).state)
-    const audio = audioRef.current
-    if (!audio) return
-    try {
-      await audio.play()
-      setMusicState('fading-in')
-      runFade('fading-in')
-    } catch {
-      setMusicState('blocked')
-    }
-  }, [input.entranceScreenEnabled, input.reducedMotion, runFade, track?.src])
+  const attemptPlayback = useCallback(
+    async (source: 'open' | 'gesture') => {
+      if (!track?.src) return
+      const latest = readEntranceMusicPrefs()
+      setPrefs(latest)
+      if (
+        !entranceMusicPlaybackAllowed({
+          trackConfigured: true,
+          prefsEnabled: latest.enabled,
+          prefsMuted: latest.muted,
+          entranceScreenEnabled: input.entranceScreenEnabled,
+        })
+      ) {
+        return
+      }
+      const current = musicStateRef.current
+      if (current === 'playing' || current === 'fading-in' || current === 'fading-out') return
+      if (source === 'open' && current === 'blocked') return
+      setMusicState((prev) => nextMusicState(prev, { type: 'gesture' }).state)
+      const audio = audioRef.current
+      if (!audio) return
+      try {
+        await audio.play()
+        setMusicState('fading-in')
+        runFade('fading-in')
+      } catch {
+        setMusicState('blocked')
+      }
+    },
+    [input.entranceScreenEnabled, runFade, track?.src],
+  )
+
+  useEffect(() => {
+    if (!input.entranceOpen || !track?.src) return
+    void attemptPlayback('open')
+  }, [attemptPlayback, input.entranceOpen, track?.src])
+
+  const onUserGesture = useCallback(() => {
+    void attemptPlayback('gesture')
+  }, [attemptPlayback])
 
   const fadeOutAndStop = useCallback(() => {
     const audio = audioRef.current
