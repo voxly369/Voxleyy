@@ -242,6 +242,7 @@ export function EntranceScreen({
   const fullName = profile.display_name.trim() || profile.username
   const cName = countryName(profile.country)
   const parallax = swipeProgressFromOffset(dragOffset, panelWidth || 1)
+  const cinematicActive = cinematicIntro && !reducedMotion
   const panelTransform = reducedMotion
     ? undefined
     : {
@@ -268,7 +269,7 @@ export function EntranceScreen({
           <button
             type="button"
             onClick={() => void dismiss()}
-            className={`inline-flex min-h-11 rounded-full border border-line bg-surface/90 px-4 text-sm font-semibold text-ink backdrop-blur-sm ${focusRing}`}
+            className={`inline-flex min-h-11 items-center justify-center rounded-full border border-line bg-surface/90 px-4 text-sm font-semibold leading-none text-ink backdrop-blur-sm ${focusRing}`}
             data-testid="entrance-skip"
           >
             Skip
@@ -282,24 +283,34 @@ export function EntranceScreen({
           />
         </div>
 
-        <EntranceAnimatedScene
-          reducedMotion={reducedMotion}
-          palette={entrancePaletteForHour(hour)}
-          parallax={parallax}
-          active={sceneActive && !exiting}
-          fullScreen={cinematicIntro && !reducedMotion}
-          quote={quote}
-          countryCodes={profile.country ? [profile.country] : []}
-          musicPulse={music.musicState === 'playing' || music.musicState === 'fading-in'}
-          onSequenceHandoff={() => setCinematicIntro(false)}
-        />
+        {cinematicActive ? (
+          <EntranceAnimatedScene
+            reducedMotion={false}
+            palette={entrancePaletteForHour(hour)}
+            parallax={parallax}
+            active={sceneActive && !exiting}
+            cinematic
+            quote={quote}
+            countryCodes={profile.country ? [profile.country] : []}
+            musicPulse={music.musicState === 'playing' || music.musicState === 'fading-in'}
+            onSequenceHandoff={() => setCinematicIntro(false)}
+          />
+        ) : null}
 
         <div
           className={`flex flex-1 flex-col items-center justify-center gap-5 overflow-y-auto px-4 py-8 ${
-            cinematicIntro && !reducedMotion ? 'pointer-events-none opacity-0' : ''
+            cinematicActive ? 'pointer-events-none invisible' : ''
           }`}
-          aria-hidden={cinematicIntro && !reducedMotion ? true : undefined}
+          aria-hidden={cinematicActive ? true : undefined}
         >
+          {reducedMotion ? (
+            <EntranceAnimatedScene
+              reducedMotion
+              palette={entrancePaletteForHour(hour)}
+              parallax={0}
+              active={sceneActive && !exiting}
+            />
+          ) : null}
 
           <div aria-live="polite" aria-atomic="true" className="w-full max-w-lg text-center">
             <h1 id={titleId} className="font-serif text-2xl text-ink">
@@ -328,7 +339,7 @@ export function EntranceScreen({
             </p>
           ) : null}
 
-          {quote && !cinematicIntro ? (
+          {quote && !cinematicActive ? (
             <figure className="max-w-lg border-l-2 border-coral ps-4 text-sm text-muted" data-testid="entrance-quote">
               <blockquote>&ldquo;{quote.text}&rdquo;</blockquote>
               <figcaption className="mt-1 text-xs">&mdash; {quote.author}</figcaption>
@@ -378,7 +389,7 @@ export function EntranceScreen({
               void music.onUserGesture()
               void dismiss()
             }}
-            className={`inline-flex min-h-11 rounded-2xl px-6 text-base font-semibold text-white max-[767px]:hidden ${accessibleCoralFill} ${focusRing}`}
+            className={`inline-flex min-h-11 items-center justify-center rounded-2xl px-6 text-base font-semibold leading-none text-white max-[767px]:hidden ${accessibleCoralFill} ${focusRing}`}
             data-testid="entrance-enter-button"
           >
             Enter
@@ -390,7 +401,7 @@ export function EntranceScreen({
               void music.onUserGesture()
               void dismiss()
             }}
-            className={`inline-flex min-h-11 rounded-2xl px-6 text-base font-semibold text-white min-[768px]:sr-only ${accessibleCoralFill} ${focusRing}`}
+            className={`inline-flex min-h-11 items-center justify-center rounded-2xl px-6 text-base font-semibold leading-none text-white min-[768px]:sr-only ${accessibleCoralFill} ${focusRing}`}
             data-testid="entrance-step-inside"
           >
             Step inside

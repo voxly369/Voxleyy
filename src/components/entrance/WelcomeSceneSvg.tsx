@@ -1,8 +1,17 @@
-import { globeLightsForCountryCodes, projectGlobePoint, type GlobeLight } from '../../lib/entrance/countryGlobeLights.ts'
-import { welcomeSceneEase } from '../../lib/entrance/welcomeSceneTiming.ts'
+import { globeLightsForCountryCodes, projectGlobePoint } from '../../lib/entrance/countryGlobeLights.ts'
+import {
+  welcomeSceneEase,
+  welcomeSceneElapsedMs,
+  welcomeScenePhaseT,
+  welcomeSceneStagger,
+  WELCOME_PHASE1_END_MS,
+  WELCOME_PHASE2_END_MS,
+  WELCOME_SCENE_DURATION_MS,
+} from '../../lib/entrance/welcomeSceneTiming.ts'
 
 const CORAL = '#FF5A3C'
-const INK = '#2a3140'
+const ROOM = '#0a0c10'
+const INK = '#1e2430'
 const WARM = '#f4c89a'
 
 export type WelcomeSceneSvgProps = {
@@ -15,14 +24,17 @@ export type WelcomeSceneSvgProps = {
   height: number
 }
 
-const VOXLY_INK_PATH =
-  'M 48 210 Q 55 195 70 200 Q 85 205 95 195 Q 110 180 130 188 Q 150 196 165 185 Q 180 174 200 182 Q 220 190 235 178 Q 250 166 270 175 Q 285 182 300 170'
+const LETTERS = [
+  { d: 'M 0 28 L 0 -22 L 18 -22 L 18 28 Z', len: 120 },
+  { d: 'M 0 -22 Q 22 -22 22 4 Q 22 28 0 28 Q -4 28 -4 4 Q -4 -22 0 -22', len: 140 },
+  { d: 'M 0 -8 Q 14 -28 28 -8 L 28 28 L 18 28 L 18 6 Q 10 -6 4 6 L 0 28', len: 130 },
+  { d: 'M 28 -22 L 28 28 M 28 -22 Q 8 -22 8 -2 Q 8 18 28 18', len: 130 },
+  { d: 'M 0 -22 L 0 28 M 0 -22 Q 22 -22 22 0 Q 22 28 0 28', len: 140 },
+] as const
 
-const VOXLY_TEXT_PATH =
-  'M 72 248 Q 88 228 108 242 Q 118 250 132 238 Q 148 224 168 236 Q 188 248 208 232 Q 228 216 248 228 Q 268 240 288 224 Q 304 212 322 226'
-
-function layerShift(depth: number, parallax: number, amount: number): number {
-  return parallax * depth * amount
+function depthShift(layer: number, parallax: number): number {
+  const weights = [0.25, 0.55, 0.9]
+  return parallax * (weights[layer] ?? 0.5) * 28
 }
 
 export function WelcomeSceneSvg({
@@ -34,24 +46,31 @@ export function WelcomeSceneSvg({
   width,
   height,
 }: WelcomeSceneSvgProps) {
-  const p = welcomeSceneEase(progress)
-  const lights: GlobeLight[] = globeLightsForCountryCodes(countryCodes)
-  const globeSpin = progress * Math.PI * 0.9
+  const elapsed = welcomeSceneElapsedMs(progress)
+  const phase1 = welcomeScenePhaseT(elapsed, 0, WELCOME_PHASE1_END_MS)
+  const phase2 = welcomeScenePhaseT(elapsed, WELCOME_PHASE1_END_MS, WELCOME_PHASE2_END_MS)
+  const phase3 = welcomeScenePhaseT(elapsed, WELCOME_PHASE2_END_MS, WELCOME_SCENE_DURATION_MS)
+
   const cx = width / 2
-  const cy = height * 0.42
-  const globeR = Math.min(width, height) * 0.14
+  const cy = height * 0.46
+  const globeR = Math.min(width, height) * 0.13
+  const lights = globeLightsForCountryCodes(countryCodes)
+  const globeSpin = welcomeSceneEase(phase2) * Math.PI * 0.75 + progress * 0.2
+  const bulbX = width * 0.22
+  const bulbY = height * 0.28
+  const bulbOn = welcomeSceneStagger(elapsed, WELCOME_PHASE1_END_MS, 2)
 
-  const penT = welcomeSceneEase(Math.min(1, progress / 0.38))
-  const quillT = welcomeSceneEase(Math.max(0, (progress - 0.08) / 0.45))
-  const bookT = welcomeSceneEase(Math.max(0, (progress - 0.12) / 0.5))
-  const bulbT = welcomeSceneEase(Math.max(0, (progress - 0.2) / 0.55))
-  const paperT = welcomeSceneEase(Math.min(1, progress / 0.35))
-  const quoteIn = welcomeSceneEase(Math.max(0, (progress - 0.42) / 0.12))
-  const quoteOut = 1 - welcomeSceneEase(Math.max(0, (progress - 0.72) / 0.18))
-  const quoteOpacity = quote ? Math.min(quoteIn, quoteOut) : 0
+  const waveAmp = musicPulse
+    ? 0.5 + 0.5 * Math.sin(progress * Math.PI * 8)
+    : 0.25 + welcomeSceneEase(phase2) * 0.35
 
-  const waveAmp = musicPulse ? 0.55 + 0.45 * Math.sin(progress * Math.PI * 6) : 0.35 + progress * 0.2
-  const pathLen = 320
+  const quoteFade =
+    quote && phase3 > 0
+      ? welcomeSceneEase(Math.min(1, phase3 / 0.55)) * (1 - welcomeSceneEase(Math.max(0, (phase3 - 0.55) / 0.45)))
+      : 0
+
+  const penX = width * 0.14 + depthShift(2, parallax)
+  const penY = height * 0.52
 
   return (
     <svg
@@ -61,256 +80,249 @@ export function WelcomeSceneSvg({
       role="img"
       aria-hidden="true"
       data-testid="entrance-illustration"
-      className="block size-full"
+      className="welcome-scene-svg block size-full"
     >
       <defs>
-        <radialGradient id="welcome-warm-glow" cx="50%" cy="35%" r="65%">
-          <stop offset="0%" stopColor={WARM} stopOpacity="0.22" />
-          <stop offset="100%" stopColor="#0f1218" stopOpacity="0" />
+        <radialGradient id="ws-bulb-glow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stopColor={WARM} stopOpacity="0.55" />
+          <stop offset="45%" stopColor={CORAL} stopOpacity="0.12" />
+          <stop offset="100%" stopColor={ROOM} stopOpacity="0" />
         </radialGradient>
-        <filter id="welcome-grain" x="0" y="0" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
+        <linearGradient id="ws-leather" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#3d2a22" />
+          <stop offset="50%" stopColor="#5c4034" />
+          <stop offset="100%" stopColor="#2a1c16" />
+        </linearGradient>
+        <linearGradient id="ws-page-edge" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#f5f0e6" />
+          <stop offset="100%" stopColor="#ddd4c4" />
+        </linearGradient>
+        <linearGradient id="ws-nib" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#e8ecf0" />
+          <stop offset="100%" stopColor="#8a939e" />
+        </linearGradient>
+        <filter id="ws-soft-shadow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#000" floodOpacity="0.45" />
+        </filter>
+        <filter id="ws-ink-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="b" />
+          <feMerge>
+            <feMergeNode in="b" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter id="ws-grain">
+          <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch" />
           <feColorMatrix type="saturate" values="0" />
           <feComponentTransfer>
-            <feFuncA type="linear" slope="0.04" />
+            <feFuncA type="linear" slope="0.035" />
           </feComponentTransfer>
         </filter>
-        <clipPath id="welcome-globe-clip">
+        <radialGradient id="ws-vignette" cx="50%" cy="45%" r="70%">
+          <stop offset="55%" stopColor={ROOM} stopOpacity="0" />
+          <stop offset="100%" stopColor="#000" stopOpacity="0.65" />
+        </radialGradient>
+        <clipPath id="ws-globe-clip">
           <circle cx={cx} cy={cy} r={globeR} />
         </clipPath>
       </defs>
 
-      <rect width={width} height={height} fill="#0f1218" />
-      <rect width={width} height={height} fill="url(#welcome-warm-glow)" />
-      <rect width={width} height={height} filter="url(#welcome-grain)" opacity="0.9" />
+      <rect width={width} height={height} fill={ROOM} />
 
-      {/* Paper unroll */}
-      <g
-        style={{
-          transform: `translate(${layerShift(0.15, parallax, 24)}px, ${height * 0.62}px) scaleX(${0.15 + paperT * 0.85})`,
-          transformOrigin: 'left center',
-        }}
-        opacity={0.35 + paperT * 0.45}
-      >
-        <rect x={width * 0.08} y={-18} width={width * 0.55} height={36} rx={4} fill="#e8e0d4" />
-        <line x1={width * 0.12} y1={-8} x2={width * 0.55} y2={-8} stroke={INK} strokeOpacity={0.15} />
-        <line x1={width * 0.12} y1={4} x2={width * 0.5} y2={4} stroke={INK} strokeOpacity={0.12} />
+      {/* Back layer — slowest */}
+      <g transform={`translate(${depthShift(0, parallax)} 0)`} opacity={0.35 + phase2 * 0.4}>
+        <rect x={width * 0.05} y={height * 0.12} width={width * 0.9} height={height * 0.76} rx={8} fill={INK} opacity={0.35} />
+        <ellipse cx={cx} cy={height * 0.88} rx={width * 0.35} ry={height * 0.04} fill="#000" opacity={0.35} />
       </g>
 
-      {/* Ink blooms */}
-      {[0.18, 0.32, 0.48].map((start, i) => {
-        const t = welcomeSceneEase(Math.max(0, (progress - start) / 0.22))
-        const bx = width * (0.22 + i * 0.22) + layerShift(0.25 + i * 0.1, parallax, 18)
-        const by = height * (0.58 + i * 0.04)
-        return (
-          <circle
-            key={`bloom-${i}`}
-            cx={bx}
-            cy={by}
-            r={4 + t * 22}
-            fill={CORAL}
-            opacity={0.08 + t * 0.22}
+      {/* Warm glow follows bulb */}
+      <circle cx={bulbX} cy={bulbY} r={width * 0.55 * bulbOn} fill="url(#ws-bulb-glow)" opacity={bulbOn * 0.85} />
+
+      {/* Mid layer */}
+      <g transform={`translate(${depthShift(1, parallax)} 0)`} filter="url(#ws-soft-shadow)">
+        {phase2 > 0 ? (
+          <g
+            transform={`translate(${cx} ${height * 0.58 - welcomeSceneEase(phase2) * 36})`}
+            opacity={welcomeSceneStagger(elapsed, WELCOME_PHASE1_END_MS, 1)}
+          >
+            <rect x={-42} y={8} width={38} height={10} rx={1} fill="url(#ws-leather)" />
+            <rect x={-38} y={-2} width={38} height={10} rx={1} fill="url(#ws-leather)" />
+            <g transform={`rotate(${-6 + welcomeSceneEase(phase2) * 18} 0 0)`}>
+              <rect x={-34} y={-14} width={40} height={12} rx={1} fill="url(#ws-leather)" />
+              {[0, 1, 2].map((pg) => (
+                <path
+                  key={pg}
+                  d={`M 6 ${pg * 2 - 4} Q 22 ${-10 + pg * 4 + phase2 * 8} 16 ${6 + pg * 2}`}
+                  fill="none"
+                  stroke="url(#ws-page-edge)"
+                  strokeWidth={1.4}
+                  opacity={0.55 + phase2 * 0.35}
+                />
+              ))}
+            </g>
+          </g>
+        ) : null}
+
+        {phase2 > 0 ? (
+          <g transform={`translate(${cx} ${cy})`} opacity={welcomeSceneStagger(elapsed, WELCOME_PHASE1_END_MS, 3)}>
+            <circle r={globeR + 3} fill={INK} opacity={0.5} />
+            <circle r={globeR} fill="#141c28" stroke={WARM} strokeWidth={0.6} strokeOpacity={0.25} />
+            <g clipPath="url(#ws-globe-clip)">
+              <path
+                d={`M ${cx - globeR} ${cy} Q ${cx} ${cy - globeR * 0.35} ${cx + globeR} ${cy}`}
+                fill="#1a2838"
+                opacity={0.7}
+              />
+              <path
+                d={`M ${cx - globeR * 0.7} ${cy + globeR * 0.2} Q ${cx} ${cy + globeR * 0.5} ${cx + globeR * 0.6} ${cy + globeR * 0.15}`}
+                fill="#1a2838"
+                opacity={0.65}
+              />
+              {lights.map((light, i) => {
+                const pt = projectGlobePoint(light.lat, light.lng, cx, cy, globeR * 0.9, globeSpin)
+                if (!pt.visible) return null
+                const lit = welcomeSceneStagger(elapsed, WELCOME_PHASE1_END_MS, 4 + i)
+                return (
+                  <circle key={`${light.code}-${i}`} cx={pt.x} cy={pt.y} r={light.decorative ? 2 : 2.8} fill={CORAL} opacity={0.3 + lit * 0.7} />
+                )
+              })}
+            </g>
+          </g>
+        ) : null}
+      </g>
+
+      {/* Front layer — fastest */}
+      <g transform={`translate(${depthShift(2, parallax)} 0)`}>
+        {/* Pen + letter-by-letter Voxly (phase 1) */}
+        <g transform={`translate(${penX} ${penY})`} filter="url(#ws-soft-shadow)">
+          <path
+            d={`M ${width * 0.08} ${height * 0.02} Q ${width * 0.12} ${height * 0.08} ${width * 0.18} ${height * 0.04}`}
+            fill="none"
+            stroke={CORAL}
+            strokeWidth={2}
+            opacity={phase1 * 0.35}
+            strokeLinecap="round"
           />
-        )
-      })}
-
-      {/* Books */}
-      <g
-        style={{
-          transform: `translate(${cx - 40 + layerShift(0.35, parallax, 20)}px, ${height * 0.52 - bookT * 40}px)`,
-        }}
-        opacity={0.5 + bookT * 0.5}
-      >
-        <rect x={0} y={20} width={36} height={10} rx={1} fill={INK} opacity={0.55} />
-        <rect x={4} y={10} width={36} height={10} rx={1} fill={INK} opacity={0.65} />
-        <g
-          style={{
-            transform: `rotate(${-8 + bookT * 14}deg)`,
-            transformOrigin: '20px 0px',
-          }}
-        >
-          <rect x={8} y={-2} width={38} height={12} rx={1} fill={INK} opacity={0.75} />
-          {[0, 1, 2].map((pg) => (
-            <path
-              key={pg}
-              d={`M 42 ${pg * 2} Q 58 ${-4 + pg * 3 + bookT * 6} 52 ${8 + pg * 2}`}
-              fill="none"
-              stroke="#e8e0d4"
-              strokeWidth={1.2}
-              opacity={0.35 + bookT * 0.45}
-            />
-          ))}
+          <g transform="translate(0 -20)" filter="url(#ws-ink-glow)">
+            {LETTERS.map((letter, i) => {
+              const letterStart = i / LETTERS.length
+              const letterEnd = (i + 1) / LETTERS.length
+              const localT = welcomeSceneEase(
+                Math.max(0, Math.min(1, (phase1 - letterStart * 0.85) / (letterEnd - letterStart + 0.15))),
+              )
+              return (
+                <path
+                  key={letter.d}
+                  d={letter.d}
+                  transform={`translate(${i * 34} 0)`}
+                  fill="none"
+                  stroke={CORAL}
+                  strokeWidth={3.2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray={letter.len}
+                  strokeDashoffset={letter.len * (1 - localT)}
+                  opacity={0.55 + localT * 0.45}
+                />
+              )
+            })}
+          </g>
+          <g transform={`translate(${phase1 * 28} ${phase1 * -6})`}>
+            <rect x={-3} y={-26} width={6} height={22} rx={2} fill="url(#ws-nib)" />
+            <path d="M -2 4 L 0 14 L 2 4" fill={INK} opacity={0.7} />
+            <circle cx={0} cy={16} r={2.5} fill={CORAL} opacity={0.85} />
+          </g>
         </g>
-      </g>
 
-      {/* Globe */}
-      <g style={{ transform: `translate(${layerShift(0.5, parallax, 16)}px, 0px)` }}>
-        <circle cx={cx} cy={cy} r={globeR + 2} fill={INK} opacity={0.35} />
-        <circle cx={cx} cy={cy} r={globeR} fill="#1a2333" stroke={INK} strokeWidth={1} opacity={0.8} />
-        <g clipPath="url(#welcome-globe-clip)">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <ellipse
-              key={`lat-${i}`}
-              cx={cx}
-              cy={cy}
-              rx={globeR}
-              ry={globeR * (0.25 + i * 0.18)}
-              fill="none"
-              stroke={INK}
-              strokeOpacity={0.25}
-            />
-          ))}
-          {lights.map((light, i) => {
-            const pt = projectGlobePoint(light.lat, light.lng, cx, cy, globeR * 0.92, globeSpin)
-            if (!pt.visible) return null
-            const lit = welcomeSceneEase(Math.max(0, (progress - 0.15 - i * 0.04) / 0.35))
+        {/* Quills (phase 2) */}
+        {[
+          { sx: -50, sy: height * 0.38, ex: width * 0.32, ey: height * 0.4, rot: -22 },
+          { sx: width + 40, sy: height * 0.44, ex: width * 0.68, ey: height * 0.36, rot: 18 },
+          { sx: -40, sy: height * 0.58, ex: width * 0.4, ey: height * 0.52, rot: -8 },
+        ].map((q, i) => {
+          const t = welcomeSceneStagger(elapsed, WELCOME_PHASE1_END_MS, i)
+          const x = q.sx + (q.ex - q.sx) * t
+          const y = q.sy + (q.ey - q.sy) * t
+          return (
+            <g key={i} transform={`translate(${x} ${y}) rotate(${q.rot})`} opacity={t}>
+              <path d="M 0 0 Q 36 18 72 0" fill="none" stroke={CORAL} strokeWidth={2} opacity={0.25 + t * 0.45} strokeLinecap="round" />
+              <path d="M -2 14 L 0 -16 L 2 14 Z" fill={INK} opacity={0.55 + t * 0.4} filter="url(#ws-soft-shadow)" />
+            </g>
+          )
+        })}
+
+        {/* Bulb */}
+        <g transform={`translate(${bulbX} ${bulbY})`} filter="url(#ws-soft-shadow)">
+          <circle r={22 + bulbOn * 14} fill={CORAL} opacity={0.04 + bulbOn * 0.14} />
+          <ellipse rx={10} ry={12} fill={WARM} opacity={0.25 + bulbOn * 0.65} />
+          <path d="M -6 10 Q 0 18 6 10" stroke={INK} strokeWidth={1.4} fill="none" opacity={0.65} />
+        </g>
+
+        {/* Mic + wave */}
+        <g
+          transform={`translate(${width * 0.72 + depthShift(2, parallax)} ${height * 0.62})`}
+          opacity={welcomeSceneStagger(elapsed, WELCOME_PHASE1_END_MS, 5)}
+        >
+          {Array.from({ length: 7 }).map((_, i) => {
+            const mid = 3
+            const h = 6 + Math.abs(i - mid) * 2 + waveAmp * (14 - Math.abs(i - mid) * 2.5)
             return (
-              <circle
-                key={`${light.code}-${i}`}
-                cx={pt.x}
-                cy={pt.y}
-                r={light.decorative ? 2.2 : 3}
+              <rect
+                key={i}
+                x={i * 6 - 18}
+                y={-h / 2}
+                width={3.5}
+                height={h}
+                rx={1.5}
                 fill={CORAL}
-                opacity={0.25 + lit * 0.75}
+                opacity={0.22 + waveAmp * 0.5}
               />
             )
           })}
+          <rect x={-4} y={-9} width={8} height={12} rx={3.5} fill={INK} opacity={0.7} />
+          <path d="M -7 5 Q 0 12 7 5" stroke={INK} strokeWidth={1.1} fill="none" opacity={0.55} />
         </g>
-      </g>
 
-      {/* Lamps */}
-      {[
-        { x: width * 0.12, y: height * 0.22, d: 0.05 },
-        { x: width * 0.88, y: height * 0.28, d: 0.12 },
-        { x: width * 0.78, y: height * 0.72, d: 0.18 },
-        { x: width * 0.18, y: height * 0.78, d: 0.24 },
-      ].map((lamp, i) => {
-        const on = welcomeSceneEase(Math.max(0, (bulbT - lamp.d) / 0.35))
-        return (
-          <g key={`lamp-${i}`}>
-            <circle cx={lamp.x} cy={lamp.y} r={28 + on * 18} fill={CORAL} opacity={0.04 + on * 0.1} />
-            <path
-              d={`M ${lamp.x - 6} ${lamp.y + 8} L ${lamp.x} ${lamp.y - 6} L ${lamp.x + 6} ${lamp.y + 8} Z`}
-              fill={WARM}
-              opacity={0.25 + on * 0.55}
-            />
-            <rect x={lamp.x - 4} y={lamp.y + 8} width={8} height={4} rx={1} fill={INK} opacity={0.5} />
-          </g>
-        )
-      })}
-
-      {/* Main bulb */}
-      <g style={{ transform: `translate(${width * 0.72 + layerShift(0.4, parallax, 12)}px, ${height * 0.18}px)` }}>
-        <circle r={36} fill={CORAL} opacity={0.06 + bulbT * 0.14} />
-        <circle r={14} fill={WARM} opacity={0.35 + bulbT * 0.6} />
-        <path d="M -5 10 Q 0 18 5 10" stroke={INK} strokeWidth={1.5} fill="none" opacity={0.6} />
-      </g>
-
-      {/* Sound wave + mic */}
-      <g
-        style={{
-          transform: `translate(${cx + layerShift(0.45, parallax, 14)}px, ${height * 0.68}px)`,
-        }}
-      >
-        {Array.from({ length: 9 }).map((_, i) => {
-          const mid = 4
-          const h = 8 + Math.abs(i - mid) * 3 + waveAmp * (12 - Math.abs(i - mid) * 2)
+        {/* Ink blooms + paper unroll */}
+        {[0, 1].map((i) => {
+          const t = welcomeSceneStagger(elapsed, 400, i + 6)
           return (
-            <rect
-              key={`wave-${i}`}
-              x={i * 7 - 28}
-              y={-h / 2}
-              width={4}
-              height={h}
-              rx={2}
+            <circle
+              key={`drop-${i}`}
+              cx={width * (0.62 + i * 0.08)}
+              cy={height * (0.72 + i * 0.03)}
+              r={3 + t * 16}
               fill={CORAL}
-              opacity={0.25 + waveAmp * 0.45}
+              opacity={0.06 + t * 0.18}
             />
           )
         })}
-        <rect x={-5} y={-10} width={10} height={14} rx={4} fill={INK} opacity={0.65} />
-        <path d="M -9 6 Q 0 14 9 6" stroke={INK} strokeWidth={1.2} fill="none" opacity={0.55} />
-      </g>
-
-      {/* Quills */}
-      {[
-        { fromX: -40, fromY: height * 0.35, toX: width * 0.28, toY: height * 0.38, trail: 'M 0 0 Q 40 20 80 5' },
-        { fromX: width + 30, fromY: height * 0.42, toX: width * 0.62, toY: height * 0.36, trail: 'M 0 0 Q -30 25 -70 8' },
-        { fromX: -30, fromY: height * 0.62, toX: width * 0.38, toY: height * 0.55, trail: 'M 0 0 Q 50 -10 90 12' },
-      ].map((q, i) => {
-        const t = welcomeSceneEase(Math.max(0, quillT - i * 0.08))
-        const x = q.fromX + (q.toX - q.fromX) * t
-        const y = q.fromY + (q.toY - q.fromY) * t
-        return (
-          <g key={`quill-${i}`} transform={`translate(${x + layerShift(0.3, parallax, 10)} ${y}) rotate(${-25 + i * 15})`}>
-            <path d={q.trail} stroke={CORAL} strokeWidth={2} fill="none" opacity={0.15 + t * 0.35} strokeLinecap="round" />
-            <path d="M -2 12 L 0 -14 L 2 12 Z" fill={INK} opacity={0.55 + t * 0.35} />
-          </g>
-        )
-      })}
-
-      {/* Pen + ink loop + handwriting */}
-      <g
-        style={{
-          transform: `translate(${width * 0.18 + penT * width * 0.08 + layerShift(0.55, parallax, 22)}px, ${height * 0.32 + penT * 8}px) rotate(${-12 + penT * 6}deg)`,
-        }}
-      >
-        <ellipse cx={0} cy={-30} rx={38 + penT * 10} ry={22 + penT * 6} fill="none" stroke={CORAL} strokeWidth={2} opacity={0.2 + penT * 0.45} />
-        <path
-          d={VOXLY_INK_PATH}
-          fill="none"
-          stroke={CORAL}
-          strokeWidth={2.5}
-          strokeLinecap="round"
-          strokeDasharray={pathLen}
-          strokeDashoffset={pathLen * (1 - penT)}
-          opacity={0.5 + penT * 0.5}
-        />
-        <path
-          d={VOXLY_TEXT_PATH}
-          fill="none"
-          stroke={CORAL}
-          strokeWidth={3}
-          strokeLinecap="round"
-          strokeDasharray={pathLen}
-          strokeDashoffset={pathLen * (1 - Math.min(1, penT * 1.15))}
-          opacity={0.65 + penT * 0.35}
-        />
-        <path d="M -4 18 L 0 -22 L 4 18 Z" fill={INK} opacity={0.75} />
-        <circle cx={0} cy={20} r={3} fill={CORAL} opacity={0.8} />
-      </g>
-
-      {quote && quoteOpacity > 0.02 ? (
-        <g opacity={quoteOpacity}>
-          <text
-            x={cx}
-            y={height * 0.88}
-            textAnchor="middle"
-            fill="#c8d0e0"
-            fontFamily="Georgia, serif"
-            fontSize={14}
-            fontStyle="italic"
-          >
-            {quote.text.length > 72 ? `${quote.text.slice(0, 69)}…` : quote.text}
-          </text>
-          <text x={cx} y={height * 0.92} textAnchor="middle" fill={CORAL} fontSize={11} opacity={0.85}>
-            — {quote.author}
-          </text>
+        <g
+          transform={`translate(${width * 0.08} ${height * 0.7}) scaleX(${0.12 + welcomeSceneEase(phase1) * 0.88})`}
+          style={{ transformOrigin: 'left center' }}
+          opacity={0.3 + phase1 * 0.45}
+        >
+          <rect width={width * 0.45} height={32} rx={3} fill="#ebe3d6" filter="url(#ws-soft-shadow)" />
         </g>
+      </g>
+
+      {quote && quoteFade > 0.02 ? (
+        <text
+          x={cx}
+          y={height * 0.82}
+          textAnchor="middle"
+          fill="#d0d8e4"
+          fontFamily="Georgia, serif"
+          fontSize={15}
+          fontStyle="italic"
+          opacity={quoteFade}
+        >
+          {quote.text.length > 64 ? `${quote.text.slice(0, 61)}…` : quote.text}
+        </text>
       ) : null}
 
-      <text
-        x={cx}
-        y={height * 0.96}
-        textAnchor="middle"
-        fill={CORAL}
-        fontFamily="Georgia, serif"
-        fontSize={22}
-        fontWeight={600}
-        opacity={0.35 + p * 0.65}
-      >
-        Voxly
-      </text>
+      <rect width={width} height={height} fill="url(#ws-vignette)" pointerEvents="none" />
+      <rect width={width} height={height} filter="url(#ws-grain)" opacity={0.85} pointerEvents="none" />
     </svg>
   )
 }
