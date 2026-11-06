@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import {
   WELCOME_SCENE_DURATION_MS,
   WELCOME_SCENE_MAX_MS,
@@ -6,7 +6,10 @@ import {
   welcomeSceneShouldHandOff,
 } from '../../lib/entrance/welcomeSceneTiming.ts'
 import { entrancePaletteForHour, type EntrancePalette } from './entrancePalette.ts'
-import { WelcomeSceneSvg } from './WelcomeSceneSvg.tsx'
+
+const WelcomeSceneSvg = lazy(() =>
+  import('./WelcomeSceneSvg.tsx').then((mod) => ({ default: mod.WelcomeSceneSvg })),
+)
 
 type EntranceAnimatedSceneProps = {
   reducedMotion: boolean
@@ -15,7 +18,7 @@ type EntranceAnimatedSceneProps = {
   parallax: number
   /** Pause motion when tab hidden or entrance closed */
   active: boolean
-  fullScreen?: boolean
+  cinematic?: boolean
   quote?: { text: string; author: string } | null
   countryCodes?: string[]
   musicPulse?: boolean
@@ -60,7 +63,7 @@ export function EntranceAnimatedScene({
   palette,
   parallax,
   active,
-  fullScreen = false,
+  cinematic = false,
   quote = null,
   countryCodes = [],
   musicPulse = false,
@@ -69,7 +72,7 @@ export function EntranceAnimatedScene({
   const [progress, setProgress] = useState(0)
   const handoffRef = useRef(false)
   const startRef = useRef<number | null>(null)
-  const [size, setSize] = useState({ w: 400, h: 400 })
+  const [size, setSize] = useState({ w: 390, h: 844 })
 
   const handleHandoff = useCallback(() => {
     if (handoffRef.current) return
@@ -78,7 +81,7 @@ export function EntranceAnimatedScene({
   }, [onSequenceHandoff])
 
   useEffect(() => {
-    if (reducedMotion || !active) return
+    if (reducedMotion || !active || !cinematic) return
     handoffRef.current = false
     startRef.current = performance.now()
     setProgress(0)
@@ -94,38 +97,50 @@ export function EntranceAnimatedScene({
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [active, handleHandoff, reducedMotion])
+  }, [active, cinematic, handleHandoff, reducedMotion])
 
   useEffect(() => {
+    if (!cinematic) return
     function measure() {
-      const w = window.innerWidth
-      const h = fullScreen ? window.innerHeight : Math.min(window.innerHeight * 0.45, 420)
-      setSize({ w: Math.max(320, w), h: Math.max(280, h) })
+      setSize({ w: Math.max(320, window.innerWidth), h: Math.max(280, window.innerHeight) })
     }
     measure()
     window.addEventListener('resize', measure)
     return () => window.removeEventListener('resize', measure)
-  }, [fullScreen])
+  }, [cinematic])
 
   if (reducedMotion) {
     return <EntranceStillScene palette={palette} />
   }
 
-  const shellClass = fullScreen
-    ? 'fixed inset-0 z-[5] overflow-hidden bg-[#0f1218]'
-    : 'relative mx-auto aspect-[16/10] w-full max-w-xl overflow-hidden rounded-3xl bg-[#0f1218]'
+  if (!cinematic) return null
+
+  const dissolve = Math.max(0, (progress - 5 / 7) / (2 / 7))
+  const dissolveEase = 1 - (1 - Math.min(1, dissolve)) ** 2
+  const pushScale = 1 + dissolveEase * 0.12
 
   return (
-    <div className={shellClass} data-testid="entrance-scene">
-      <WelcomeSceneSvg
-        progress={progress}
-        parallax={parallax}
-        quote={quote}
-        countryCodes={countryCodes}
-        musicPulse={musicPulse}
-        width={size.w}
-        height={size.h}
-      />
+    <div
+      className="welcome-cinematic fixed inset-0 z-[5] overflow-hidden bg-[#0a0c10] motion-reduce:hidden"
+      data-testid="entrance-scene"
+      style={{
+        opacity: 1 - dissolveEase * 0.98,
+        transform: `scale(${pushScale})`,
+        transition: 'none',
+        willChange: 'opacity, transform',
+      }}
+    >
+      <Suspense fallback={null}>
+        <WelcomeSceneSvg
+          progress={progress}
+          parallax={parallax}
+          quote={quote}
+          countryCodes={countryCodes}
+          musicPulse={musicPulse}
+          width={size.w}
+          height={size.h}
+        />
+      </Suspense>
       <span className="sr-only" data-testid="entrance-scene-elapsed-ms">
         {Math.round(progress * WELCOME_SCENE_DURATION_MS)}
       </span>

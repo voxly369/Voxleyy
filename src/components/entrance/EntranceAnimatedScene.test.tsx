@@ -40,6 +40,7 @@ describe('EntranceAnimatedScene', () => {
         palette="night"
         parallax={0}
         active
+        cinematic
         onSequenceHandoff={onHandoff}
       />,
     )
