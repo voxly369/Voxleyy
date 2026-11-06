@@ -298,8 +298,7 @@ export function WelcomeSceneSvg({
           )
         })}
         <g
-          transform={`translate(${width * 0.08} ${height * 0.7}) scaleX(${0.12 + welcomeSceneEase(phase1) * 0.88})`}
-          style={{ transformOrigin: 'left center' }}
+          transform={`translate(${width * 0.08}, ${height * 0.7}) scale(${0.12 + welcomeSceneEase(phase1) * 0.88}, 1)`}
           opacity={0.3 + phase1 * 0.45}
         >
           <rect width={width * 0.45} height={32} rx={3} fill="#ebe3d6" filter="url(#ws-soft-shadow)" />
