@@ -24,13 +24,17 @@ export type WelcomeSceneSvgProps = {
   height: number
 }
 
-const LETTERS = [
-  { d: 'M 0 28 L 0 -22 L 18 -22 L 18 28 Z', len: 120 },
-  { d: 'M 0 -22 Q 22 -22 22 4 Q 22 28 0 28 Q -4 28 -4 4 Q -4 -22 0 -22', len: 140 },
-  { d: 'M 0 -8 Q 14 -28 28 -8 L 28 28 L 18 28 L 18 6 Q 10 -6 4 6 L 0 28', len: 130 },
-  { d: 'M 28 -22 L 28 28 M 28 -22 Q 8 -22 8 -2 Q 8 18 28 18', len: 130 },
-  { d: 'M 0 -22 L 0 28 M 0 -22 Q 22 -22 22 0 Q 22 28 0 28', len: 140 },
+/** Stroke paths for “Voxly” left to right (40×40 box per letter). */
+const VOXY_LETTERS = [
+  { d: 'M 6 38 L 20 6 L 34 38', len: 78 },
+  { d: 'M 20 12 a 9 9 0 1 0 0.01 0', len: 58 },
+  { d: 'M 8 10 L 32 34 M 32 10 L 8 34', len: 96 },
+  { d: 'M 22 8 L 22 38', len: 30 },
+  { d: 'M 8 12 L 20 38 L 32 12 M 20 38 L 20 28', len: 88 },
 ] as const
+
+const LETTER_SPACING = 44
+const LETTER_BOX = 40
 
 function depthShift(layer: number, parallax: number): number {
   const weights = [0.25, 0.55, 0.9]
@@ -69,8 +73,21 @@ export function WelcomeSceneSvg({
       ? welcomeSceneEase(Math.min(1, phase3 / 0.55)) * (1 - welcomeSceneEase(Math.max(0, (phase3 - 0.55) / 0.45)))
       : 0
 
-  const penX = width * 0.14 + depthShift(2, parallax)
-  const penY = height * 0.52
+  const titleScale = Math.min(1.15, Math.max(0.82, width / 390))
+  const titleSpan = (VOXY_LETTERS.length - 1) * LETTER_SPACING + LETTER_BOX
+  const titleX = cx - (titleSpan * titleScale) / 2 + depthShift(2, parallax)
+  const titleY = height * 0.4
+  const penLetterIndex = Math.min(
+    VOXY_LETTERS.length - 1,
+    Math.max(0, Math.floor(phase1 * VOXY_LETTERS.length)),
+  )
+  const penLetterT = welcomeSceneEase(
+    Math.max(
+      0,
+      Math.min(1, phase1 * VOXY_LETTERS.length - penLetterIndex),
+    ),
+  )
+  const penX = penLetterIndex * LETTER_SPACING + penLetterT * LETTER_SPACING
 
   return (
     <svg
@@ -129,10 +146,10 @@ export function WelcomeSceneSvg({
 
       <rect width={width} height={height} fill={ROOM} />
 
-      {/* Back layer — slowest */}
+      {/* Back layer — slowest (full bleed, no frame) */}
       <g transform={`translate(${depthShift(0, parallax)} 0)`} opacity={0.35 + phase2 * 0.4}>
-        <rect x={width * 0.05} y={height * 0.12} width={width * 0.9} height={height * 0.76} rx={8} fill={INK} opacity={0.35} />
-        <ellipse cx={cx} cy={height * 0.88} rx={width * 0.35} ry={height * 0.04} fill="#000" opacity={0.35} />
+        <rect width={width} height={height} fill={INK} opacity={0.12} />
+        <ellipse cx={cx} cy={height * 0.92} rx={width * 0.48} ry={height * 0.05} fill="#000" opacity={0.35} />
       </g>
 
       {/* Warm glow follows bulb */}
@@ -193,41 +210,35 @@ export function WelcomeSceneSvg({
 
       {/* Front layer — fastest */}
       <g transform={`translate(${depthShift(2, parallax)} 0)`}>
-        {/* Pen + letter-by-letter Voxly (phase 1) */}
-        <g transform={`translate(${penX} ${penY})`} filter="url(#ws-soft-shadow)">
-          <path
-            d={`M ${width * 0.08} ${height * 0.02} Q ${width * 0.12} ${height * 0.08} ${width * 0.18} ${height * 0.04}`}
-            fill="none"
-            stroke={CORAL}
-            strokeWidth={2}
-            opacity={phase1 * 0.35}
-            strokeLinecap="round"
-          />
-          <g transform="translate(0 -20)" filter="url(#ws-ink-glow)">
-            {LETTERS.map((letter, i) => {
-              const letterStart = i / LETTERS.length
-              const letterEnd = (i + 1) / LETTERS.length
-              const localT = welcomeSceneEase(
-                Math.max(0, Math.min(1, (phase1 - letterStart * 0.85) / (letterEnd - letterStart + 0.15))),
-              )
-              return (
-                <path
-                  key={letter.d}
-                  d={letter.d}
-                  transform={`translate(${i * 34} 0)`}
-                  fill="none"
-                  stroke={CORAL}
-                  strokeWidth={3.2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeDasharray={letter.len}
-                  strokeDashoffset={letter.len * (1 - localT)}
-                  opacity={0.55 + localT * 0.45}
-                />
-              )
-            })}
-          </g>
-          <g transform={`translate(${phase1 * 28} ${phase1 * -6})`}>
+        {/* Pen writes “Voxly” left to right (phase 1) */}
+        <g
+          transform={`translate(${titleX} ${titleY}) scale(${titleScale})`}
+          filter="url(#ws-ink-glow)"
+          opacity={0.35 + phase1 * 0.65}
+        >
+          {VOXY_LETTERS.map((letter, i) => {
+            const letterStart = i / VOXY_LETTERS.length
+            const letterEnd = (i + 1) / VOXY_LETTERS.length
+            const localT = welcomeSceneEase(
+              Math.max(0, Math.min(1, (phase1 - letterStart * 0.85) / (letterEnd - letterStart + 0.15))),
+            )
+            return (
+              <path
+                key={i}
+                d={letter.d}
+                transform={`translate(${i * LETTER_SPACING} 0)`}
+                fill="none"
+                stroke={CORAL}
+                strokeWidth={3.4}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray={letter.len}
+                strokeDashoffset={letter.len * (1 - localT)}
+                opacity={0.6 + localT * 0.4}
+              />
+            )
+          })}
+          <g transform={`translate(${penX + 18} 22)`} filter="url(#ws-soft-shadow)" opacity={phase1 > 0.02 ? 1 : 0}>
             <rect x={-3} y={-26} width={6} height={22} rx={2} fill="url(#ws-nib)" />
             <path d="M -2 4 L 0 14 L 2 4" fill={INK} opacity={0.7} />
             <circle cx={0} cy={16} r={2.5} fill={CORAL} opacity={0.85} />
