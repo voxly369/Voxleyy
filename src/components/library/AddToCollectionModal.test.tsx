@@ -26,7 +26,7 @@ function renderModal(open = true) {
   return { onClose }
 }
 
-describe('AddToCollectionModal', () => {
+describe('AddToCollectionModal', { concurrent: false }, () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
