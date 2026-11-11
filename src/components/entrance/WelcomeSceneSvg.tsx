@@ -15,6 +15,11 @@ const CORAL = '#FF5A3C'
 const ROOM = '#0a0c10'
 const INK = '#1e2430'
 const WARM = '#f4c89a'
+const GLOBE_OCEAN = '#121a26'
+const GLOBE_LAND = '#3a556c'
+const PAGE_CREAM_HI = '#f5f0e6'
+const PAGE_CREAM_LO = '#ddd4c4'
+const SCROLL_ROLL = '#d8cdbf'
 const QUOTE_INK = '#d0d8e4'
 const TITLE = 'Voxly'
 
@@ -101,6 +106,9 @@ export function WelcomeSceneSvg({
 
   const floatBook = welcomeSceneStagger(elapsed, WELCOME_PHASE1_END_MS, 0)
   const topBookY = height * 0.14 + Math.sin(progress * Math.PI * 2) * 4 * floatBook
+  const globeSpinDeg = (globeSpin * 180) / Math.PI
+  const scrollW = width * 0.36
+  const scrollH = 22
 
   return (
     <svg
@@ -124,12 +132,20 @@ export function WelcomeSceneSvg({
           <stop offset="100%" stopColor="#2a1c16" />
         </linearGradient>
         <linearGradient id="ws-page-edge" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f5f0e6" />
-          <stop offset="100%" stopColor="#ddd4c4" />
+          <stop offset="0%" stopColor={PAGE_CREAM_HI} />
+          <stop offset="100%" stopColor={PAGE_CREAM_LO} />
         </linearGradient>
-        <linearGradient id="ws-parchment" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#ebe3d6" />
-          <stop offset="100%" stopColor="#d8cdbf" />
+        <linearGradient id="ws-page-left" x1="1" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={PAGE_CREAM_HI} />
+          <stop offset="100%" stopColor={PAGE_CREAM_LO} />
+        </linearGradient>
+        <linearGradient id="ws-page-right" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor={PAGE_CREAM_HI} />
+          <stop offset="100%" stopColor={PAGE_CREAM_LO} />
+        </linearGradient>
+        <linearGradient id="ws-scroll-face" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#f3ede3" />
+          <stop offset="100%" stopColor="#e8e0d4" />
         </linearGradient>
         <linearGradient id="ws-nib" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#e8ecf0" />
@@ -140,6 +156,21 @@ export function WelcomeSceneSvg({
         </filter>
         <filter id="ws-title-glow" x="-40%" y="-40%" width="180%" height="180%">
           <feGaussianBlur stdDeviation="4" result="b" />
+          <feMerge>
+            <feMergeNode in="b" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter id="ws-coral-dot-glow" x="-80%" y="-80%" width="260%" height="260%">
+          <feGaussianBlur stdDeviation="1.8" result="b" />
+          <feMerge>
+            <feMergeNode in="b" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter id="ws-book-shadow" x="-50%" y="-20%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="6" result="b" />
+          <feOffset dy="4" />
           <feMerge>
             <feMergeNode in="b" />
             <feMergeNode in="SourceGraphic" />
@@ -202,16 +233,40 @@ export function WelcomeSceneSvg({
       <g transform={`translate(${depthShift(1, parallax)} 0)`}>
         {/* Top-centre floating open book */}
         {floatBook > 0.02 ? (
-          <g transform={`translate(${cx} ${topBookY})`} opacity={floatBook * 0.9}>
-            <g transform="rotate(-8)">
-              <rect x={-16} y={-3} width={32} height={6} rx={1} fill="url(#ws-page-edge)" />
-              <path d="M 0 -3 L 0 3" stroke={INK} strokeWidth={0.8} opacity={0.35} />
+          <g transform={`translate(${cx} ${topBookY})`} opacity={floatBook * 0.95}>
+            <ellipse cx={0} cy={16} rx={30} ry={5} fill="#000" opacity={0.28} filter="url(#ws-book-shadow)" />
+            <g transform="rotate(-10)">
               <path
-                d="M -28 10 Q -8 2 12 8 Q 18 14 8 18 Q -12 16 -28 10"
+                d="M 0 4 L -30 -10 L -34 18 L 0 12 Z"
+                fill="url(#ws-page-left)"
+                stroke={PAGE_CREAM_LO}
+                strokeWidth={0.4}
+                strokeOpacity={0.35}
+              />
+              <path
+                d="M 0 4 L 30 -10 L 34 18 L 0 12 Z"
+                fill="url(#ws-page-right)"
+                stroke={PAGE_CREAM_LO}
+                strokeWidth={0.4}
+                strokeOpacity={0.35}
+              />
+              <path d="M -4 12 L 0 -2 L 4 12 Z" fill={INK} opacity={0.75} />
+              <path d="M 0 -2 L 0 12" stroke="#2a1c16" strokeWidth={1.1} opacity={0.5} />
+              <path
+                d="M -26 8 Q -6 2 10 10"
                 fill="none"
                 stroke={CORAL}
-                strokeWidth={1.3}
-                opacity={0.35 + phase2 * 0.35}
+                strokeWidth={1.1}
+                strokeLinecap="round"
+                opacity={0.3 + phase2 * 0.4}
+              />
+              <path
+                d="M 8 10 Q 20 4 28 12"
+                fill="none"
+                stroke={CORAL}
+                strokeWidth={1.1}
+                strokeLinecap="round"
+                opacity={0.28 + phase2 * 0.38}
               />
             </g>
           </g>
@@ -221,40 +276,45 @@ export function WelcomeSceneSvg({
         {globeIn > 0.02 ? (
           <g transform={`translate(${cx} ${globeY})`} opacity={globeIn}>
             <ellipse
-              rx={globeR + 10}
-              ry={globeR * 0.32}
+              rx={globeR + 14}
+              ry={globeR * 0.34}
               fill="none"
               stroke={CORAL}
-              strokeWidth={0.9}
-              opacity={0.22 + phase2 * 0.3}
-              transform={`rotate(${progress * 18})`}
+              strokeWidth={1.5}
+              opacity={0.5 + phase2 * 0.42}
+              transform={`rotate(${-22 + progress * 24})`}
             />
-            <circle r={globeR + 3} fill={INK} opacity={0.45} />
-            <circle r={globeR} fill="#141c28" stroke={WARM} strokeWidth={0.5} strokeOpacity={0.3} />
+            <circle r={globeR + 3} fill={INK} opacity={0.4} />
+            <circle r={globeR} fill={GLOBE_OCEAN} stroke={WARM} strokeWidth={0.6} strokeOpacity={0.22} />
             <g clipPath="url(#ws-globe-clip)">
-              <path
-                d={`M ${-globeR} 0 Q 0 ${-globeR * 0.35} ${globeR} 0`}
-                fill="#1a2838"
-                opacity={0.7}
-              />
-              <path
-                d={`M ${-globeR * 0.65} ${globeR * 0.15} Q 0 ${globeR * 0.48} ${globeR * 0.55} ${globeR * 0.12}`}
-                fill="#1a2838"
-                opacity={0.65}
-              />
+              <g transform={`rotate(${globeSpinDeg})`}>
+                <path
+                  d={`M ${-globeR * 0.92} ${-globeR * 0.05} Q ${-globeR * 0.55} ${-globeR * 0.78} ${-globeR * 0.12} ${-globeR * 0.35} Q ${globeR * 0.08} ${globeR * 0.05} ${-globeR * 0.18} ${globeR * 0.55} Q ${-globeR * 0.72} ${globeR * 0.42} ${-globeR * 0.92} ${-globeR * 0.05} Z`}
+                  fill={GLOBE_LAND}
+                  opacity={0.88}
+                />
+                <path
+                  d={`M ${-globeR * 0.08} ${-globeR * 0.62} Q ${globeR * 0.35} ${-globeR * 0.85} ${globeR * 0.62} ${-globeR * 0.35} Q ${globeR * 0.48} ${globeR * 0.15} ${globeR * 0.2} ${globeR * 0.55} Q ${-globeR * 0.12} ${globeR * 0.42} ${-globeR * 0.08} ${-globeR * 0.62} Z`}
+                  fill={GLOBE_LAND}
+                  opacity={0.82}
+                />
+                <path
+                  d={`M ${globeR * 0.28} ${-globeR * 0.12} Q ${globeR * 0.78} ${-globeR * 0.22} ${globeR * 0.88} ${globeR * 0.22} Q ${globeR * 0.55} ${globeR * 0.62} ${globeR * 0.22} ${globeR * 0.48} Q ${globeR * 0.05} ${globeR * 0.12} ${globeR * 0.28} ${-globeR * 0.12} Z`}
+                  fill={GLOBE_LAND}
+                  opacity={0.78}
+                />
+              </g>
               {lights.map((light, i) => {
-                const pt = projectGlobePoint(light.lat, light.lng, 0, 0, globeR * 0.88, globeSpin)
+                const pt = projectGlobePoint(light.lat, light.lng, 0, 0, globeR * 0.86, globeSpin)
                 if (!pt.visible) return null
                 const lit = welcomeSceneStagger(elapsed, WELCOME_PHASE1_END_MS, 4 + i)
+                const dotR = light.decorative ? 2.6 : 3.6
+                const coreOpacity = 0.55 + lit * 0.45
                 return (
-                  <circle
-                    key={`${light.code}-${i}`}
-                    cx={pt.x}
-                    cy={pt.y}
-                    r={light.decorative ? 1.8 : 2.4}
-                    fill={CORAL}
-                    opacity={0.25 + lit * 0.75}
-                  />
+                  <g key={`${light.code}-${i}`} filter="url(#ws-coral-dot-glow)">
+                    <circle cx={pt.x} cy={pt.y} r={dotR + 2.2} fill={CORAL} opacity={0.18 + lit * 0.22} />
+                    <circle cx={pt.x} cy={pt.y} r={dotR} fill={CORAL} opacity={coreOpacity} />
+                  </g>
                 )
               })}
             </g>
@@ -369,41 +429,56 @@ export function WelcomeSceneSvg({
                 height={h}
                 rx={1.4}
                 fill={CORAL}
-                opacity={0.2 + waveAmp * 0.55}
+                opacity={0.52 + waveAmp * 0.42}
               />
             )
           })}
         </g>
 
-        {/* Bottom-left parchment */}
+        {/* Bottom-left parchment scroll */}
         <g
-          transform={`translate(${width * 0.1} ${height * 0.78}) scale(${0.25 + welcomeSceneEase(phase1) * 0.75}, 1)`}
-          opacity={0.35 + phase2 * 0.45}
+          transform={`translate(${width * 0.08} ${height * 0.76}) scale(${0.25 + welcomeSceneEase(phase1) * 0.75}, 1)`}
+          opacity={0.55 + phase2 * 0.4}
         >
-          <rect width={width * 0.38} height={28} rx={2} fill="url(#ws-parchment)" filter="url(#ws-soft-shadow)" />
+          <ellipse cx={scrollW / 2} cy={scrollH + 5} rx={scrollW * 0.42} ry={4} fill="#000" opacity={0.22} />
+          <ellipse cx={11} cy={scrollH / 2 + 2} rx={9} ry={scrollH / 2 + 4} fill={SCROLL_ROLL} />
+          <ellipse cx={11} cy={scrollH / 2 + 2} rx={5.5} ry={scrollH / 2 - 1} fill="#ebe3d6" opacity={0.9} />
+          <rect x={11} y={2} width={scrollW - 22} height={scrollH} fill="url(#ws-scroll-face)" />
+          <ellipse cx={scrollW - 11} cy={scrollH / 2 + 2} rx={9} ry={scrollH / 2 + 4} fill={SCROLL_ROLL} />
+          <ellipse cx={scrollW - 11} cy={scrollH / 2 + 2} rx={5.5} ry={scrollH / 2 - 1} fill="#ebe3d6" opacity={0.9} />
           <path
-            d={`M 8 16 Q ${width * 0.15} 8 ${width * 0.22} 20`}
+            d={`M ${scrollW + 6} -18 Q ${scrollW * 0.55} -8 ${scrollW * 0.42} ${scrollH * 0.45} Q ${scrollW * 0.28} ${scrollH * 0.7} 14 ${scrollH * 0.55}`}
             fill="none"
             stroke={CORAL}
-            strokeWidth={1.2}
-            strokeDasharray="80"
-            strokeDashoffset={80 * (1 - welcomeSceneEase(phase2))}
-            opacity={0.35 + phase2 * 0.4}
+            strokeWidth={1.35}
+            strokeLinecap="round"
+            strokeDasharray="96"
+            strokeDashoffset={96 * (1 - welcomeSceneEase(phase2))}
+            opacity={0.45 + phase2 * 0.45}
           />
         </g>
 
         {/* Bottom-right ink drops */}
         {[0, 1].map((i) => {
           const t = welcomeSceneStagger(elapsed, WELCOME_PHASE1_END_MS + 400, i + 7)
+          const dropOpacity = t > 0.35 ? 0.6 : 0.15 + t * 0.35
           return (
-            <circle
-              key={`drop-${i}`}
-              cx={width * (0.86 + i * 0.05)}
-              cy={height * (0.8 + i * 0.03)}
-              r={2.5 + t * 7}
-              fill={CORAL}
-              opacity={0.08 + t * 0.22}
-            />
+            <g key={`drop-${i}`}>
+              <circle
+                cx={width * (0.86 + i * 0.05)}
+                cy={height * (0.8 + i * 0.03)}
+                r={4 + t * 8}
+                fill={CORAL}
+                opacity={dropOpacity * 0.35}
+              />
+              <circle
+                cx={width * (0.86 + i * 0.05)}
+                cy={height * (0.8 + i * 0.03)}
+                r={2.8 + t * 6}
+                fill={CORAL}
+                opacity={dropOpacity}
+              />
+            </g>
           )
         })}
       </g>
