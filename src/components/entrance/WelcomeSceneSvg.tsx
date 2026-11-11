@@ -22,6 +22,10 @@ const PAGE_CREAM_LO = '#ddd4c4'
 const SCROLL_ROLL = '#d8cdbf'
 const QUOTE_INK = '#d0d8e4'
 const TITLE = 'Voxly'
+/** Rotates textured land + projected lights so city dots face the camera at spin 0. */
+const GLOBE_VIEW_LON_OFFSET_RAD = (68 * Math.PI) / 180
+const GLOBE_LIGHT_MIN_RADIUS = 2.2
+const GLOBE_LIGHT_MIN_OPACITY = 0.8
 
 export type WelcomeSceneSvgProps = {
   progress: number
@@ -85,6 +89,7 @@ export function WelcomeSceneSvg({
   const globeR = Math.min(width, height) * 0.11
   const lights = globeLightsForCountryCodes(countryCodes)
   const globeSpin = welcomeSceneEase(phase2) * Math.PI * 0.85 + progress * 0.25
+  const globeRotation = globeSpin + GLOBE_VIEW_LON_OFFSET_RAD
   const globeIn = welcomeSceneStagger(elapsed, WELCOME_PHASE1_END_MS, 2)
 
   const waveAmp = musicPulse
@@ -106,7 +111,7 @@ export function WelcomeSceneSvg({
 
   const floatBook = welcomeSceneStagger(elapsed, WELCOME_PHASE1_END_MS, 0)
   const topBookY = height * 0.14 + Math.sin(progress * Math.PI * 2) * 4 * floatBook
-  const globeSpinDeg = (globeSpin * 180) / Math.PI
+  const globeSpinDeg = (globeRotation * 180) / Math.PI
   const scrollW = width * 0.36
   const scrollH = 22
 
@@ -187,8 +192,8 @@ export function WelcomeSceneSvg({
           <stop offset="55%" stopColor={ROOM} stopOpacity="0" />
           <stop offset="100%" stopColor="#000" stopOpacity="0.65" />
         </radialGradient>
-        <clipPath id="ws-globe-clip">
-          <circle cx={cx} cy={globeY} r={globeR} />
+        <clipPath id="ws-globe-clip" clipPathUnits="userSpaceOnUse">
+          <circle r={globeR} transform={`translate(${cx} ${globeY})`} />
         </clipPath>
         <clipPath id="ws-title-clip">
           <rect
@@ -305,15 +310,16 @@ export function WelcomeSceneSvg({
                 />
               </g>
               {lights.map((light, i) => {
-                const pt = projectGlobePoint(light.lat, light.lng, 0, 0, globeR * 0.86, globeSpin)
+                const pt = projectGlobePoint(light.lat, light.lng, 0, 0, globeR * 0.9, globeRotation)
                 if (!pt.visible) return null
                 const lit = welcomeSceneStagger(elapsed, WELCOME_PHASE1_END_MS, 4 + i)
-                const dotR = light.decorative ? 2.6 : 3.6
-                const coreOpacity = 0.55 + lit * 0.45
+                if (lit <= 0) return null
+                const dotR = Math.max(GLOBE_LIGHT_MIN_RADIUS, light.decorative ? 2.4 : 2.8)
+                const dotOpacity = Math.max(GLOBE_LIGHT_MIN_OPACITY, 0.55 + lit * 0.45)
                 return (
-                  <g key={`${light.code}-${i}`} filter="url(#ws-coral-dot-glow)">
-                    <circle cx={pt.x} cy={pt.y} r={dotR + 2.2} fill={CORAL} opacity={0.18 + lit * 0.22} />
-                    <circle cx={pt.x} cy={pt.y} r={dotR} fill={CORAL} opacity={coreOpacity} />
+                  <g key={`${light.code}-${i}`}>
+                    <circle cx={pt.x} cy={pt.y} r={dotR + 1.8} fill={CORAL} opacity={dotOpacity * 0.35} />
+                    <circle cx={pt.x} cy={pt.y} r={dotR} fill={CORAL} opacity={dotOpacity} />
                   </g>
                 )
               })}
