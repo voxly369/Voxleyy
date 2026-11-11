@@ -1,3 +1,5 @@
+import '@fontsource/dancing-script/400.css'
+
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import {
   WELCOME_SCENE_DURATION_MS,
@@ -25,31 +27,25 @@ type EntranceAnimatedSceneProps = {
   onSequenceHandoff?: () => void
 }
 
-const STILL_PALETTE_COLORS = {
-  dawn: { glow: '#f4c4a8', sky: '#e8d5c4', ink: '#5c4a42' },
-  day: { glow: '#c9e4de', sky: '#f0f4f8', ink: '#3d4f5f' },
-  dusk: { glow: '#d4a5a5', sky: '#c9b8a8', ink: '#4a3f55' },
-  night: { glow: '#8b9dc3', sky: '#1a1f2e', ink: '#c8d0e0' },
-} as const
-
-function EntranceStillScene({ palette }: { palette: EntrancePalette }) {
-  const colors = STILL_PALETTE_COLORS[palette]
+function EntranceStillScene() {
   return (
     <div
-      className="relative mx-auto aspect-[16/10] w-full max-w-xl overflow-hidden rounded-3xl"
+      className="relative mx-auto aspect-[9/16] w-full max-w-md overflow-hidden rounded-3xl bg-[#0a0c10]"
       data-testid="entrance-scene-still"
     >
-      <svg viewBox="0 0 400 250" role="img" aria-hidden="true" className="size-full" data-testid="entrance-illustration">
-        <rect width="400" height="250" fill={colors.sky} />
-        <circle cx="200" cy="125" r="70" fill={colors.glow} opacity="0.35" />
+      <svg viewBox="0 0 390 700" role="img" aria-hidden="true" className="size-full" data-testid="entrance-illustration">
+        <rect width="390" height="700" fill="#0a0c10" />
+        <circle cx="88" cy="58" r="42" fill="#f4c89a" opacity="0.12" />
+        <ellipse cx="88" cy="52" rx="10" ry="12" fill="#f4c89a" opacity="0.65" />
+        <circle cx="195" cy="310" r="52" fill="#141c28" stroke="#f4c89a" strokeWidth="0.5" strokeOpacity="0.25" />
+        <ellipse cx="195" cy="310" rx="62" ry="18" fill="none" stroke="#FF5A3C" strokeWidth="0.8" opacity="0.25" />
         <text
-          x="200"
-          y="230"
+          x="195"
+          y="248"
           textAnchor="middle"
-          fill={colors.ink}
-          fontFamily="Georgia, serif"
-          fontSize="26"
-          fontWeight="600"
+          fill="#FF5A3C"
+          fontFamily="'Dancing Script', cursive"
+          fontSize="56"
         >
           Voxly
         </text>
@@ -60,7 +56,7 @@ function EntranceStillScene({ palette }: { palette: EntrancePalette }) {
 
 export function EntranceAnimatedScene({
   reducedMotion,
-  palette,
+  palette: _palette,
   parallax,
   active,
   cinematic = false,
@@ -110,7 +106,7 @@ export function EntranceAnimatedScene({
   }, [cinematic])
 
   if (reducedMotion) {
-    return <EntranceStillScene palette={palette} />
+    return <EntranceStillScene />
   }
 
   if (!cinematic) return null
