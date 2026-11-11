@@ -56,19 +56,11 @@ describe('autoHide', () => {
       { creationId: 'b', kind: 'auto_hide' },
     ])
     expect(count).toBe(2)
-    expect(shouldIssueAutoHideFinalWarning(count)).toBe(false)
-    expect(
-      shouldIssueAutoHideFinalWarning(
-        flaggedPostCount([
-          { creationId: 'a', kind: 'auto_hide' },
-          { creationId: 'b', kind: 'auto_hide' },
-          { creationId: 'c', kind: 'auto_hide' },
-        ]),
-      ),
-    ).toBe(true)
+    expect(shouldIssueAutoHideFinalWarning(count)).toBe(true)
+    expect(shouldIssueAutoHideFinalWarning(1)).toBe(false)
   })
 
   it('final warning does not imply suspension (no suspend helper)', () => {
-    expect(shouldIssueAutoHideFinalWarning(3)).toBe(true)
+    expect(shouldIssueAutoHideFinalWarning(2)).toBe(true)
   })
 })
