@@ -3209,7 +3209,7 @@ declare
   v_gate text;
 begin
   v_msg :=
-    'Final warning: three of your posts were automatically hidden after multiple reports. Further moderation is at the Founder''s discretion.';
+    'Final warning: two of your posts were automatically hidden after multiple reports. Further moderation is at the Founder''s discretion.';
   execute format('set local role %I', session_user);
   select founder, reader_a, reader_b into v_founder, v_a, v_b from rls_ids;
   v_c := 'cccccccc-cccc-cccc-cccc-cccccccccc01'::uuid;
@@ -3387,11 +3387,86 @@ begin
   );
   select count(*) into n from public.warnings where user_id = v_b and message = v_msg;
   v_ok := n = 1;
-  perform pg_temp.record('third flagged post creates one final warning', v_ok, 'rows=' || n);
+  perform pg_temp.record('second flagged post creates one final warning', v_ok, 'rows=' || n);
 
   select status::text into v_status from public.profiles where id = v_b;
   v_ok := v_status = 'active';
-  perform pg_temp.record('auto hide final warning does not suspend user', v_ok, coalesce(v_status, 'null'));
+  perform pg_temp.record('auto hide final warning does not suspend account', v_ok, coalesce(v_status, 'null'));
+
+  execute format('set local role %I', session_user);
+  select w.post_suspended_until is not null into v_ok
+  from public.writer_strike_state w
+  where w.user_id = v_b;
+  perform pg_temp.record('third auto hidden post applies post suspension', coalesce(v_ok, false), 'post_suspended_until');
+
+  execute 'set local role authenticated';
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+  begin
+    execute format('set local role %I', session_user);
+    alter table public.creations disable trigger creations_rate_limit;
+    execute 'set local role authenticated';
+    perform set_config('request.jwt.claim.sub', v_b::text, true);
+    perform set_config(
+      'request.jwt.claims',
+      json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+      true
+    );
+    insert into public.creations (author_id, type, title, language, audience, status, body_text, published_at)
+    values (v_b, 'poem', 'Blocked while post suspended', 'en', 'public', 'published', 'No', now());
+    execute format('set local role %I', session_user);
+    alter table public.creations enable trigger creations_rate_limit;
+    perform pg_temp.record('post suspended writer cannot create', false, 'insert succeeded');
+  exception when others then
+    execute format('set local role %I', session_user);
+    alter table public.creations enable trigger creations_rate_limit;
+    execute 'set local role authenticated';
+    perform set_config('request.jwt.claim.sub', v_b::text, true);
+    perform pg_temp.record('post suspended writer cannot create', true, sqlerrm);
+  end;
+
+  execute format('set local role %I', session_user);
+  update public.writer_strike_state
+  set strike_count = 5, post_suspension_count = 2
+  where user_id = v_b;
+  perform public.maybe_apply_strike_account_suspension(v_b);
+  select status::text into v_status from public.profiles where id = v_b;
+  v_ok := v_status = 'suspended';
+  perform pg_temp.record('five strikes after second post suspension suspends account', v_ok, coalesce(v_status, 'null'));
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+  select count(*) into n from public.writer_strike_state where user_id = v_b;
+  v_ok := n = 1;
+  perform pg_temp.record('writer can read own strike state', v_ok, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  select count(*) into n from public.writer_strike_state where user_id = v_b;
+  v_ok := n = 0;
+  perform pg_temp.record('other user cannot read writer strike state', v_ok, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_founder::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_founder::text, 'role', 'authenticated', 'email', 'voxly369@gmail.com')::text,
+    true
+  );
+  select count(*) into n from public.writer_strike_state where user_id = v_b;
+  v_ok := n = 1;
+  perform pg_temp.record('founder can read writer strike state', v_ok, 'rows=' || n);
 
   begin
     execute 'set local role anon';
