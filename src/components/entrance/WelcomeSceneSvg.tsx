@@ -193,7 +193,7 @@ export function WelcomeSceneSvg({
           <stop offset="100%" stopColor="#000" stopOpacity="0.65" />
         </radialGradient>
         <clipPath id="ws-globe-clip" clipPathUnits="userSpaceOnUse">
-          <circle r={globeR} transform={`translate(${cx} ${globeY})`} />
+          <circle cx={0} cy={0} r={globeR} />
         </clipPath>
         <clipPath id="ws-title-clip">
           <rect
