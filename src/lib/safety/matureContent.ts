@@ -1,11 +1,13 @@
-/** Viewer has recorded age_18 consent (user_consents). */
+import { viewerIsAdultByDateOfBirth } from '../account/dateOfBirth.ts'
+
 export type MatureViewerContext = {
-  confirmedAge18: boolean
+  dateOfBirth: string | null
   showMatureContentOptIn: boolean
 }
 
 export function viewerMaySeeMatureContent(viewer: MatureViewerContext): boolean {
-  return viewer.confirmedAge18 && viewer.showMatureContentOptIn
+  if (!viewer.dateOfBirth) return false
+  return viewerIsAdultByDateOfBirth(viewer.dateOfBirth) && viewer.showMatureContentOptIn
 }
 
 /** Feed/search filter: non-mature posts are always visible; mature posts need eligibility. */
@@ -25,10 +27,4 @@ export function publishBlockedWithoutMatureAck(input: {
     return 'Confirm mature content before publishing sexual content.'
   }
   return null
-}
-
-export function hasConfirmedAge18Consent(
-  consents: readonly { document: string }[],
-): boolean {
-  return consents.some((row) => row.document === 'age_18')
 }

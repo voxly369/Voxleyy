@@ -19,7 +19,7 @@ test.describe('sign-up invite gate', () => {
     await page.getByLabel('Confirm password').fill('Correct horse battery 1')
     await page.getByTestId('signup-country-search').fill('South Africa')
     await page.getByTestId('signup-country-select').selectOption({ value: 'ZA' })
-    await page.getByTestId('signup-age-consent').check()
+    await page.getByTestId('signup-date-of-birth').fill('1990-01-15')
     await page.getByTestId('signup-consent').check()
     await page.getByRole('button', { name: 'Create account' }).click()
     await expect(page.getByText('Enter your beta invite code')).toBeVisible()

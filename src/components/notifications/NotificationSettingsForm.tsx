@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { focusRing } from '../shell/navItems.ts'
+import { fetchMyDateOfBirth, saveMyDateOfBirth } from '../../lib/account/dateOfBirthApi.ts'
+import { meetsMinimumSignupAge, viewerIsAdultByDateOfBirth } from '../../lib/account/dateOfBirth.ts'
 import {
   fetchNotificationSettings,
   updateNotificationSettings,
@@ -38,20 +40,28 @@ export function NotificationSettingsForm() {
   const [form, setForm] = useState<FormState | null>(null)
   const [status, setStatus] = useState<'loading' | 'idle' | 'saving' | 'saved' | 'error'>('loading')
   const [error, setError] = useState<string | null>(null)
+  const [storedDateOfBirth, setStoredDateOfBirth] = useState<string | null>(null)
+  const [dobPromptOpen, setDobPromptOpen] = useState(false)
+  const [dobDraft, setDobDraft] = useState('')
+  const [dobPending, setDobPending] = useState(false)
   const saveTimer = useRef<number | null>(null)
   const skipSave = useRef(true)
 
   useEffect(() => {
-    void fetchNotificationSettings().then((result) => {
-      if (!result.ok) {
-        setError(result.error.message)
+    void (async () => {
+      const [settingsResult, dobResult] = await Promise.all([fetchNotificationSettings(), fetchMyDateOfBirth()])
+      if (!settingsResult.ok) {
+        setError(settingsResult.error.message)
         setStatus('error')
         return
       }
-      setForm(toPatch(result.data))
+      setForm(toPatch(settingsResult.data))
+      if (dobResult.ok) {
+        setStoredDateOfBirth(dobResult.data)
+      }
       setStatus('idle')
       skipSave.current = true
-    })
+    })()
   }, [])
 
   useEffect(() => {
@@ -84,6 +94,48 @@ export function NotificationSettingsForm() {
       const current = prev[key]
       return { ...prev, [key]: typeof current === 'boolean' ? !current : current }
     })
+  }
+
+  function toggleMatureContent() {
+    setForm((prev) => {
+      if (!prev) return prev
+      if (prev.show_mature_content) {
+        setDobPromptOpen(false)
+        return { ...prev, show_mature_content: false }
+      }
+      if (!storedDateOfBirth || !viewerIsAdultByDateOfBirth(storedDateOfBirth)) {
+        setDobPromptOpen(true)
+        return prev
+      }
+      return { ...prev, show_mature_content: true }
+    })
+  }
+
+  async function saveDateOfBirthForMature() {
+    const trimmed = dobDraft.trim()
+    if (!trimmed) {
+      setError('Enter your date of birth to continue.')
+      return
+    }
+    if (!meetsMinimumSignupAge(trimmed)) {
+      setError('You must be at least 13 to use Voxly.')
+      return
+    }
+    if (!viewerIsAdultByDateOfBirth(trimmed)) {
+      setError('Mature content is only available if you are 18 or older.')
+      return
+    }
+    setDobPending(true)
+    const saved = await saveMyDateOfBirth(trimmed)
+    setDobPending(false)
+    if (!saved.ok) {
+      setError(saved.message)
+      return
+    }
+    setStoredDateOfBirth(saved.data)
+    setDobPromptOpen(false)
+    setError(null)
+    setForm((prev) => (prev ? { ...prev, show_mature_content: true } : prev))
   }
 
   if (status === 'loading' || !form) {
@@ -219,10 +271,38 @@ export function NotificationSettingsForm() {
               id="notify-show-mature-content"
               type="checkbox"
               checked={Boolean(form.show_mature_content)}
-              onChange={() => toggle('show_mature_content')}
+              onChange={toggleMatureContent}
               className="size-5 shrink-0 accent-coral"
             />
           </label>
+          {dobPromptOpen ? (
+            <div
+              className="flex flex-col gap-3 rounded-2xl border border-line bg-bg p-4"
+              data-testid="settings-date-of-birth-prompt"
+            >
+              <p className="text-sm text-ink">Add your date of birth before we can show mature content.</p>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-muted">Date of birth</span>
+                <input
+                  id="settings-date-of-birth"
+                  type="date"
+                  value={dobDraft}
+                  onChange={(event) => setDobDraft(event.target.value)}
+                  className={`min-h-11 rounded-2xl border border-line bg-surface px-3 text-base ${focusRing}`}
+                  data-testid="settings-date-of-birth"
+                />
+              </label>
+              <button
+                type="button"
+                disabled={dobPending}
+                onClick={() => void saveDateOfBirthForMature()}
+                className={`min-h-11 rounded-2xl bg-coral px-4 text-sm font-semibold text-white disabled:opacity-60 ${focusRing}`}
+                data-testid="settings-date-of-birth-save"
+              >
+                {dobPending ? 'Saving…' : 'Save and enable mature content'}
+              </button>
+            </div>
+          ) : null}
         </div>
       </fieldset>
 

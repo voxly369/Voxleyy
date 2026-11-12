@@ -11,6 +11,7 @@ export type SignUpInput = {
   displayName: string
   country: string
   timezone: string
+  dateOfBirth: string
   inviteCode?: string
 }
 

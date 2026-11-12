@@ -11,7 +11,7 @@ const validSignUp = {
   password: 'Correct horse battery 1',
   confirmPassword: 'Correct horse battery 1',
   acceptedTerms: true,
-  confirmedAge: true,
+  dateOfBirth: '1990-01-15',
 }
 
 describe('auth schemas', () => {
@@ -55,6 +55,7 @@ describe('auth schemas', () => {
     expect(signUpSchema.safeParse(validSignUp).success).toBe(true)
     expect(signUpSchema.safeParse({ ...validSignUp, confirmPassword: 'another long password' }).success).toBe(false)
     expect(signUpSchema.safeParse({ ...validSignUp, acceptedTerms: false }).success).toBe(false)
-    expect(signUpSchema.safeParse({ ...validSignUp, confirmedAge: false }).success).toBe(false)
+    expect(signUpSchema.safeParse({ ...validSignUp, dateOfBirth: '' }).success).toBe(false)
+    expect(signUpSchema.safeParse({ ...validSignUp, dateOfBirth: '2020-01-01' }).success).toBe(false)
   })
 })

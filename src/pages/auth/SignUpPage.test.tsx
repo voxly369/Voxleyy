@@ -37,6 +37,6 @@ describe('SignUpPage', () => {
       expect(screen.getByTestId('signup-form')).toBeInTheDocument()
     })
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
-    expect(screen.getByTestId('signup-age-consent')).toBeInTheDocument()
+    expect(screen.getByTestId('signup-date-of-birth')).toBeInTheDocument()
   })
 })

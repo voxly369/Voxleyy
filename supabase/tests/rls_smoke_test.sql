@@ -6368,6 +6368,54 @@ begin
   perform pg_temp.record('self-harm methods removal does not add strike', coalesce(n, 0) = 0, 'strikes=' || coalesce(n::text, '0'));
 end $self_harm_support$;
 
+do $account_private_dob$
+declare
+  v_a uuid;
+  v_b uuid;
+  n integer;
+  v_dob date;
+begin
+  select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+
+  insert into public.account_private (user_id, date_of_birth)
+  values (v_a, (current_date - interval '25 years')::date)
+  on conflict (user_id) do update set date_of_birth = excluded.date_of_birth;
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+
+  select count(*) into n from public.account_private where user_id = v_a;
+  perform pg_temp.record('another user cannot read account_private date of birth', n = 0, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  select date_of_birth into v_dob from public.account_private where user_id = v_a;
+  perform pg_temp.record('owner can read own date of birth', v_dob is not null, 'dob=' || coalesce(v_dob::text, 'null'));
+
+  select count(*) into n
+  from information_schema.columns
+  where table_schema = 'public'
+    and table_name = 'profiles_public'
+    and column_name = 'date_of_birth';
+  perform pg_temp.record('profiles_public has no date_of_birth column', n = 0, 'cols=' || n);
+end $account_private_dob$;
+
 do $mature_content$
 declare
   v_a uuid;
@@ -6377,8 +6425,18 @@ declare
 begin
   select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
 
+  delete from public.account_private where user_id = v_a;
   delete from public.user_consents where user_id = v_a and document = 'age_18';
   update public.notification_settings set show_mature_content = false where user_id = v_a;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform public.upsert_my_date_of_birth((current_date - interval '16 years')::date);
 
   perform set_config('request.jwt.claim.sub', v_b::text, true);
   perform set_config(
@@ -6408,7 +6466,7 @@ begin
   select count(*) into n from public.creations where id = v_mature;
   perform pg_temp.record('mature post hidden from under-18 select', n = 0, 'rows=' || n);
 
-  perform public.record_user_consent('age_18', 'confirmed');
+  perform public.upsert_my_date_of_birth((current_date - interval '25 years')::date);
   update public.notification_settings set show_mature_content = true where user_id = v_a;
 
   select count(*) into n from public.feed_creations where id = v_mature;
