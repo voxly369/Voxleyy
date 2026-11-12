@@ -17,6 +17,8 @@ const forbidden = [
   'e2e/moderationMocks',
   '__VOXLY_E2E__',
   'VOXLY_E2E_MOCK',
+  'DEMO_WRITER_',
+  'Demo content — sample only',
 ]
 
 function walk(dir) {
