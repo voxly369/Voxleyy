@@ -6,6 +6,13 @@ export const SHOW_UNBUILT_CREATE_OPTIONS = false
 /** When false, the For You feed tab is hidden (no “Coming soon” surface). */
 export const SHOW_FOR_YOU_FEED_TAB = false
 
+/**
+ * When true, labelled demo writers and posts may appear (dev / preview only).
+ * Always false in production builds (`import.meta.env.PROD`).
+ */
+export const SHOW_DEMO_DATA =
+  !import.meta.env.PROD && import.meta.env.VITE_SHOW_DEMO_DATA === 'true'
+
 /** Create sheet types that are wired for launch (section 23). */
 export const BUILT_CREATE_PICKER_TYPES: readonly CreationType[] = [
   'written_post',

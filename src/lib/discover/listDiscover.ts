@@ -11,6 +11,7 @@ import {
   type DiscoverListKind,
 } from './discoverQuery.ts'
 import type { DiscoverFilterParams } from './filterParams.ts'
+import { prependDemoDiscoverPosts } from '../demo/prependDemoDiscoverPosts.ts'
 
 type CreationType = Database['public']['Enums']['creation_type']
 
@@ -155,7 +156,11 @@ export async function listDiscoverPosts(
   })
 
   const { page, nextCursor } = nextFeedCursor(mapped)
-  return { ok: true, data: { posts: page.map((e) => e.post), nextCursor } }
+  const posts = prependDemoDiscoverPosts(
+    page.map((e) => e.post),
+    cursor,
+  )
+  return { ok: true, data: { posts, nextCursor } }
 }
 
 export type FeaturedWriter = {
