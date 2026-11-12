@@ -6311,6 +6311,71 @@ begin
   );
 end $founder_signups_daily_logins$;
 
+do $mature_content$
+declare
+  v_a uuid;
+  v_b uuid;
+  v_mature uuid;
+  n integer;
+begin
+  select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
+
+  delete from public.user_consents where user_id = v_a and document = 'age_18';
+  update public.notification_settings set show_mature_content = false where user_id = v_a;
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+
+  insert into public.creations (
+    author_id, type, title, audience, status, body_text,
+    contains_sexual_content, is_mature_content
+  )
+  values (v_b, 'poem', 'Mature smoke', 'public', 'published', 'Adults only', true, true)
+  returning id into v_mature;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+
+  select count(*) into n from public.feed_creations where id = v_mature;
+  perform pg_temp.record('mature post hidden from under-18 feed', n = 0, 'rows=' || n);
+
+  select count(*) into n from public.creations where id = v_mature;
+  perform pg_temp.record('mature post hidden from under-18 select', n = 0, 'rows=' || n);
+
+  perform public.record_user_consent('age_18', 'confirmed');
+  update public.notification_settings set show_mature_content = true where user_id = v_a;
+
+  select count(*) into n from public.feed_creations where id = v_mature;
+  perform pg_temp.record('mature post visible in feed for opted-in 18+', n = 1, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+  begin
+    insert into public.creations (
+      author_id, type, title, audience, status, body_text,
+      contains_sexual_content, is_mature_content
+    )
+    values (v_b, 'poem', 'Blocked sexual', 'public', 'published', 'No ack', true, false);
+    perform pg_temp.record('sexual publish requires mature acknowledgment', false, 'insert succeeded');
+  exception
+    when others then
+      perform pg_temp.record('sexual publish requires mature acknowledgment', true, sqlerrm);
+  end;
+end $mature_content$;
+
 do $$
 declare
   n integer;

@@ -24,6 +24,7 @@ vi.mock('../../lib/notifications/api.ts', () => ({
       showLocalTime: false,
       digestEnabled: false,
       digestTime: null,
+      showMatureContent: false,
       updatedAt: '2026-01-01T00:00:00Z',
     },
   }),
@@ -60,6 +61,7 @@ describe('NotificationSettingsForm', () => {
         showLocalTime: false,
         digestEnabled: false,
         digestTime: null,
+        showMatureContent: false,
         updatedAt: '2026-01-01T00:00:00Z',
       },
     })

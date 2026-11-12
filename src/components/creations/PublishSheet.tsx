@@ -10,6 +10,15 @@ import { creationTypeLabel } from '../../lib/creations/creationTypeLabel.ts'
 import { MOOD_OPTIONS, isCreationMood } from '../../lib/creations/moodOptions.ts'
 import { LanguagePicker } from '../languages/LanguagePicker.tsx'
 import { DEFAULT_CONTENT_LANGUAGE } from '../../lib/languages/defaultLanguage.ts'
+import { publishBlockedWithoutMatureAck } from '../../lib/safety/matureContent.ts'
+
+export type PublishConfirmPayload = {
+  audience: Audience
+  mood: string | null
+  language: string
+  containsSexualContent: boolean
+  isMatureContent: boolean
+}
 
 type PublishSheetProps = {
   open: boolean
@@ -24,10 +33,12 @@ type PublishSheetProps = {
   initialAudience: Audience
   initialMood?: string | null
   initialLanguage?: string
+  initialContainsSexualContent?: boolean
+  initialIsMatureContent?: boolean
   mode: 'publish' | 'audience'
   busy: boolean
   error: string | null
-  onConfirm: (input: { audience: Audience; mood: string | null; language: string }) => void
+  onConfirm: (input: PublishConfirmPayload) => void
 }
 
 export function PublishSheet({
@@ -43,6 +54,8 @@ export function PublishSheet({
   initialAudience,
   initialMood = null,
   initialLanguage = DEFAULT_CONTENT_LANGUAGE,
+  initialContainsSexualContent = false,
+  initialIsMatureContent = false,
   mode,
   busy,
   error,
@@ -52,10 +65,21 @@ export function PublishSheet({
   const [audience, setAudience] = useState<Audience>(initialAudience)
   const [mood, setMood] = useState<string>(() => (isCreationMood(initialMood) ? initialMood : ''))
   const [language, setLanguage] = useState(() => initialLanguage.trim().toLowerCase() || DEFAULT_CONTENT_LANGUAGE)
+  const [containsSexualContent, setContainsSexualContent] = useState(initialContainsSexualContent)
+  const [matureContentAcknowledged, setMatureContentAcknowledged] = useState(
+    initialIsMatureContent && initialContainsSexualContent,
+  )
 
   const check = validatePublishContent({ title, body, caption, creationType, quoteStyle })
   const stats = publishContentStats(body)
-  const canSubmit = check.ok && !busy
+  const matureBlock =
+    mode === 'publish'
+      ? publishBlockedWithoutMatureAck({
+          containsSexualContent,
+          matureContentAcknowledged,
+        })
+      : null
+  const canSubmit = check.ok && !busy && !matureBlock
   const heading = mode === 'publish' ? 'Publish' : 'Update audience'
   const actionLabel = mode === 'publish' ? 'Publish' : 'Save audience'
 
@@ -128,6 +152,41 @@ export function PublishSheet({
           </div>
         ) : null}
 
+        {mode === 'publish' ? (
+          <fieldset className="mt-4 flex flex-col gap-3 rounded-2xl border border-line p-3">
+            <legend className="text-sm font-medium text-ink">Mature content</legend>
+            <label className={`flex min-h-11 cursor-pointer items-start gap-3 ${focusRing}`}>
+              <input
+                type="checkbox"
+                checked={containsSexualContent}
+                disabled={busy}
+                onChange={(event) => {
+                  const next = event.target.checked
+                  setContainsSexualContent(next)
+                  if (!next) setMatureContentAcknowledged(false)
+                }}
+                className="mt-1 size-5 accent-coral"
+              />
+              <span className="text-sm text-ink">This post includes sexual content</span>
+            </label>
+            {containsSexualContent ? (
+              <label className={`flex min-h-11 cursor-pointer items-start gap-3 ${focusRing}`}>
+                <input
+                  type="checkbox"
+                  checked={matureContentAcknowledged}
+                  disabled={busy}
+                  onChange={(event) => setMatureContentAcknowledged(event.target.checked)}
+                  className="mt-1 size-5 accent-coral"
+                />
+                <span className="text-sm text-ink">
+                  I confirm this is mature content and may be hidden from readers who have not opted in
+                </span>
+              </label>
+            ) : null}
+            {matureBlock ? <p className="text-sm text-coral">{matureBlock}</p> : null}
+          </fieldset>
+        ) : null}
+
         <section className="mt-5 flex flex-col gap-2" aria-labelledby="publish-check-heading">
           <h3 id="publish-check-heading" className="text-sm font-medium text-ink">
             Content check
@@ -173,6 +232,11 @@ export function PublishSheet({
               audience,
               mood: isCreationMood(mood) ? mood : null,
               language: language.trim().toLowerCase() || DEFAULT_CONTENT_LANGUAGE,
+              containsSexualContent: mode === 'publish' ? containsSexualContent : initialContainsSexualContent,
+              isMatureContent:
+                mode === 'publish'
+                  ? containsSexualContent && matureContentAcknowledged
+                  : initialIsMatureContent,
             })
           }
           className={`min-h-11 rounded-2xl bg-coral px-4 text-base font-semibold text-white disabled:opacity-50 ${focusRing}`}

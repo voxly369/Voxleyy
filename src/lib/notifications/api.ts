@@ -141,6 +141,7 @@ function parseSettingsRow(value: unknown): NotificationSettings | null {
     showLocalTime: row.show_local_time === true,
     digestEnabled: row.digest_enabled === true,
     digestTime: text(row.digest_time),
+    showMatureContent: row.show_mature_content === true,
     updatedAt,
   }
 }

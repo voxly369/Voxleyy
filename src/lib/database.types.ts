@@ -636,11 +636,13 @@ export type Database = {
           body_text: string | null
           caption: string | null
           comment_count: number
+          contains_sexual_content: boolean
           country: string | null
           cover_url: string | null
           created_at: string
           genre: string | null
           id: string
+          is_mature_content: boolean
           is_removed: boolean
           auto_hidden_at: string | null
           language: string
@@ -665,11 +667,13 @@ export type Database = {
           body_text?: string | null
           caption?: string | null
           comment_count?: number
+          contains_sexual_content?: boolean
           country?: string | null
           cover_url?: string | null
           created_at?: string
           genre?: string | null
           id?: string
+          is_mature_content?: boolean
           is_removed?: boolean
           auto_hidden_at?: string | null
           language?: string
@@ -694,11 +698,13 @@ export type Database = {
           body_text?: string | null
           caption?: string | null
           comment_count?: number
+          contains_sexual_content?: boolean
           country?: string | null
           cover_url?: string | null
           created_at?: string
           genre?: string | null
           id?: string
+          is_mature_content?: boolean
           is_removed?: boolean
           auto_hidden_at?: string | null
           language?: string
@@ -944,6 +950,7 @@ export type Database = {
           quiet_schedule_start: string | null
           quiet_summary_pending: number
           show_local_time: boolean
+          show_mature_content: boolean
           timezone: string
           updated_at: string
           user_id: string
@@ -967,6 +974,7 @@ export type Database = {
           quiet_schedule_start?: string | null
           quiet_summary_pending?: number
           show_local_time?: boolean
+          show_mature_content?: boolean
           timezone?: string
           updated_at?: string
           user_id: string
@@ -990,6 +998,7 @@ export type Database = {
           quiet_schedule_start?: string | null
           quiet_summary_pending?: number
           show_local_time?: boolean
+          show_mature_content?: boolean
           timezone?: string
           updated_at?: string
           user_id?: string

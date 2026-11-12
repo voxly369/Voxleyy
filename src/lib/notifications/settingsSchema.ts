@@ -24,6 +24,7 @@ export const notificationSettingsPatchSchema = z
     show_local_time: z.boolean().optional(),
     digest_enabled: z.boolean().optional(),
     digest_time: z.string().regex(timePattern).nullable().optional(),
+    show_mature_content: z.boolean().optional(),
   })
   .strict()
 

@@ -189,6 +189,8 @@ export default function CreationPage() {
     audience: import('../lib/creations/types.ts').Audience
     mood: string | null
     language: string
+    containsSexualContent: boolean
+    isMatureContent: boolean
   }) {
     if (!work) return
     setPublishError(null)
@@ -207,6 +209,8 @@ export default function CreationPage() {
         tags: [],
         mood: input.mood,
         language: input.language,
+        containsSexualContent: input.containsSexualContent,
+        isMatureContent: input.isMatureContent,
       })
       if (!saved.ok) {
         setPublishBusy(false)
@@ -227,6 +231,8 @@ export default function CreationPage() {
       id: work.id,
       audience: input.audience,
       expectedUpdatedAt: updatedAt,
+      containsSexualContent: input.containsSexualContent,
+      isMatureContent: input.isMatureContent,
     })
     setPublishBusy(false)
 
@@ -466,6 +472,8 @@ export default function CreationPage() {
         initialAudience={work.audience}
         initialMood={work.mood}
         initialLanguage={work.language}
+        initialContainsSexualContent={work.containsSexualContent}
+        initialIsMatureContent={work.isMatureContent}
         mode={work.status === 'published' ? 'audience' : 'publish'}
         busy={publishBusy}
         error={publishError}

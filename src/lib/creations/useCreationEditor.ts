@@ -102,6 +102,8 @@ export function useCreationEditor({ creationId, creationType, seedBody }: UseCre
   const [creationAudience, setCreationAudience] = useState<Audience>('private')
   const [creationMood, setCreationMood] = useState<string | null>(null)
   const [creationLanguage, setCreationLanguage] = useState('en')
+  const [containsSexualContent, setContainsSexualContent] = useState(false)
+  const [isMatureContent, setIsMatureContent] = useState(false)
   const [quoteStyle, setQuoteStyle] = useState<QuoteCardStyle>(DEFAULT_QUOTE_CARD_STYLE)
   const [richDoc, setRichDoc] = useState<RichBodyDocument>(() => emptyRichDocument())
   const [tagWarning, setTagWarning] = useState<string | null>(null)
@@ -156,6 +158,8 @@ export function useCreationEditor({ creationId, creationType, seedBody }: UseCre
     setCreationAudience(value.audience)
     setCreationMood(value.mood)
     setCreationLanguage(value.language?.trim().toLowerCase() || 'en')
+    setContainsSexualContent(value.containsSexualContent)
+    setIsMatureContent(value.isMatureContent)
     const loadedRich = bodyContentFromJson(value.bodyJson, value.bodyText)
     setForm({
       title: value.title,
@@ -501,6 +505,8 @@ export function useCreationEditor({ creationId, creationType, seedBody }: UseCre
     creationAudience,
     creationMood,
     creationLanguage,
+    containsSexualContent,
+    isMatureContent,
     tagWarning,
     getUpdatedAt: () => updatedAtRef.current,
     shouldBlockLeave: shouldBlockNavigation(autosave),
