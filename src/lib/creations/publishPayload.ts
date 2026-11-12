@@ -13,6 +13,7 @@ export function fieldsForSaveCreation(input: {
   language?: string
   containsSexualContent?: boolean
   isMatureContent?: boolean
+  isSelfHarmTopic?: boolean
 }): Pick<
   CreationUpdate,
   | 'title'
@@ -24,6 +25,7 @@ export function fieldsForSaveCreation(input: {
   | 'language'
   | 'contains_sexual_content'
   | 'is_mature_content'
+  | 'is_self_harm_topic'
 > {
   const patch: Pick<
     CreationUpdate,
@@ -36,6 +38,7 @@ export function fieldsForSaveCreation(input: {
     | 'language'
     | 'contains_sexual_content'
     | 'is_mature_content'
+    | 'is_self_harm_topic'
   > = {
     title: input.title.trim() || null,
     body_text: input.bodyText,
@@ -47,20 +50,29 @@ export function fieldsForSaveCreation(input: {
   if (input.language !== undefined) patch.language = input.language
   if (input.containsSexualContent !== undefined) patch.contains_sexual_content = input.containsSexualContent
   if (input.isMatureContent !== undefined) patch.is_mature_content = input.isMatureContent
+  if (input.isSelfHarmTopic !== undefined) patch.is_self_harm_topic = input.isSelfHarmTopic
   return patch
 }
 
 export function fieldsForPublish(
   audience: Audience,
-  mature?: { containsSexualContent: boolean; isMatureContent: boolean },
-): Pick<CreationUpdate, 'status' | 'audience' | 'contains_sexual_content' | 'is_mature_content'> {
+  flags?: {
+    containsSexualContent: boolean
+    isMatureContent: boolean
+    isSelfHarmTopic?: boolean
+  },
+): Pick<
+  CreationUpdate,
+  'status' | 'audience' | 'contains_sexual_content' | 'is_mature_content' | 'is_self_harm_topic'
+> {
   return {
     status: 'published',
     audience,
-    ...(mature
+    ...(flags
       ? {
-          contains_sexual_content: mature.containsSexualContent,
-          is_mature_content: mature.isMatureContent,
+          contains_sexual_content: flags.containsSexualContent,
+          is_mature_content: flags.isMatureContent,
+          ...(flags.isSelfHarmTopic !== undefined ? { is_self_harm_topic: flags.isSelfHarmTopic } : {}),
         }
       : {}),
   }

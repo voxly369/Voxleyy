@@ -44,10 +44,10 @@ const WORK_LIST_COLUMNS =
   `id, type, title, caption, status, audience, cover_url, created_at, author_id, ${AUTHOR_EMBED}` as const
 
 const DETAIL_COLUMNS =
-  `id, type, title, caption, body_text, body_json, status, audience, cover_url, genre, mood, language, created_at, updated_at, is_removed, removed_reason, auto_hidden_at, contains_sexual_content, is_mature_content, author_id, ${AUTHOR_EMBED}` as const
+  `id, type, title, caption, body_text, body_json, status, audience, cover_url, genre, mood, language, created_at, updated_at, is_removed, removed_reason, auto_hidden_at, contains_sexual_content, is_mature_content, is_self_harm_topic, contains_self_harm_methods, author_id, ${AUTHOR_EMBED}` as const
 
 const EDIT_COLUMNS =
-  'id, type, title, caption, body_text, body_json, cover_url, mood, language, status, audience, updated_at, is_removed, author_id, contains_sexual_content, is_mature_content' as const
+  'id, type, title, caption, body_text, body_json, cover_url, mood, language, status, audience, updated_at, is_removed, author_id, contains_sexual_content, is_mature_content, is_self_harm_topic, contains_self_harm_methods' as const
 
 function fail(
   code: CreationFailure['error']['code'],
@@ -105,6 +105,8 @@ function detailFromRecord(record: Record<string, unknown>, isOwn: boolean): Crea
     autoHideModerationActionId: null,
     containsSexualContent: record.contains_sexual_content === true,
     isMatureContent: record.is_mature_content === true,
+    isSelfHarmTopic: record.is_self_harm_topic === true,
+    containsSelfHarmMethods: record.contains_self_harm_methods === true,
   }
 }
 
@@ -352,6 +354,8 @@ export async function getEditableCreation(id: string): Promise<CreationResult<Ed
       bodyJson: data.body_json,
       containsSexualContent: data.contains_sexual_content === true,
       isMatureContent: data.is_mature_content === true,
+      isSelfHarmTopic: data.is_self_harm_topic === true,
+      containsSelfHarmMethods: data.contains_self_harm_methods === true,
     },
   }
 }
@@ -369,6 +373,7 @@ export async function saveCreationFields(input: {
   language?: string
   containsSexualContent?: boolean
   isMatureContent?: boolean
+  isSelfHarmTopic?: boolean
   forceOverwrite?: boolean
 }): Promise<SaveCreationResult> {
   const userId = await currentUserId()
@@ -398,6 +403,7 @@ export async function saveCreationFields(input: {
         language: input.language,
         containsSexualContent: input.containsSexualContent,
         isMatureContent: input.isMatureContent,
+        isSelfHarmTopic: input.isSelfHarmTopic,
       }),
     )
     .eq('id', input.id)
@@ -441,6 +447,7 @@ export async function publishCreation(input: {
   expectedUpdatedAt: string | null
   containsSexualContent?: boolean
   isMatureContent?: boolean
+  isSelfHarmTopic?: boolean
   forceOverwrite?: boolean
 }): Promise<PublishCreationResult> {
   const userId = await currentUserId()
@@ -452,6 +459,7 @@ export async function publishCreation(input: {
       fieldsForPublish(input.audience, {
         containsSexualContent: input.containsSexualContent ?? false,
         isMatureContent: input.isMatureContent ?? false,
+        isSelfHarmTopic: input.isSelfHarmTopic ?? false,
       }),
     )
     .eq('id', input.id)

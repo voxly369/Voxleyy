@@ -104,6 +104,7 @@ export function useCreationEditor({ creationId, creationType, seedBody }: UseCre
   const [creationLanguage, setCreationLanguage] = useState('en')
   const [containsSexualContent, setContainsSexualContent] = useState(false)
   const [isMatureContent, setIsMatureContent] = useState(false)
+  const [isSelfHarmTopic, setIsSelfHarmTopic] = useState(false)
   const [quoteStyle, setQuoteStyle] = useState<QuoteCardStyle>(DEFAULT_QUOTE_CARD_STYLE)
   const [richDoc, setRichDoc] = useState<RichBodyDocument>(() => emptyRichDocument())
   const [tagWarning, setTagWarning] = useState<string | null>(null)
@@ -160,6 +161,7 @@ export function useCreationEditor({ creationId, creationType, seedBody }: UseCre
     setCreationLanguage(value.language?.trim().toLowerCase() || 'en')
     setContainsSexualContent(value.containsSexualContent)
     setIsMatureContent(value.isMatureContent)
+    setIsSelfHarmTopic(value.isSelfHarmTopic)
     const loadedRich = bodyContentFromJson(value.bodyJson, value.bodyText)
     setForm({
       title: value.title,
@@ -507,6 +509,7 @@ export function useCreationEditor({ creationId, creationType, seedBody }: UseCre
     creationLanguage,
     containsSexualContent,
     isMatureContent,
+    isSelfHarmTopic,
     tagWarning,
     getUpdatedAt: () => updatedAtRef.current,
     shouldBlockLeave: shouldBlockNavigation(autosave),

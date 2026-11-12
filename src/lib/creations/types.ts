@@ -40,6 +40,8 @@ export type CreationDetail = WorkSummary & {
   autoHideModerationActionId: string | null
   containsSexualContent: boolean
   isMatureContent: boolean
+  isSelfHarmTopic: boolean
+  containsSelfHarmMethods: boolean
 }
 
 export type CreationFailure = {
@@ -83,6 +85,8 @@ export type EditableCreation = {
   bodyJson: import('../database.types.ts').Json | null
   containsSexualContent: boolean
   isMatureContent: boolean
+  isSelfHarmTopic: boolean
+  containsSelfHarmMethods: boolean
 }
 
 export type DraftListRow = {

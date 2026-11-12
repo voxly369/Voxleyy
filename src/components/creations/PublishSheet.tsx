@@ -18,6 +18,7 @@ export type PublishConfirmPayload = {
   language: string
   containsSexualContent: boolean
   isMatureContent: boolean
+  isSelfHarmTopic: boolean
 }
 
 type PublishSheetProps = {
@@ -35,6 +36,7 @@ type PublishSheetProps = {
   initialLanguage?: string
   initialContainsSexualContent?: boolean
   initialIsMatureContent?: boolean
+  initialIsSelfHarmTopic?: boolean
   mode: 'publish' | 'audience'
   busy: boolean
   error: string | null
@@ -56,6 +58,7 @@ export function PublishSheet({
   initialLanguage = DEFAULT_CONTENT_LANGUAGE,
   initialContainsSexualContent = false,
   initialIsMatureContent = false,
+  initialIsSelfHarmTopic = false,
   mode,
   busy,
   error,
@@ -69,6 +72,7 @@ export function PublishSheet({
   const [matureContentAcknowledged, setMatureContentAcknowledged] = useState(
     initialIsMatureContent && initialContainsSexualContent,
   )
+  const [isSelfHarmTopic, setIsSelfHarmTopic] = useState(initialIsSelfHarmTopic)
 
   const check = validatePublishContent({ title, body, caption, creationType, quoteStyle })
   const stats = publishContentStats(body)
@@ -187,6 +191,24 @@ export function PublishSheet({
           </fieldset>
         ) : null}
 
+        {mode === 'publish' ? (
+          <fieldset className="mt-4 flex flex-col gap-3 rounded-2xl border border-line p-3">
+            <legend className="text-sm font-medium text-ink">Difficult topics</legend>
+            <label className={`flex min-h-11 cursor-pointer items-start gap-3 ${focusRing}`}>
+              <input
+                type="checkbox"
+                checked={isSelfHarmTopic}
+                disabled={busy}
+                onChange={(event) => setIsSelfHarmTopic(event.target.checked)}
+                className="mt-1 size-5 accent-coral"
+              />
+              <span className="text-sm text-ink">
+                This post discusses self-harm honestly (without methods, tools, or instructions)
+              </span>
+            </label>
+          </fieldset>
+        ) : null}
+
         <section className="mt-5 flex flex-col gap-2" aria-labelledby="publish-check-heading">
           <h3 id="publish-check-heading" className="text-sm font-medium text-ink">
             Content check
@@ -237,6 +259,7 @@ export function PublishSheet({
                 mode === 'publish'
                   ? containsSexualContent && matureContentAcknowledged
                   : initialIsMatureContent,
+              isSelfHarmTopic: mode === 'publish' ? isSelfHarmTopic : initialIsSelfHarmTopic,
             })
           }
           className={`min-h-11 rounded-2xl bg-coral px-4 text-base font-semibold text-white disabled:opacity-50 ${focusRing}`}
