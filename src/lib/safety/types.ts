@@ -111,6 +111,8 @@ export type FounderContentRow = {
   body_excerpt: string | null
   is_removed: boolean
   removed_reason: string | null
+  is_self_harm_topic?: boolean | null
+  contains_self_harm_methods?: boolean | null
   created_at: string
 }
 

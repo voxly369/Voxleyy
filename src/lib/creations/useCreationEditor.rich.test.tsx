@@ -42,6 +42,8 @@ const loadedEditable: EditableCreation = {
   language: 'en',
   containsSexualContent: false,
   isMatureContent: false,
+  isSelfHarmTopic: false,
+  containsSelfHarmMethods: false,
 }
 
 const createdDetail: CreationDetail = {
@@ -65,6 +67,8 @@ const createdDetail: CreationDetail = {
   author: { id: 'user-1', username: 'writer', displayName: 'Writer', avatarUrl: null, verified: false },
   containsSexualContent: false,
   isMatureContent: false,
+  isSelfHarmTopic: false,
+  containsSelfHarmMethods: false,
 }
 
 describe('useCreationEditor rich autosave', () => {

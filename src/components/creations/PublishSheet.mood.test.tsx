@@ -35,6 +35,7 @@ describe('PublishSheet mood picker', () => {
       language: 'en',
       containsSexualContent: false,
       isMatureContent: false,
+      isSelfHarmTopic: false,
     })
   })
 })

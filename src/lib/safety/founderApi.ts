@@ -20,6 +20,22 @@ export async function dismissReport(reportId: string, reason: string): Promise<S
   return { ok: true, data: null }
 }
 
+export async function removeSelfHarmMethodsContent(
+  creationId: string,
+  reason: string,
+  reportId?: string | null,
+): Promise<SafetyResult<null>> {
+  const validated = validateFounderReason(reason)
+  if (!validated.ok) return safetyFail('invalid', validated.message)
+  const { error } = await supabase.rpc('founder_remove_self_harm_methods_content', {
+    p_creation_id: creationId,
+    p_reason: validated.reason,
+    p_report_id: reportId ?? undefined,
+  })
+  if (error) return safetyFail('unavailable', error.message ?? 'Action failed.', error)
+  return { ok: true, data: null }
+}
+
 export async function removeContent(
   targetType: 'creation' | 'comment',
   targetId: string,

@@ -68,6 +68,7 @@ export default function CreationEditorPage() {
     language: string
     containsSexualContent: boolean
     isMatureContent: boolean
+    isSelfHarmTopic: boolean
   }) {
     const id = editor.creationId
     if (!id) return
@@ -93,6 +94,7 @@ export default function CreationEditorPage() {
       language: input.language,
       containsSexualContent: input.containsSexualContent,
       isMatureContent: input.isMatureContent,
+      isSelfHarmTopic: input.isSelfHarmTopic,
     })
     if (!moodSave.ok) {
       setPublishBusy(false)
@@ -117,6 +119,7 @@ export default function CreationEditorPage() {
       expectedUpdatedAt: moodSave.updatedAt,
       containsSexualContent: input.containsSexualContent,
       isMatureContent: input.isMatureContent,
+      isSelfHarmTopic: input.isSelfHarmTopic,
     })
     setPublishBusy(false)
 
@@ -169,6 +172,7 @@ export default function CreationEditorPage() {
         initialLanguage={editor.creationLanguage}
         initialContainsSexualContent={editor.containsSexualContent}
         initialIsMatureContent={editor.isMatureContent}
+        initialIsSelfHarmTopic={editor.isSelfHarmTopic}
         mode={editor.creationStatus === 'published' ? 'audience' : 'publish'}
         busy={publishBusy}
         error={publishError}

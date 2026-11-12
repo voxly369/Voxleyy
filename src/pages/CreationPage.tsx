@@ -42,6 +42,8 @@ import { recordCreationView } from '../lib/views/recordView.ts'
 import { contentLangProps } from '../lib/languages/dir.ts'
 import { PostLanguageLabel } from '../components/languages/PostLanguageLabel.tsx'
 import { useViewerContentLanguages } from '../lib/languages/useViewerContentLanguages.ts'
+import { SelfHarmSupportNotice } from '../components/safety/SelfHarmSupportNotice.tsx'
+import { postShowsSelfHarmSupport } from '../lib/safety/selfHarmSupport.ts'
 
 type LocationState = {
   published?: boolean
@@ -191,6 +193,7 @@ export default function CreationPage() {
     language: string
     containsSexualContent: boolean
     isMatureContent: boolean
+    isSelfHarmTopic: boolean
   }) {
     if (!work) return
     setPublishError(null)
@@ -211,6 +214,7 @@ export default function CreationPage() {
         language: input.language,
         containsSexualContent: input.containsSexualContent,
         isMatureContent: input.isMatureContent,
+        isSelfHarmTopic: input.isSelfHarmTopic,
       })
       if (!saved.ok) {
         setPublishBusy(false)
@@ -233,6 +237,7 @@ export default function CreationPage() {
       expectedUpdatedAt: updatedAt,
       containsSexualContent: input.containsSexualContent,
       isMatureContent: input.isMatureContent,
+      isSelfHarmTopic: input.isSelfHarmTopic,
     })
     setPublishBusy(false)
 
@@ -373,6 +378,12 @@ export default function CreationPage() {
           </div>
         ) : null}
         {readProgress ? <ResumeReaderPrompt creationId={work.id} percent={readProgress.percent} /> : null}
+        {postShowsSelfHarmSupport({
+          isSelfHarmTopic: work.isSelfHarmTopic,
+          containsSelfHarmMethods: work.containsSelfHarmMethods,
+        }) ? (
+          <SelfHarmSupportNotice />
+        ) : null}
       </header>
       {work.autoHiddenAt && work.isOwn ? (
         <AuthorAutoHiddenNotice moderationActionId={work.autoHideModerationActionId} />
@@ -474,6 +485,7 @@ export default function CreationPage() {
         initialLanguage={work.language}
         initialContainsSexualContent={work.containsSexualContent}
         initialIsMatureContent={work.isMatureContent}
+        initialIsSelfHarmTopic={work.isSelfHarmTopic}
         mode={work.status === 'published' ? 'audience' : 'publish'}
         busy={publishBusy}
         error={publishError}

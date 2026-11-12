@@ -643,6 +643,8 @@ export type Database = {
           genre: string | null
           id: string
           is_mature_content: boolean
+          is_self_harm_topic: boolean
+          contains_self_harm_methods: boolean
           is_removed: boolean
           auto_hidden_at: string | null
           language: string
@@ -674,6 +676,8 @@ export type Database = {
           genre?: string | null
           id?: string
           is_mature_content?: boolean
+          is_self_harm_topic?: boolean
+          contains_self_harm_methods?: boolean
           is_removed?: boolean
           auto_hidden_at?: string | null
           language?: string
@@ -705,6 +709,8 @@ export type Database = {
           genre?: string | null
           id?: string
           is_mature_content?: boolean
+          is_self_harm_topic?: boolean
+          contains_self_harm_methods?: boolean
           is_removed?: boolean
           auto_hidden_at?: string | null
           language?: string
@@ -2172,6 +2178,14 @@ export type Database = {
           p_reason: string
           p_target_id: string
           p_target_type: string
+        }
+        Returns: undefined
+      }
+      founder_remove_self_harm_methods_content: {
+        Args: {
+          p_creation_id: string
+          p_reason: string
+          p_report_id?: string
         }
         Returns: undefined
       }

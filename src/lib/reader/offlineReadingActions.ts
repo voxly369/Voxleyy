@@ -37,6 +37,8 @@ export function creationDetailFromOfflinePackage(pkg: OfflineReadingPackage): Cr
     autoHideModerationActionId: null,
     containsSexualContent: false,
     isMatureContent: false,
+    isSelfHarmTopic: false,
+    containsSelfHarmMethods: false,
     author: {
       id: '00000000-0000-0000-0000-000000000099',
       username: w.authorUsername,

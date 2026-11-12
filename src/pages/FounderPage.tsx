@@ -14,6 +14,7 @@ import {
   listFounderContent,
   listFounderReportQueue,
   removeContent,
+  removeSelfHarmMethodsContent,
   restoreContent,
   unbanUser,
 } from '../lib/safety/founderApi.ts'
@@ -101,6 +102,7 @@ export default function FounderPage() {
   const [userHits, setUserHits] = useState<FounderUserSearchHit[]>([])
   const [restoreTarget, setRestoreTarget] = useState<FounderContentRow | null>(null)
   const [removeTarget, setRemoveTarget] = useState<FounderContentRow | null>(null)
+  const [selfHarmRemoveTarget, setSelfHarmRemoveTarget] = useState<FounderContentRow | null>(null)
   const [unbanTarget, setUnbanTarget] = useState<FounderUserSearchHit | null>(null)
   const [appealDecision, setAppealDecision] = useState<{ id: string; decision: 'upheld' | 'overturned' } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -304,6 +306,8 @@ export default function FounderPage() {
             <article key={`${row.content_kind}-${row.content_id}`} className="rounded-2xl border border-line bg-surface p-4">
               <p className="text-xs uppercase text-muted">
                 {row.content_kind} · @{row.author_username} · {row.is_removed ? 'removed' : 'live'}
+                {row.content_kind === 'creation' && row.contains_self_harm_methods ? ' · methods flagged' : null}
+                {row.content_kind === 'creation' && row.is_self_harm_topic ? ' · self-harm topic' : null}
               </p>
               <p className="mt-2 line-clamp-3 text-sm text-ink">{row.body_excerpt ?? row.title}</p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -315,6 +319,23 @@ export default function FounderPage() {
                   >
                     Restore
                   </button>
+                ) : row.content_kind === 'creation' ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setRemoveTarget(row)}
+                      className={`text-sm font-semibold text-coral ${focusRing}`}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelfHarmRemoveTarget(row)}
+                      className={`text-sm font-semibold text-muted ${focusRing}`}
+                    >
+                      Remove (methods)
+                    </button>
+                  </>
                 ) : (
                   <button
                     type="button"
@@ -417,6 +438,24 @@ export default function FounderPage() {
             setBusy(false)
             if (result.ok) {
               setRemoveTarget(null)
+              void loadContent(contentCursor, false)
+            }
+          })
+        }}
+      />
+      <FounderReasonModal
+        open={selfHarmRemoveTarget !== null}
+        title="Remove self-harm methods content"
+        confirmLabel="Remove and flag"
+        busy={busy}
+        onCancel={() => setSelfHarmRemoveTarget(null)}
+        onConfirm={(reason) => {
+          if (!selfHarmRemoveTarget || selfHarmRemoveTarget.content_kind !== 'creation') return
+          setBusy(true)
+          void removeSelfHarmMethodsContent(selfHarmRemoveTarget.content_id, reason).then((result) => {
+            setBusy(false)
+            if (result.ok) {
+              setSelfHarmRemoveTarget(null)
               void loadContent(contentCursor, false)
             }
           })
