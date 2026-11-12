@@ -66,6 +66,8 @@ export default function CreationEditorPage() {
     audience: import('../lib/creations/types.ts').Audience
     mood: string | null
     language: string
+    containsSexualContent: boolean
+    isMatureContent: boolean
   }) {
     const id = editor.creationId
     if (!id) return
@@ -89,6 +91,8 @@ export default function CreationEditorPage() {
       tags: editor.form.tags,
       mood: input.mood,
       language: input.language,
+      containsSexualContent: input.containsSexualContent,
+      isMatureContent: input.isMatureContent,
     })
     if (!moodSave.ok) {
       setPublishBusy(false)
@@ -111,6 +115,8 @@ export default function CreationEditorPage() {
       id,
       audience: input.audience,
       expectedUpdatedAt: moodSave.updatedAt,
+      containsSexualContent: input.containsSexualContent,
+      isMatureContent: input.isMatureContent,
     })
     setPublishBusy(false)
 
@@ -161,6 +167,8 @@ export default function CreationEditorPage() {
         initialAudience={editor.creationAudience}
         initialMood={editor.creationMood}
         initialLanguage={editor.creationLanguage}
+        initialContainsSexualContent={editor.containsSexualContent}
+        initialIsMatureContent={editor.isMatureContent}
         mode={editor.creationStatus === 'published' ? 'audience' : 'publish'}
         busy={publishBusy}
         error={publishError}

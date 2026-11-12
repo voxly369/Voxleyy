@@ -38,6 +38,8 @@ export type CreationDetail = WorkSummary & {
   removedReason: string | null
   autoHiddenAt: string | null
   autoHideModerationActionId: string | null
+  containsSexualContent: boolean
+  isMatureContent: boolean
 }
 
 export type CreationFailure = {
@@ -79,6 +81,8 @@ export type EditableCreation = {
   updatedAt: string
   tags: string[]
   bodyJson: import('../database.types.ts').Json | null
+  containsSexualContent: boolean
+  isMatureContent: boolean
 }
 
 export type DraftListRow = {

@@ -78,6 +78,7 @@ export type NotificationSettings = {
   showLocalTime: boolean
   digestEnabled: boolean
   digestTime: string | null
+  showMatureContent: boolean
   updatedAt: string
 }
 

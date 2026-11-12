@@ -44,10 +44,10 @@ const WORK_LIST_COLUMNS =
   `id, type, title, caption, status, audience, cover_url, created_at, author_id, ${AUTHOR_EMBED}` as const
 
 const DETAIL_COLUMNS =
-  `id, type, title, caption, body_text, body_json, status, audience, cover_url, genre, mood, language, created_at, updated_at, is_removed, removed_reason, auto_hidden_at, author_id, ${AUTHOR_EMBED}` as const
+  `id, type, title, caption, body_text, body_json, status, audience, cover_url, genre, mood, language, created_at, updated_at, is_removed, removed_reason, auto_hidden_at, contains_sexual_content, is_mature_content, author_id, ${AUTHOR_EMBED}` as const
 
 const EDIT_COLUMNS =
-  'id, type, title, caption, body_text, body_json, cover_url, mood, language, status, audience, updated_at, is_removed, author_id' as const
+  'id, type, title, caption, body_text, body_json, cover_url, mood, language, status, audience, updated_at, is_removed, author_id, contains_sexual_content, is_mature_content' as const
 
 function fail(
   code: CreationFailure['error']['code'],
@@ -103,6 +103,8 @@ function detailFromRecord(record: Record<string, unknown>, isOwn: boolean): Crea
     removedReason: text(record.removed_reason),
     autoHiddenAt: text(record.auto_hidden_at),
     autoHideModerationActionId: null,
+    containsSexualContent: record.contains_sexual_content === true,
+    isMatureContent: record.is_mature_content === true,
   }
 }
 
@@ -348,6 +350,8 @@ export async function getEditableCreation(id: string): Promise<CreationResult<Ed
       updatedAt: data.updated_at,
       tags: tags.data,
       bodyJson: data.body_json,
+      containsSexualContent: data.contains_sexual_content === true,
+      isMatureContent: data.is_mature_content === true,
     },
   }
 }
@@ -363,6 +367,8 @@ export async function saveCreationFields(input: {
   tags: string[]
   mood?: string | null
   language?: string
+  containsSexualContent?: boolean
+  isMatureContent?: boolean
   forceOverwrite?: boolean
 }): Promise<SaveCreationResult> {
   const userId = await currentUserId()
@@ -390,6 +396,8 @@ export async function saveCreationFields(input: {
         audience: input.audience,
         mood: input.mood,
         language: input.language,
+        containsSexualContent: input.containsSexualContent,
+        isMatureContent: input.isMatureContent,
       }),
     )
     .eq('id', input.id)
@@ -431,6 +439,8 @@ export async function publishCreation(input: {
   id: string
   audience: Audience
   expectedUpdatedAt: string | null
+  containsSexualContent?: boolean
+  isMatureContent?: boolean
   forceOverwrite?: boolean
 }): Promise<PublishCreationResult> {
   const userId = await currentUserId()
@@ -438,7 +448,12 @@ export async function publishCreation(input: {
 
   let query = supabase
     .from('creations')
-    .update(fieldsForPublish(input.audience))
+    .update(
+      fieldsForPublish(input.audience, {
+        containsSexualContent: input.containsSexualContent ?? false,
+        isMatureContent: input.isMatureContent ?? false,
+      }),
+    )
     .eq('id', input.id)
     .eq('author_id', userId)
 

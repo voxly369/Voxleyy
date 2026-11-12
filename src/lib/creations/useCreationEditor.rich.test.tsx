@@ -38,6 +38,10 @@ const loadedEditable: EditableCreation = {
   audience: 'private',
   updatedAt: '2026-10-19T00:00:00Z',
   tags: [],
+  mood: null,
+  language: 'en',
+  containsSexualContent: false,
+  isMatureContent: false,
 }
 
 const createdDetail: CreationDetail = {
@@ -59,6 +63,8 @@ const createdDetail: CreationDetail = {
   isRemoved: false,
   removedReason: null,
   author: { id: 'user-1', username: 'writer', displayName: 'Writer', avatarUrl: null, verified: false },
+  containsSexualContent: false,
+  isMatureContent: false,
 }
 
 describe('useCreationEditor rich autosave', () => {

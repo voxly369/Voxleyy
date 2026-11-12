@@ -30,6 +30,7 @@ function toPatch(settings: NotificationSettings): FormState {
     show_local_time: settings.showLocalTime,
     digest_enabled: settings.digestEnabled,
     digest_time: settings.digestTime,
+    show_mature_content: settings.showMatureContent,
   }
 }
 
@@ -200,6 +201,27 @@ export function NotificationSettingsForm() {
                 Available when Pen Pals launch. Until then, this behaves like nobody during quiet hours.
               </p>
             ) : null}
+          </label>
+        </div>
+      </fieldset>
+
+      <fieldset className="rounded-2xl border border-line bg-surface p-5">
+        <legend className="text-xs font-semibold uppercase tracking-wide text-muted">Content</legend>
+        <div className="mt-4 flex flex-col gap-3">
+          <label htmlFor="notify-show-mature-content" className="flex min-h-11 items-center justify-between gap-3">
+            <span className="flex flex-col gap-0.5">
+              <span className="text-base text-ink">Show mature content</span>
+              <span className="text-sm text-muted">
+                Sexual or mature posts in feeds, search, and recommendations when you are 18+
+              </span>
+            </span>
+            <input
+              id="notify-show-mature-content"
+              type="checkbox"
+              checked={Boolean(form.show_mature_content)}
+              onChange={() => toggle('show_mature_content')}
+              className="size-5 shrink-0 accent-coral"
+            />
           </label>
         </div>
       </fieldset>
