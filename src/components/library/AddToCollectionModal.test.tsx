@@ -26,9 +26,17 @@ function renderModal(open = true) {
   return { onClose }
 }
 
-describe('AddToCollectionModal', { concurrent: false }, () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
+describe('AddToCollectionModal', () => {
+  beforeEach(async () => {
+    const { createCollection, addToCollection } = await import('../../lib/library/collectionsApi.ts')
+    const { listCollections } = await import('../../lib/library/listLibrary.ts')
+    vi.mocked(createCollection).mockReset()
+    vi.mocked(addToCollection).mockReset()
+    vi.mocked(listCollections).mockReset()
+    vi.mocked(listCollections).mockResolvedValue({
+      ok: true,
+      collections: [{ id: 'col-1', name: 'Favourites', createdAt: '2026-01-01', updatedAt: '2026-01-01' }],
+    })
   })
 
   afterEach(() => {
