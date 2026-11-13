@@ -98,6 +98,9 @@ begin
   if not (v_meta ? 'username') and char_length(v_local) >= 3 then
     v_meta := v_meta || jsonb_build_object('username', left(v_local, 30));
   end if;
+  if not (v_meta ? 'date_of_birth') then
+    v_meta := v_meta || jsonb_build_object('date_of_birth', (current_date - interval '25 years')::date::text);
+  end if;
 
   v_invite_only := coalesce((public.platform_setting_json('beta')->>'invite_only')::boolean, false);
   if p_fixture and v_invite_only then
@@ -6425,6 +6428,7 @@ declare
 begin
   select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
 
+  execute format('set local role %I', session_user);
   delete from public.account_private where user_id = v_a;
   delete from public.user_consents where user_id = v_a and document = 'age_18';
   update public.notification_settings set show_mature_content = false where user_id = v_a;
@@ -6438,14 +6442,17 @@ begin
   execute 'set local role authenticated';
   perform public.upsert_my_date_of_birth((current_date - interval '16 years')::date);
 
+  execute format('set local role %I', session_user);
+  update public.profiles
+  set role = 'writer'::public.user_role, beta_access_granted = true
+  where id = v_b;
+
   perform set_config('request.jwt.claim.sub', v_b::text, true);
   perform set_config(
     'request.jwt.claims',
     json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
     true
   );
-  execute 'set local role authenticated';
-
   insert into public.creations (
     author_id, type, title, audience, status, body_text,
     contains_sexual_content, is_mature_content
@@ -6459,6 +6466,7 @@ begin
     json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
     true
   );
+  execute 'set local role authenticated';
 
   select count(*) into n from public.feed_creations where id = v_mature;
   perform pg_temp.record('mature post hidden from under-18 feed', n = 0, 'rows=' || n);

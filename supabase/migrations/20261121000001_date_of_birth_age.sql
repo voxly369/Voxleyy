@@ -47,7 +47,7 @@ set search_path = public
 as $$
   select coalesce(
     (
-      select (current_date - ap.date_of_birth) >= make_interval(years => p_years)
+      select ap.date_of_birth <= (current_date - make_interval(years => p_years))::date
       from public.account_private ap
       where ap.user_id = coalesce(p_user, auth.uid())
     ),
@@ -115,7 +115,7 @@ begin
   if p_date_of_birth < (current_date - interval '120 years')::date then
     raise exception 'Enter a valid date of birth.';
   end if;
-  if (current_date - p_date_of_birth) < make_interval(years => 13) then
+  if p_date_of_birth > (current_date - interval '13 years')::date then
     raise exception 'You must be at least 13 to use Voxly.';
   end if;
 
@@ -125,7 +125,7 @@ begin
   set date_of_birth = excluded.date_of_birth, updated_at = now()
   returning date_of_birth into v_dob;
 
-  if (current_date - v_dob) >= make_interval(years => 18) then
+  if v_dob <= (current_date - interval '18 years')::date then
     if not exists (select 1 from public.user_consents uc where uc.user_id = uid and uc.document = 'age_18') then
       insert into public.user_consents (user_id, document, version) values (uid, 'age_18', 'dob');
     end if;
@@ -187,7 +187,7 @@ begin
   if p_date_of_birth is null or p_date_of_birth > current_date then
     raise exception 'Enter a valid date of birth.';
   end if;
-  if (current_date - p_date_of_birth) < make_interval(years => 13) then
+  if p_date_of_birth > (current_date - interval '13 years')::date then
     raise exception 'You must be at least 13 to use Voxly.';
   end if;
 
@@ -196,7 +196,7 @@ begin
   on conflict (user_id) do update
   set date_of_birth = excluded.date_of_birth, updated_at = now();
 
-  if (current_date - p_date_of_birth) >= make_interval(years => 18) then
+  if p_date_of_birth <= (current_date - interval '18 years')::date then
     if not exists (select 1 from public.user_consents uc where uc.user_id = p_user and uc.document = 'age_18') then
       insert into public.user_consents (user_id, document, version) values (p_user, 'age_18', 'dob');
     end if;
@@ -263,7 +263,7 @@ begin
   v_tz := coalesce(nullif(btrim(coalesce(new.raw_user_meta_data->>'timezone', '')), ''), 'UTC');
   if char_length(v_tz) > 64 then v_tz := 'UTC'; end if;
 
-  v_invite := upper(btrim(coalesce(new.raw_user_meta_data->>'invite_code', '')), '');
+  v_invite := upper(btrim(coalesce(new.raw_user_meta_data->>'invite_code', '')));
 
   if v_founder_signup then
     v_beta_granted := true;
