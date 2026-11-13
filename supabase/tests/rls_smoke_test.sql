@@ -6319,16 +6319,22 @@ end $founder_signups_daily_logins$;
 do $self_harm_support$
 declare
   v_a uuid;
-  v_b uuid;
+  v_writer uuid := gen_random_uuid();
   v_post uuid;
   n integer;
 begin
-  select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
+  select reader_a into v_a from rls_ids limit 1;
 
-  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_writer, 'selfharm.writer@voxly.test', now());
+  update public.profiles
+  set role = 'writer'::public.user_role, beta_access_granted = true, status = 'active'
+  where id = v_writer;
+
+  perform set_config('request.jwt.claim.sub', v_writer::text, true);
   perform set_config(
     'request.jwt.claims',
-    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    json_build_object('sub', v_writer::text, 'role', 'authenticated', 'email', 'selfharm.writer@voxly.test')::text,
     true
   );
   execute 'set local role authenticated';
@@ -6336,14 +6342,26 @@ begin
   insert into public.creations (
     author_id, type, title, audience, status, body_text, is_self_harm_topic
   )
-  values (v_b, 'poem', 'Self harm topic', 'public', 'published', 'Honest sharing', true)
+  values (v_writer, 'poem', 'Self harm topic', 'public', 'published', 'Honest sharing', true)
   returning id into v_post;
 
   perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
   select count(*) into n from public.creations where id = v_post;
   perform pg_temp.record('self-harm topic post visible to readers', n = 1, 'rows=' || n);
 
-  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config('request.jwt.claim.sub', v_writer::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_writer::text, 'role', 'authenticated', 'email', 'selfharm.writer@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
   begin
     perform public.founder_remove_self_harm_methods_content(v_post, 'Methods in smoke test', null);
     perform pg_temp.record('founder_remove_self_harm_methods_content', true, 'ok');
@@ -6369,7 +6387,7 @@ begin
     'post=' || v_post::text
   );
 
-  select strike_count into n from public.writer_strike_state where user_id = v_b;
+  select strike_count into n from public.writer_strike_state where user_id = v_writer;
   perform pg_temp.record('self-harm methods removal does not add strike', coalesce(n, 0) = 0, 'strikes=' || coalesce(n::text, '0'));
 end $self_harm_support$;
 
