@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { meetsMinimumSignupAge, parseIsoDateOnly } from '../account/dateOfBirth.ts'
 import { isCommonPassword } from './passwords.ts'
 import { isReservedUsername } from './reservedUsernames.ts'
 
@@ -61,7 +62,7 @@ export const signUpSchema = z
     password: passwordSchema,
     confirmPassword: z.string(),
     acceptedTerms: z.boolean(),
-    confirmedAge: z.boolean(),
+    dateOfBirth: z.string().trim().min(1, 'Enter your date of birth.'),
   })
   .superRefine((value, ctx) => {
     if (value.password !== value.confirmPassword) {
@@ -78,11 +79,17 @@ export const signUpSchema = z
         message: 'Accept the Terms and Privacy Policy to continue.',
       })
     }
-    if (!value.confirmedAge) {
+    if (!parseIsoDateOnly(value.dateOfBirth)) {
       ctx.addIssue({
         code: 'custom',
-        path: ['confirmedAge'],
-        message: 'Confirm that you are 18 or older.',
+        path: ['dateOfBirth'],
+        message: 'Enter a valid date of birth.',
+      })
+    } else if (!meetsMinimumSignupAge(value.dateOfBirth)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['dateOfBirth'],
+        message: 'You must be at least 13 to use Voxly.',
       })
     }
   })

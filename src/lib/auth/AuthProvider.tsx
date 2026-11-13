@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           timezone: input.timezone,
           consent_terms: LEGAL_DOCUMENT_VERSIONS.terms,
           consent_privacy: LEGAL_DOCUMENT_VERSIONS.privacy,
-          consent_age: LEGAL_DOCUMENT_VERSIONS.age_18,
+          date_of_birth: input.dateOfBirth,
           ...(input.inviteCode ? { invite_code: input.inviteCode } : {}),
         },
         emailRedirectTo: redirectTo('/auth/confirm'),

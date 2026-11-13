@@ -39,6 +39,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_private: {
+        Row: {
+          user_id: string
+          date_of_birth: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          date_of_birth: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          date_of_birth?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_feedback: {
         Row: {
           id: number
@@ -2280,6 +2298,8 @@ export type Database = {
       }
       get_beta_signup_config: { Args: Record<string, never>; Returns: Json }
       get_my_consents: { Args: Record<string, never>; Returns: Json }
+      get_my_date_of_birth: { Args: Record<string, never>; Returns: string | null }
+      upsert_my_date_of_birth: { Args: { p_date_of_birth: string }; Returns: string }
       health_check: { Args: Record<string, never>; Returns: Json }
       join_beta_waitlist: { Args: { p_email: string }; Returns: undefined }
       record_user_consent: {

@@ -98,6 +98,9 @@ begin
   if not (v_meta ? 'username') and char_length(v_local) >= 3 then
     v_meta := v_meta || jsonb_build_object('username', left(v_local, 30));
   end if;
+  if not (v_meta ? 'date_of_birth') then
+    v_meta := v_meta || jsonb_build_object('date_of_birth', (current_date - interval '25 years')::date::text);
+  end if;
 
   v_invite_only := coalesce((public.platform_setting_json('beta')->>'invite_only')::boolean, false);
   if p_fixture and v_invite_only then
@@ -3454,6 +3457,7 @@ begin
     json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
     true
   );
+  execute 'set local role authenticated';
   select count(*) into n from public.writer_strike_state where user_id = v_b;
   v_ok := n = 0;
   perform pg_temp.record('other user cannot read writer strike state', v_ok, 'rows=' || n);
@@ -5174,6 +5178,7 @@ declare
   v_msg text;
   v_other uuid := gen_random_uuid();
 begin
+  execute format('set local role %I', session_user);
   update public.platform_settings
   set value = jsonb_build_object(
     'invite_only', true,
@@ -6314,16 +6319,22 @@ end $founder_signups_daily_logins$;
 do $self_harm_support$
 declare
   v_a uuid;
-  v_b uuid;
+  v_writer uuid := gen_random_uuid();
   v_post uuid;
   n integer;
 begin
-  select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
+  select reader_a into v_a from rls_ids limit 1;
 
-  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  execute format('set local role %I', session_user);
+  perform pg_temp.create_test_user(v_writer, 'selfharm.writer@voxly.test', now());
+  update public.profiles
+  set role = 'writer'::public.user_role, beta_access_granted = true, status = 'active'
+  where id = v_writer;
+
+  perform set_config('request.jwt.claim.sub', v_writer::text, true);
   perform set_config(
     'request.jwt.claims',
-    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    json_build_object('sub', v_writer::text, 'role', 'authenticated', 'email', 'selfharm.writer@voxly.test')::text,
     true
   );
   execute 'set local role authenticated';
@@ -6331,14 +6342,26 @@ begin
   insert into public.creations (
     author_id, type, title, audience, status, body_text, is_self_harm_topic
   )
-  values (v_b, 'poem', 'Self harm topic', 'public', 'published', 'Honest sharing', true)
+  values (v_writer, 'poem', 'Self harm topic', 'public', 'published', 'Honest sharing', true)
   returning id into v_post;
 
   perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
   select count(*) into n from public.creations where id = v_post;
   perform pg_temp.record('self-harm topic post visible to readers', n = 1, 'rows=' || n);
 
-  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config('request.jwt.claim.sub', v_writer::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_writer::text, 'role', 'authenticated', 'email', 'selfharm.writer@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
   begin
     perform public.founder_remove_self_harm_methods_content(v_post, 'Methods in smoke test', null);
     perform pg_temp.record('founder_remove_self_harm_methods_content', true, 'ok');
@@ -6364,9 +6387,57 @@ begin
     'post=' || v_post::text
   );
 
-  select strike_count into n from public.writer_strike_state where user_id = v_b;
+  select strike_count into n from public.writer_strike_state where user_id = v_writer;
   perform pg_temp.record('self-harm methods removal does not add strike', coalesce(n, 0) = 0, 'strikes=' || coalesce(n::text, '0'));
 end $self_harm_support$;
+
+do $account_private_dob$
+declare
+  v_a uuid;
+  v_b uuid;
+  n integer;
+  v_dob date;
+begin
+  select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+
+  insert into public.account_private (user_id, date_of_birth)
+  values (v_a, (current_date - interval '25 years')::date)
+  on conflict (user_id) do update set date_of_birth = excluded.date_of_birth;
+
+  perform set_config('request.jwt.claim.sub', v_b::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
+    true
+  );
+
+  select count(*) into n from public.account_private where user_id = v_a;
+  perform pg_temp.record('another user cannot read account_private date of birth', n = 0, 'rows=' || n);
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  select date_of_birth into v_dob from public.account_private where user_id = v_a;
+  perform pg_temp.record('owner can read own date of birth', v_dob is not null, 'dob=' || coalesce(v_dob::text, 'null'));
+
+  select count(*) into n
+  from information_schema.columns
+  where table_schema = 'public'
+    and table_name = 'profiles_public'
+    and column_name = 'date_of_birth';
+  perform pg_temp.record('profiles_public has no date_of_birth column', n = 0, 'cols=' || n);
+end $account_private_dob$;
 
 do $mature_content$
 declare
@@ -6377,8 +6448,34 @@ declare
 begin
   select reader_a, reader_b into v_a, v_b from rls_ids limit 1;
 
+  execute format('set local role %I', session_user);
+  delete from public.account_private where user_id = v_a;
   delete from public.user_consents where user_id = v_a and document = 'age_18';
   update public.notification_settings set show_mature_content = false where user_id = v_a;
+
+  perform set_config('request.jwt.claim.sub', v_a::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
+    true
+  );
+  execute 'set local role authenticated';
+  perform public.upsert_my_date_of_birth((current_date - interval '16 years')::date);
+
+  execute format('set local role %I', session_user);
+  delete from public.blocks
+  where (blocker_id = v_a and blocked_id = v_b) or (blocker_id = v_b and blocked_id = v_a);
+  delete from public.mutes
+  where (user_id = v_a and muted_user_id = v_b) or (user_id = v_b and muted_user_id = v_a);
+  update public.profiles
+  set role = 'writer'::public.user_role,
+      beta_access_granted = true,
+      status = 'active',
+      suspended_until = null
+  where id = v_b;
+  update public.writer_strike_state
+  set post_suspended_until = null
+  where user_id = v_b;
 
   perform set_config('request.jwt.claim.sub', v_b::text, true);
   perform set_config(
@@ -6386,8 +6483,6 @@ begin
     json_build_object('sub', v_b::text, 'role', 'authenticated', 'email', 'reader.b@voxly.test')::text,
     true
   );
-  execute 'set local role authenticated';
-
   insert into public.creations (
     author_id, type, title, audience, status, body_text,
     contains_sexual_content, is_mature_content
@@ -6401,6 +6496,7 @@ begin
     json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
     true
   );
+  execute 'set local role authenticated';
 
   select count(*) into n from public.feed_creations where id = v_mature;
   perform pg_temp.record('mature post hidden from under-18 feed', n = 0, 'rows=' || n);
@@ -6408,7 +6504,7 @@ begin
   select count(*) into n from public.creations where id = v_mature;
   perform pg_temp.record('mature post hidden from under-18 select', n = 0, 'rows=' || n);
 
-  perform public.record_user_consent('age_18', 'confirmed');
+  perform public.upsert_my_date_of_birth((current_date - interval '25 years')::date);
   update public.notification_settings set show_mature_content = true where user_id = v_a;
 
   select count(*) into n from public.feed_creations where id = v_mature;

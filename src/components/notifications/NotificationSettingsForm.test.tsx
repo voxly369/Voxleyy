@@ -2,6 +2,11 @@ import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { NotificationSettingsForm } from './NotificationSettingsForm.tsx'
 
+vi.mock('../../lib/account/dateOfBirthApi.ts', () => ({
+  fetchMyDateOfBirth: vi.fn().mockResolvedValue({ ok: true, data: null }),
+  saveMyDateOfBirth: vi.fn().mockResolvedValue({ ok: true, data: '1990-01-15' }),
+}))
+
 vi.mock('../../lib/notifications/api.ts', () => ({
   fetchNotificationSettings: vi.fn().mockResolvedValue({
     ok: true,

@@ -51,7 +51,7 @@ export default function SignUpPage() {
   const [inviteCode, setInviteCode] = useState('')
   const [inviteLocked, setInviteLocked] = useState(false)
   const [acceptedTerms, setAcceptedTerms] = useState(false)
-  const [confirmedAge, setConfirmedAge] = useState(false)
+  const [dateOfBirth, setDateOfBirth] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState('')
   const [pending, setPending] = useState(false)
@@ -113,7 +113,7 @@ export default function SignUpPage() {
       password,
       confirmPassword,
       acceptedTerms,
-      confirmedAge,
+      dateOfBirth,
     })
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error))
@@ -153,6 +153,7 @@ export default function SignUpPage() {
       displayName: parsed.data.displayName,
       country: parsed.data.country,
       timezone: parsed.data.timezone,
+      dateOfBirth: parsed.data.dateOfBirth,
       inviteCode: normalizedInvite,
     })
     if (!result.ok) {
@@ -169,7 +170,6 @@ export default function SignUpPage() {
     await recordUserConsents([
       { document: 'terms', version: LEGAL_DOCUMENT_VERSIONS.terms },
       { document: 'privacy', version: LEGAL_DOCUMENT_VERSIONS.privacy },
-      { document: 'age_18', version: LEGAL_DOCUMENT_VERSIONS.age_18 },
     ])
     setPending(false)
     lock.current = false
@@ -357,25 +357,18 @@ export default function SignUpPage() {
         onChange={setConfirmPassword}
         error={errors.confirmPassword}
       />
-      <div className="flex flex-col gap-2">
-        <label className="flex min-h-11 items-start gap-3 text-sm text-ink" htmlFor="signup-age">
-          <input
-            id="signup-age"
-            name="age"
-            type="checkbox"
-            checked={confirmedAge}
-            onChange={(event) => setConfirmedAge(event.target.checked)}
-            className={`mt-1 size-5 accent-coral ${focusRing}`}
-            data-testid="signup-age-consent"
-          />
-          <span>I am 18 or older.</span>
-        </label>
-        {errors.confirmedAge ? (
-          <p role="alert" className="text-sm text-coral">
-            {errors.confirmedAge}
-          </p>
-        ) : null}
-      </div>
+      <TextField
+        id="signup-date-of-birth"
+        name="dateOfBirth"
+        label="Date of birth"
+        type="date"
+        autoComplete="bday"
+        value={dateOfBirth}
+        onChange={(event) => setDateOfBirth(event.target.value)}
+        error={errors.dateOfBirth}
+        hint="You must be at least 13. Mature content is only available if you are 18 or older."
+        data-testid="signup-date-of-birth"
+      />
       <div className="flex flex-col gap-2">
         <label className="flex min-h-11 items-start gap-3 text-sm text-ink" htmlFor="signup-terms">
           <input

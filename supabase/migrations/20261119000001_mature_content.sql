@@ -4,6 +4,8 @@ alter table public.creations
   add column if not exists contains_sexual_content boolean not null default false,
   add column if not exists is_mature_content boolean not null default false;
 
+grant insert (contains_sexual_content, is_mature_content) on public.creations to authenticated;
+
 alter table public.notification_settings
   add column if not exists show_mature_content boolean not null default false;
 
