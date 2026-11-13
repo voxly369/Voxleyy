@@ -3457,6 +3457,7 @@ begin
     json_build_object('sub', v_a::text, 'role', 'authenticated', 'email', 'reader.a@voxly.test')::text,
     true
   );
+  execute 'set local role authenticated';
   select count(*) into n from public.writer_strike_state where user_id = v_b;
   v_ok := n = 0;
   perform pg_temp.record('other user cannot read writer strike state', v_ok, 'rows=' || n);
