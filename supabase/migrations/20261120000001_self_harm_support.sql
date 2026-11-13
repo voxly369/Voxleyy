@@ -4,6 +4,30 @@ alter table public.creations
   add column if not exists is_self_harm_topic boolean not null default false,
   add column if not exists contains_self_harm_methods boolean not null default false;
 
+grant insert (is_self_harm_topic) on public.creations to authenticated;
+
+-- Posting suspension from the strike ladder still allows honest self-harm topic posts (smoke + product).
+drop policy if exists creations_insert on public.creations;
+create policy creations_insert on public.creations
+  for insert to authenticated
+  with check (
+    author_id = auth.uid()
+    and public.is_active_user()
+    and (public.writer_may_publish() or is_self_harm_topic)
+    and status in ('draft', 'published')
+  );
+
+drop policy if exists creations_update on public.creations;
+create policy creations_update on public.creations
+  for update to authenticated
+  using (author_id = auth.uid() and is_removed = false)
+  with check (
+    author_id = auth.uid()
+    and public.is_active_user()
+    and (public.writer_may_publish() or is_self_harm_topic)
+    and status in ('draft', 'published')
+  );
+
 create or replace function public.notify_founder_self_harm_methods(
   p_creation_id uuid,
   p_author_id uuid
@@ -154,6 +178,8 @@ begin
   return new;
 end;
 $$;
+
+drop view if exists public.founder_content_browser;
 
 create or replace view public.founder_content_browser
 with (security_invoker = true)
