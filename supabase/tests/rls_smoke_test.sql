@@ -5177,6 +5177,7 @@ declare
   v_msg text;
   v_other uuid := gen_random_uuid();
 begin
+  execute format('set local role %I', session_user);
   update public.platform_settings
   set value = jsonb_build_object(
     'invite_only', true,
