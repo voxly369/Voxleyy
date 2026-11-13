@@ -6444,9 +6444,19 @@ begin
   perform public.upsert_my_date_of_birth((current_date - interval '16 years')::date);
 
   execute format('set local role %I', session_user);
+  delete from public.blocks
+  where (blocker_id = v_a and blocked_id = v_b) or (blocker_id = v_b and blocked_id = v_a);
+  delete from public.mutes
+  where (user_id = v_a and muted_user_id = v_b) or (user_id = v_b and muted_user_id = v_a);
   update public.profiles
-  set role = 'writer'::public.user_role, beta_access_granted = true
+  set role = 'writer'::public.user_role,
+      beta_access_granted = true,
+      status = 'active',
+      suspended_until = null
   where id = v_b;
+  update public.writer_strike_state
+  set post_suspended_until = null
+  where user_id = v_b;
 
   perform set_config('request.jwt.claim.sub', v_b::text, true);
   perform set_config(
